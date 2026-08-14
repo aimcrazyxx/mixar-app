@@ -1,0 +1,130 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Builds Mixar from this branch and uploads the result as an artifact.
+#
+# WHAT YOU GET
+#   build/<MIXAR_ENV>/bin/Mixar.app  ->  zipped into the run's artifacts.
+#   This repo has no DMG/MSI packaging step, so the artifact is the app
+#   bundle itself (unsigned). On macOS an unsigned bundle needs
+#   `xattr -dr com.apple.quarantine Mixar.app` before first launch.
+#
+# RUNNER REQUIREMENTS — READ THIS FIRST
+#   A Blender build is not a small job: expect ~40-60 GB of disk and 1-3 h of
+#   wall clock for a cold build, plus the precompiled library set that
+#   `make init` downloads. GitHub-hosted runners (14 GB free disk, 6 h job
+#   limit) will usually run out of space, which is why `runner` defaults to
+#   self-hosted. Point it at any machine with Xcode/clang, cmake >= 3.16,
+#   python 3.11, git, rsync and svn available.
+#
+# WHY THE BLENDER VERSION IS SET HERE
+#   `upstream/` is a git submodule and its pinned revision is a gitlink, which
+#   the GitHub API cannot write. CI can, so this workflow checks out the tag
+#   you pick at dispatch time — dispatching it is how you get a 5.2.0-based
+#   build without cloning the multi-GB tree yourself.
+
+name: Build installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner label (self-hosted recommended; macos-14 for experiments)"
+        type: string
+        default: "self-hosted"
+      blender_ref:
+        description: "Blender tag/branch to build against"
+        type: string
+        default: "v5.2.0"
+      blender_version:
+        description: "BLENDER_VERSION constant (resource paths)"
+        type: string
+        default: "5.2"
+      mixar_env:
+        description: "MIXAR_ENV / build folder"
+        type: choice
+        default: "Prod"
+        options: ["Prod", "Dev"]
+
+concurrency:
+  group: build-installer-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ inputs.blender_ref }} on ${{ inputs.runner }}
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 350
+    env:
+      MIXAR_ENV: ${{ inputs.mixar_env }}
+      BLENDER_VERSION: ${{ inputs.blender_version }}
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Report toolchain
+        run: |
+          set -eux
+          uname -a
+          cmake --version
+          python3 --version
+          git --version
+          df -h .
+
+      - name: Pin upstream Blender to ${{ inputs.blender_ref }}
+        run: |
+          set -eux
+          git -C upstream fetch --tags --depth 1 origin "${{ inputs.blender_ref }}"
+          git -C upstream checkout --force --detach FETCH_HEAD
+          git -C upstream submodule update --init --recursive --depth 1 || true
+          git -C upstream log -1 --format='upstream now at %H'
+
+      - name: Sync BLENDER_VERSION constants
+        run: |
+          set -eux
+          SKIP_CHECKOUT=1 bash scripts/upgrade/set_blender_version.sh "${BLENDER_VERSION}"
+          git --no-pager diff --stat
+
+      - name: Environment file
+        run: |
+          set -eux
+          test -f .env || cp .env.example .env
+
+      - name: make init (precompiled libraries)
+        run: make init
+
+      - name: make build
+        run: make build
+
+      - name: make install (overlay scripts + cmake install)
+        run: make install
+
+      - name: Package
+        id: package
+        run: |
+          set -eux
+          BIN_DIR="build/${MIXAR_ENV}/bin"
+          ls -la "$BIN_DIR"
+          NAME="Mixar-${MIXAR_ENV}-blender${BLENDER_VERSION}-$(git rev-parse --short HEAD)"
+          if [ -d "$BIN_DIR/Mixar.app" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$BIN_DIR/Mixar.app" "${NAME}.zip"
+          else
+            ( cd "$BIN_DIR" && zip -qry "${GITHUB_WORKSPACE}/${NAME}.zip" . )
+          fi
+          shasum -a 256 "${NAME}.zip" | tee "${NAME}.zip.sha256"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            ${{ steps.package.outputs.name }}.zip
+            ${{ steps.package.outputs.name }}.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
