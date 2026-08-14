@@ -134,3 +134,23 @@ def get_frontend_url():
     """
     config = get_config()
     return config.get('frontend_url', get_server_url())
+
+# --- BEGIN mixar-custom-endpoints overlay ---
+# Endpoints and config storage are resolved at runtime (see endpoints.py and
+# store.py). Re-binding the names at the end of the module keeps every
+# existing ``from .config import get_server_url`` import working unchanged,
+# while avoiding in-place edits that would conflict on upstream merges.
+from .endpoints import (  # noqa: E402,F811
+    get_frontend_url,
+    get_server_url,
+    get_ws_url,
+)
+from .store import (  # noqa: E402,F811
+    add_config,
+    get_config,
+    get_config_path,
+    get_user_config_path,
+    load_mixar_config,
+    reload_config,
+)
+# --- END mixar-custom-endpoints overlay ---
