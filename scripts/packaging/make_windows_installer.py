@@ -12,6 +12,16 @@ user. This script closes that gap and is safe to re-run:
     scripts\\windows\\package.bat
     python scripts/packaging/make_windows_installer.py --env Prod
 
+Compiling Mixar needs Windows and MSVC; packaging does not. makensis has a
+native POSIX build, so given a payload from a Windows build (or from the CI
+artifact) this also runs on Linux and macOS:
+
+    sudo apt-get install nsis
+    python3 scripts/packaging/make_windows_installer.py --payload-dir ./bin
+
+Run scripts/packaging/validate_installer.py to self-test all of this without a
+Windows build at all.
+
 Steps
   1. Locate the built tree (``build/<env>/bin``, ``bin/Release``, ``bin/Debug``).
   2. Verify it: the executable, the ``<X.Y>`` resource directory, the generated
@@ -288,11 +298,23 @@ def sign_file(target: Path, args: argparse.Namespace) -> None:
         die(f"signtool failed for {target}")
 
 
+def nsis_switch_prefix(makensis: Path) -> str:
+    """NSIS switches are ``/X`` on Windows and ``-X`` on the POSIX builds.
+
+    A POSIX makensis treats ``/V2`` as an input file name, so the whole run
+    dies with a confusing "can't open script" instead of building anything.
+    """
+    if os.name == "nt" or makensis.suffix.lower() == ".exe":
+        return "/"
+    return "-"
+
+
 def run_nsis(nsi: Path, defines: dict[str, str], makensis: Path) -> None:
-    command = [str(makensis), "/V2"]
-    command += [f"/D{key}={value}" for key, value in defines.items()]
+    flag = nsis_switch_prefix(makensis)
+    command = [str(makensis), f"{flag}V2"]
+    command += [f"{flag}D{key}={value}" for key, value in defines.items()]
     command.append(str(nsi))
-    log(f"running {makensis.name} on {nsi.name}")
+    log(f"running {makensis.name} on {nsi.name} ({flag}D switches)")
     if subprocess.run(command, check=False).returncode != 0:
         die("makensis failed")
 
@@ -318,7 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--payload-dir", default=None, help="exact directory holding mixar.exe")
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR), help="where artifacts are written")
     parser.add_argument("--nsi", default=str(DEFAULT_NSI), help="NSIS script path")
-    parser.add_argument("--makensis", default=None, help="path to makensis.exe")
+    parser.add_argument("--makensis", default=None, help="path to makensis (or makensis.exe)")
     parser.add_argument("--suffix", default="", help="extra artifact name tag, e.g. a short commit sha")
     parser.add_argument("--backend-url", default=None, help="regenerate config/mixar.json with this backend URL")
     parser.add_argument("--frontend-url", default=None, help="regenerate config/mixar.json with this frontend URL")
@@ -381,7 +403,8 @@ def main() -> int:
         if not makensis:
             message = (
                 "makensis not found. Install NSIS (winget install NSIS.NSIS, "
-                "choco install nsis, or https://nsis.sourceforge.io) or pass --makensis."
+                "choco install nsis, apt-get install nsis, brew install makensis, "
+                "or https://nsis.sourceforge.io) or pass --makensis."
             )
             if args.allow_missing_nsis:
                 log(f"WARNING: {message} Skipping the installer.")
@@ -393,6 +416,9 @@ def main() -> int:
                 installer.unlink()
             defines = {
                 "PAYLOAD_DIR": str(payload),
+                # Joined here so the separator matches the platform running
+                # makensis: a POSIX build does not accept backslashes.
+                "PAYLOAD_GLOB": os.path.join(str(payload), "*"),
                 "OUT_FILE": str(installer),
                 "APP_NAME": os.environ.get("MIXAR_APP_NAME", "Mixar"),
                 "APP_EXE": exe.name,

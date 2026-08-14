@@ -1,0 +1,100 @@
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Compiling Mixar needs Windows, MSVC, tens of GB of Blender libraries and
+# hours of CPU. The packaging layer needs none of that: makensis has a native
+# POSIX build, so a free ubuntu runner can compile installer/windows/mixar.nsi
+# and exercise every safety check in the packaging script in about a minute.
+#
+# Run this before spending a multi-hour Windows build on a broken installer.
+
+name: Validate packaging
+
+on:
+  push:
+    paths:
+      - "installer/**"
+      - "scripts/packaging/**"
+      - "src/scripts/mixar/config/**"
+      - "src/scripts/mixar/modules/byok/**"
+      - "tests/**"
+      - ".github/workflows/validate-packaging.yml"
+  pull_request:
+    paths:
+      - "installer/**"
+      - "scripts/packaging/**"
+      - "src/scripts/mixar/config/**"
+      - "src/scripts/mixar/modules/byok/**"
+      - "tests/**"
+      - ".github/workflows/validate-packaging.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: validate-packaging-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packaging:
+    name: Packaging and NSIS script
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the fork
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install NSIS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nsis
+          makensis -VERSION
+
+      - name: Byte-compile the packaging scripts
+        run: python3 -m compileall -q scripts/packaging
+
+      - name: Self-test the packager and compile the installer
+        run: |
+          python3 scripts/packaging/validate_installer.py \
+            --keep-artifacts "${{ runner.temp }}/pkgcheck"
+
+      - name: Describe the generated installer
+        run: |
+          ls -lh "${{ runner.temp }}/pkgcheck"
+          file "${{ runner.temp }}"/pkgcheck/*-setup.exe
+          {
+            echo "### Packaging check"
+            echo
+            echo "NSIS: $(makensis -VERSION)"
+            echo
+            echo "The installer below wraps a stub executable. It proves the NSIS"
+            echo "script compiles and the safety checks fire - it is not Mixar."
+            echo
+            echo '```'
+            cat "${{ runner.temp }}/pkgcheck/SHA256SUMS.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the stub installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsis-syntax-check-not-a-real-build
+          path: ${{ runner.temp }}/pkgcheck/*-setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Run the Python test suite
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pytest
+          python3 -m pytest tests -q

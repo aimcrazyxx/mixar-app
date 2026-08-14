@@ -12,6 +12,12 @@
 ;            /DOUT_FILE=C:\path\to\dist\Mixar-setup.exe ^
 ;            /DAPP_VERSION=2.0.0 /DAPP_VERSION_FULL=2.0.0.0 ^
 ;            installer\windows\mixar.nsi
+;
+; The POSIX build of makensis (apt-get install nsis) works too - switches take
+; a dash there, and PAYLOAD_GLOB has to be passed because a backslash is not a
+; path separator on Linux or macOS:
+;
+;   makensis -DPAYLOAD_DIR=/path/bin -DPAYLOAD_GLOB='/path/bin/*' ... mixar.nsi
 
 Unicode true
 ManifestDPIAware true
@@ -26,6 +32,12 @@ SetCompressor /SOLID lzma
 
 !ifndef PAYLOAD_DIR
   !error "PAYLOAD_DIR is required, e.g. /DPAYLOAD_DIR=build\Prod\bin"
+!endif
+!ifndef PAYLOAD_GLOB
+  ; make_windows_installer.py joins this with the separator of the platform
+  ; that runs makensis. The fallback keeps hand-written Windows invocations
+  ; working unchanged.
+  !define PAYLOAD_GLOB "${PAYLOAD_DIR}\*"
 !endif
 !ifndef OUT_FILE
   !define OUT_FILE "Mixar-setup.exe"
@@ -115,7 +127,7 @@ Section "${APP_NAME} (required)" SecCore
   SectionIn RO
   SetOutPath "$INSTDIR"
   SetOverwrite on
-  File /r /x "*.pdb" /x "*.ilk" /x "*.exp" /x "*.obj" /x "__pycache__" /x "CMakeFiles" "${PAYLOAD_DIR}\*"
+  File /r /x "*.pdb" /x "*.ilk" /x "*.exp" /x "*.obj" /x "__pycache__" /x "CMakeFiles" "${PAYLOAD_GLOB}"
 
   WriteRegStr HKLM "Software\${APP_NAME}" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "Software\${APP_NAME}" "Version" "${APP_VERSION}"
