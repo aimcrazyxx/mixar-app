@@ -52,7 +52,9 @@ export MIXAR_BUNDLE_IDENTIFIER="${MIXAR_BUNDLE_IDENTIFIER:-com.mixar.mixar}"
 export MIXAR_BUNDLE_COPYRIGHT="${MIXAR_BUNDLE_COPYRIGHT:-© 2025 Mixar}"
 
 # Build settings (constants)
-export BLENDER_VERSION="${BLENDER_VERSION:-5.0}"
+# Keep this in sync with the pinned upstream/ submodule revision.
+# Use scripts/upgrade/set_blender_version.sh to change both at once.
+export BLENDER_VERSION="${BLENDER_VERSION:-5.2}"
 export PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
 export REQUIRED_CMAKE_VERSION="${REQUIRED_CMAKE_VERSION:-3.16}"
 

@@ -24,28 +24,33 @@ else
     PY_BASE=""
 fi
 
+# Resource folder is named after the upstream Blender version (5.0, 5.2, ...).
+# Never hardcode it: settings.sh is the single source of truth, and it must
+# match the pinned upstream/ submodule revision.
+RESOURCE_DIR="$PY_BASE/${BLENDER_VERSION}"
+
 # Try common python binary names inside Blender's embedded Python
 PYTHON_BIN=""
 for candidate in \
-    "$PY_BASE/5.0/python/bin/python${PYTHON_VERSION}" \
-    "$PY_BASE/5.0/python/bin/python3" \
-    "$PY_BASE/5.0/python/bin/python"; do
+    "$RESOURCE_DIR/python/bin/python${PYTHON_VERSION}" \
+    "$RESOURCE_DIR/python/bin/python3" \
+    "$RESOURCE_DIR/python/bin/python"; do
     if [[ -x "$candidate" ]]; then
         PYTHON_BIN="$candidate"
         break
     fi
 done
 
-SITE_PACKAGES="$PY_BASE/5.0/python/lib/python${PYTHON_VERSION}/site-packages"
+SITE_PACKAGES="$RESOURCE_DIR/python/lib/python${PYTHON_VERSION}/site-packages"
 
 if [[ -n "$PYTHON_BIN" ]]; then
     echo "Found Python binary: $PYTHON_BIN"
 
     # Determine platform-specific user preferences path
     if [[ "$PLATFORM" == "macOS" ]]; then
-        USERPREF_PATH="$HOME/Library/Application Support/Mixar/5.0/config/mixar_userpref.blend"
+        USERPREF_PATH="$HOME/Library/Application Support/Mixar/${BLENDER_VERSION}/config/mixar_userpref.blend"
     elif [[ "$PLATFORM" == "Linux" ]]; then
-        USERPREF_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/mixar/5.0/config/mixar_userpref.blend"
+        USERPREF_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/mixar/${BLENDER_VERSION}/config/mixar_userpref.blend"
     else
         echo "Error: Unsupported platform '$PLATFORM' for theme generation"
         exit 1
@@ -61,7 +66,7 @@ if [[ -n "$PYTHON_BIN" ]]; then
     cd ../../..
     cp "$SOURCE_DIR"/release/datafiles/userdef/userdef_default_theme.c "$SRC_DIR"/release/datafiles/userdef/userdef_default_theme.c
 else
-    echo "Warning: Python binary not found under: $PY_BASE/5.0/python/bin"
+    echo "Warning: Python binary not found under: $RESOURCE_DIR/python/bin"
 fi
 
 # Done
