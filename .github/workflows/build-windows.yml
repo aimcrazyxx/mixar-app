@@ -1,0 +1,254 @@
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Builds Mixar on Windows against a pinned Blender revision and uploads a real
+# installer (.exe) plus a portable zip.
+#
+# Reality check before you dispatch this: a from-scratch Blender build needs
+# tens of GB of precompiled libraries and hours of CPU. GitHub-hosted Windows
+# runners ship with roughly 14 GB free, so the honest way to run this is a
+# self-hosted Windows runner with VS 2022 (Desktop C++), CMake and Git LFS.
+
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner label (self-hosted recommended; windows-latest usually runs out of disk)"
+        required: true
+        default: "windows-latest"
+      blender_ref:
+        description: "Blender tag or commit to pin upstream/ to"
+        required: true
+        default: "v5.2.0"
+      blender_version:
+        description: "Blender X.Y resource directory version (must match the tag)"
+        required: true
+        default: "5.2"
+      mixar_env:
+        description: "Build environment"
+        type: choice
+        options:
+          - Prod
+          - UAT
+          - Dev
+        default: Prod
+      backend_url:
+        description: "Optional MIXAR_BACKEND_URL to bake into this build"
+        required: false
+        default: ""
+      use_ninja:
+        description: "Build with Ninja instead of MSBuild"
+        type: boolean
+        default: true
+      make_installer:
+        description: "Run NSIS to produce the .exe installer"
+        type: boolean
+        default: true
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ inputs.mixar_env }} / Blender ${{ inputs.blender_version }}
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 600
+    env:
+      MIXAR_ENV: ${{ inputs.mixar_env }}
+      BLENDER_VERSION: ${{ inputs.blender_version }}
+      BUILD_WITH_NINJA: ${{ inputs.use_ninja && '1' || '0' }}
+      GIT_LFS_SKIP_SMUDGE: "1"
+    steps:
+      - name: Configure git and derive short sha
+        shell: pwsh
+        run: |
+          # Blender's source paths overflow MAX_PATH, and the repo's *.sh helpers
+          # must keep LF endings to stay runnable under git bash.
+          git config --global core.longpaths true
+          git config --global core.autocrlf false
+          Add-Content -Path $env:GITHUB_ENV -Value "SHORT_SHA=$($env:GITHUB_SHA.Substring(0, 7))"
+
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+
+      - name: Report runner state
+        shell: pwsh
+        run: |
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+          cmake --version
+          git --version
+          git lfs version
+          if (Get-Command ninja -ErrorAction SilentlyContinue) {
+            ninja --version
+          } else {
+            Write-Host "ninja: not on PATH (build.bat can still use the VS-bundled one)"
+          }
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path $vswhere) {
+            & $vswhere -latest -products * -property installationPath
+          } else {
+            Write-Host "vswhere not found - is Visual Studio 2022 installed?"
+          }
+
+      - name: Reclaim disk space (hosted runners only)
+        if: ${{ !contains(inputs.runner, 'self-hosted') }}
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $targets = @(
+            "C:\Android",
+            "C:\Miniconda",
+            "C:\Program Files\Google",
+            "C:\Program Files\MongoDB",
+            "C:\Program Files\MySQL",
+            "C:\Program Files\PostgreSQL",
+            "C:\Program Files (x86)\Android",
+            "C:\hostedtoolcache\windows\Ruby",
+            "C:\hostedtoolcache\windows\go",
+            "C:\hostedtoolcache\windows\node"
+          )
+          foreach ($target in $targets) {
+            if (Test-Path $target) {
+              Write-Host "removing $target"
+              Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
+            }
+          }
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+
+      - name: Install NSIS and Ninja if missing
+        shell: pwsh
+        run: |
+          $choco = Get-Command choco -ErrorAction SilentlyContinue
+          if (-not $choco) {
+            Write-Host "chocolatey not available - skipping tool install"
+          } else {
+            if ('${{ inputs.make_installer }}' -eq 'true' -and -not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+              choco install nsis -y --no-progress
+            }
+            if ('${{ inputs.use_ninja }}' -eq 'true' -and -not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+              choco install ninja -y --no-progress
+            }
+          }
+          $nsis = "${env:ProgramFiles(x86)}\NSIS"
+          if (Test-Path $nsis) {
+            Add-Content -Path $env:GITHUB_PATH -Value $nsis
+          }
+
+      - name: Pin upstream to ${{ inputs.blender_ref }}
+        shell: bash
+        env:
+          BLENDER_REF: ${{ inputs.blender_ref }}
+        run: |
+          set -euo pipefail
+          # Deliberately not scripts/windows/init.bat: it re-checks out upstream at
+          # the gitlink recorded in the parent repo, which would undo this pin.
+          git submodule sync --recursive
+          git submodule update --init --force --depth 1 upstream
+          git -C upstream fetch --tags --depth 1 origin "$BLENDER_REF"
+          git -C upstream checkout --force --detach FETCH_HEAD
+          git -C upstream log -1 --format='upstream pinned to %H%d'
+
+      - name: Check the resource version matches the pinned tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -n "BLENDER_VERSION=" scripts/windows/settings.bat scripts/unix/settings.sh || true
+          if ! grep -q "BLENDER_VERSION=${BLENDER_VERSION}" scripts/windows/settings.bat; then
+            echo "::warning::scripts/windows/settings.bat does not pin BLENDER_VERSION=${BLENDER_VERSION};" \
+                 "run scripts/upgrade/set_blender_version.sh ${BLENDER_VERSION} ${{ inputs.blender_ref }}"
+          fi
+
+      - name: Download Blender precompiled libraries
+        shell: cmd
+        run: |
+          cd upstream
+          make update
+          if errorlevel 1 goto fallback
+          goto lfs
+          :fallback
+          echo "make update" failed, retrying with make_update.py
+          python build_files\utils\make_update.py || exit /b 1
+          :lfs
+          git lfs pull
+          exit /b 0
+
+      - name: Apply backend URL override
+        if: ${{ inputs.backend_url != '' }}
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_ENV -Value "MIXAR_BACKEND_URL=${{ inputs.backend_url }}"
+
+      - name: Prepare .env
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .env)) {
+            Copy-Item .env.example .env
+          }
+          Write-Host "MIXAR_ENV=$env:MIXAR_ENV BLENDER_VERSION=$env:BLENDER_VERSION BUILD_WITH_NINJA=$env:BUILD_WITH_NINJA"
+
+      - name: Build Mixar
+        shell: cmd
+        run: call scripts\windows\build.bat
+
+      - name: Overlay Mixar scripts into the bundle
+        shell: cmd
+        run: call scripts\windows\install.bat
+
+      - name: Package installer and portable zip
+        shell: cmd
+        env:
+          PACKAGE_EXTRA: ${{ inputs.make_installer && ' ' || '--no-installer' }}
+        run: call scripts\windows\package.bat --suffix %SHORT_SHA% %PACKAGE_EXTRA%
+
+      - name: Summarize artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File |
+            Select-Object Name, @{ Name = 'MiB'; Expression = { [math]::Round($_.Length / 1MB, 1) } } |
+            Format-Table -AutoSize
+          $summary = $env:GITHUB_STEP_SUMMARY
+          Add-Content -Path $summary -Value "## Mixar Windows build"
+          Add-Content -Path $summary -Value "- Blender: ${{ inputs.blender_ref }} (resources ${{ inputs.blender_version }})"
+          Add-Content -Path $summary -Value "- Environment: ${{ inputs.mixar_env }}"
+          Add-Content -Path $summary -Value "- Commit: $env:SHORT_SHA"
+          Add-Content -Path $summary -Value ""
+          Add-Content -Path $summary -Value "SHA-256:"
+          if (Test-Path dist/SHA256SUMS.txt) {
+            Get-Content dist/SHA256SUMS.txt | ForEach-Object { Add-Content -Path $summary -Value "    $_" }
+          }
+
+      - name: Upload installer and portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mixar-${{ inputs.mixar_env }}-blender${{ inputs.blender_version }}-${{ env.SHORT_SHA }}
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Failure diagnostics
+        if: failure()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+          $errorLog = "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log"
+          if (Test-Path $errorLog) {
+            Write-Host "--- tail of $errorLog ---"
+            Get-Content $errorLog -Tail 200
+          }
+          if (Test-Path "build\$env:MIXAR_ENV\bin") {
+            Get-ChildItem "build\$env:MIXAR_ENV\bin" | Select-Object Name | Format-Table -AutoSize
+          }
