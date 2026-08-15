@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: migration/blender-5.2, fetch-depth: 0}
+        with: {ref: migration/blender-5.2, fetch-depth: 0, submodules: false}
       - name: Download and commit failed job log
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/aimcrazyxx/mixar-app/actions/jobs/95081137639/logs > /tmp/job.zip
+          gh api repos/aimcrazyxx/mixar-app/actions/jobs/95081137639/logs > /tmp/job.log
           mkdir -p docs/migration
-          { echo '# Failed Blender finalizer job log'; echo; echo '```text'; unzip -p /tmp/job.zip | tail -n 350; echo '```'; } > docs/migration/latest-finalizer-job-log.md
+          { echo '# Failed Blender finalizer job log'; echo; echo '```text'; tail -n 350 /tmp/job.log; echo '```'; } > docs/migration/latest-finalizer-job-log.md
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/migration/latest-finalizer-job-log.md
