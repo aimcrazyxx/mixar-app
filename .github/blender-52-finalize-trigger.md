@@ -1,4 +1,4 @@
 <!-- SPDX-License-Identifier: GPL-2.0-or-later -->
 # Blender 5.2 finalization trigger
 
-2026-08-15 22:48 UTC: force GET for GitHub contents API.
+2026-08-15 22:51 UTC: run and checkpoint each finalizer function.
