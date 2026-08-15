@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Line endings are declared here instead of being left to each clone's
+# core.autocrlf setting, because the two script families in this repository
+# have opposite, non-negotiable requirements.
+#
+# cmd.exe cannot parse a batch file with LF endings. It does not fail cleanly:
+# it drops the first character of some lines, so REM is executed as EM, for as
+# or, and if as f. A skipped line in settings.bat leaves ROOT_DIR empty and
+# every derived path collapses to the drive root.
+#
+# The *.sh helpers have the mirror-image requirement: a CR at the end of a
+# shebang or a variable makes bash report $'\r': command not found.
+#
+# Deliberately narrow: no "* text=auto", which would renormalise the whole
+# tree and bury real changes under a whitespace diff.
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.sh text eol=lf

@@ -96,7 +96,7 @@ def get_dev_bypass_credentials() -> tuple:
     enable the bypass in a Prod/UAT build because the module that grants
     permission is not generated for those builds.
 
-    Falls closed (returns ``('', '')``) when ``_build_env`` is absent — this
+    Falls closed (returns ``('', '')``) when ``_build_env`` is absent - this
     is the case in source-tree imports (pytest, dev workflow before build).
     """
     try:

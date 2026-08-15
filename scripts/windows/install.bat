@@ -11,6 +11,10 @@ REM Installs scripts using CMake
 REM Load all settings from settings.bat
 set "SCRIPT_DIR=%~dp0"
 call "%SCRIPT_DIR%settings.bat"
+if %ERRORLEVEL% neq 0 (
+    echo Error: Failed to load settings
+    exit /b 1
+)
 
 REM Use MIXAR_ENV directly from settings.bat (loaded from mixar.json)
 REM Define build directory for this environment
@@ -55,5 +59,11 @@ if !ERRORLEVEL! neq 0 (
 )
 
 echo Scripts installation complete.
-echo Run Mixar using: %BUILD_ENV_DIR%\bin\%BLENDER_BUILD_ENV%\mixar.exe
+REM Ninja is single-config so the binary sits directly in bin\; the Visual
+REM Studio generator is multi-config and puts it under bin\Release\.
+if defined BUILD_WITH_NINJA (
+    echo Run Mixar using: %BUILD_ENV_DIR%\bin\mixar.exe
+) else (
+    echo Run Mixar using: %BUILD_ENV_DIR%\bin\%BLENDER_BUILD_ENV%\mixar.exe
+)
 exit /b 0

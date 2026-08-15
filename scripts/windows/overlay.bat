@@ -27,8 +27,12 @@ REM /XO  = eXclude Older: skip destination files that are the same age or newer 
 REM /XD  = exclude directories  /XF = exclude files
 REM /MT  = multi-threaded copy
 REM /NFL /NDL /NJH /NJS /nc /ns /np = minimal output  /R:3 /W:1 = retry settings
+REM
+REM lib\ is excluded by full path rather than by name: a bare "lib" would also
+REM drop every directory called lib deeper inside Blender's tree. It is linked
+REM in below instead of being copied.
 robocopy "%UPSTREAM_DIR%" "%SOURCE_DIR%" /E /XO /MT:%ROBOCOPY_THREADS% ^
-    /XD ".git" ".github" ".vscode" ".idea" ".gitea" ^
+    /XD ".git" ".github" ".vscode" ".idea" ".gitea" "%UPSTREAM_DIR%\lib" ^
     /XF ".gitignore" ".gitmodules" ".gitattributes" ".gitkeep" ^
     /R:3 /W:1 /NFL /NDL /NJH /NJS /nc /ns /np
 
@@ -36,6 +40,26 @@ REM robocopy returns 0-7 for success, 8+ for errors
 if %errorlevel% geq 8 (
     echo Error copying upstream to source
     exit /b 1
+)
+
+REM Blender's precompiled libraries are several GB of binaries that no build
+REM ever writes to. Copying them into source\ would store the same bytes twice
+REM on a disk that barely fits them once, so link the directory instead.
+REM A junction needs no elevation and cmake cannot tell it from a real folder.
+if exist "%UPSTREAM_DIR%\lib" (
+    if not exist "%SOURCE_DIR%\lib" (
+        mklink /J "%SOURCE_DIR%\lib" "%UPSTREAM_DIR%\lib" >nul 2>&1
+        if errorlevel 1 (
+            echo Junction unavailable, falling back to copying lib\...
+            robocopy "%UPSTREAM_DIR%\lib" "%SOURCE_DIR%\lib" /E /XO /MT:%ROBOCOPY_THREADS% /R:3 /W:1 /NFL /NDL /NJH /NJS /nc /ns /np
+            if !ERRORLEVEL! geq 8 (
+                echo Error copying lib to source
+                exit /b 1
+            )
+        ) else (
+            echo Linked lib\ from upstream ^(junction: no copy, no extra disk^).
+        )
+    )
 )
 
 echo Overlaying Mixar sources onto source...
