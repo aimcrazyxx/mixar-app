@@ -29,9 +29,12 @@ if "%BUILD_WITH_NINJA%"=="0" (
         set "BUILD_WITH_NINJA=1"
         echo [1/8] Ninja detected on PATH, using Ninja build system...
     ) else (
-        for %%E in (Community Professional Enterprise BuildTools) do (
-            if exist "%ProgramFiles%\Microsoft Visual Studio\2022\%%E\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" (
-                if not defined BUILD_WITH_NINJA set "BUILD_WITH_NINJA=1"
+        REM Newest first: a machine with both should use the newer toolchain.
+        for %%Y in (2026 2022) do (
+            for %%E in (Community Professional Enterprise BuildTools) do (
+                if exist "%ProgramFiles%\Microsoft Visual Studio\%%Y\%%E\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" (
+                    if not defined BUILD_WITH_NINJA set "BUILD_WITH_NINJA=1"
+                )
             )
         )
         if defined BUILD_WITH_NINJA (
@@ -156,19 +159,37 @@ REM --- Visual Studio Environment (Ninja only) ---
 REM vcvarsall must be set up before cmake configure and before the build step.
 if defined BUILD_WITH_NINJA (
     set "VCVARSALL="
-    for %%E in (Community Professional Enterprise BuildTools) do (
-        if exist "%ProgramFiles%\Microsoft Visual Studio\2022\%%E\VC\Auxiliary\Build\vcvarsall.bat" (
-            set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\%%E\VC\Auxiliary\Build\vcvarsall.bat"
+    REM Ask vswhere rather than guessing a directory name. It ships with every
+    REM VS 2017+ installer and reports whichever major version is installed,
+    REM so this keeps working on 2026 and on whatever replaces it. Hardcoding
+    REM "2022" made the build fail outright on machines carrying a newer VS.
+    set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+    if exist "!VSWHERE!" (
+        for /f "usebackq delims=" %%I in (`"!VSWHERE!" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2^>nul`) do (
+            if exist "%%I\VC\Auxiliary\Build\vcvarsall.bat" (
+                set "VCVARSALL=%%I\VC\Auxiliary\Build\vcvarsall.bat"
+            )
         )
-        if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\%%E\VC\Auxiliary\Build\vcvarsall.bat" (
-            set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2022\%%E\VC\Auxiliary\Build\vcvarsall.bat"
+    )
+    REM Fallback for installs vswhere cannot see. Newest year first.
+    if not defined VCVARSALL (
+        for %%Y in (2026 2022) do (
+            for %%E in (Community Professional Enterprise BuildTools) do (
+                if exist "%ProgramFiles%\Microsoft Visual Studio\%%Y\%%E\VC\Auxiliary\Build\vcvarsall.bat" (
+                    if not defined VCVARSALL set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\%%Y\%%E\VC\Auxiliary\Build\vcvarsall.bat"
+                )
+                if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\%%Y\%%E\VC\Auxiliary\Build\vcvarsall.bat" (
+                    if not defined VCVARSALL set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\%%Y\%%E\VC\Auxiliary\Build\vcvarsall.bat"
+                )
+            )
         )
     )
     if not defined VCVARSALL (
-        echo Error: Visual Studio 2022 not found. Install VS2022 with C++ workload.
+        echo Error: No Visual Studio C++ toolchain found. Install VS 2022 or newer with the Desktop C++ workload.
         exit /b 1
     )
     echo Setting up Visual Studio toolchain for Ninja...
+    echo   !VCVARSALL!
     call "!VCVARSALL!" x64
     if !ERRORLEVEL! neq 0 (
         echo Error: Failed to initialize Visual Studio environment

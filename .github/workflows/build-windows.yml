@@ -118,8 +118,9 @@ jobs:
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           if (Test-Path $vswhere) {
             & $vswhere -latest -products * -property installationPath
+            & $vswhere -latest -products * -property catalog_productDisplayVersion
           } else {
-            Write-Host "vswhere not found - is Visual Studio 2022 installed?"
+            Write-Host "vswhere not found - is Visual Studio installed?"
           }
 
       - name: Tune build parallelism
@@ -218,18 +219,32 @@ jobs:
           fi
 
       - name: Download Blender precompiled libraries
-        shell: cmd
+        shell: pwsh
+        working-directory: upstream
         run: |
-          cd upstream
-          make update
-          if errorlevel 1 goto fallback
-          goto lfs
-          :fallback
-          echo "make update" failed, retrying with make_update.py
-          python build_files\utils\make_update.py || exit /b 1
-          :lfs
-          git lfs pull
-          exit /b 0
+          # make.bat stops on "The required external libraries in lib/windows_x64
+          # are missing / Would you like to download them? (y/n)". With no stdin
+          # it answers for us, prints "Not downloading libraries" and exits 1, so
+          # the answer has to be piped in.
+          "y" | cmd /c "make update"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::warning::make update failed, retrying with make_update.py"
+            python build_files\utils\make_update.py
+            if ($LASTEXITCODE -ne 0) {
+              throw "could not fetch Blender's precompiled libraries"
+            }
+          }
+          # The libraries live in their own submodule. git lfs pull in the parent
+          # repository does not descend into it and leaves pointer files, which
+          # link as corrupt objects much later in the build.
+          Get-ChildItem lib -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "git lfs pull in lib\$($_.Name)"
+            git -C $_.FullName lfs pull
+          }
+          if (-not (Test-Path "lib")) {
+            throw "lib\ is still missing after make update"
+          }
+          Get-ChildItem lib | Select-Object Name | Format-Table -AutoSize
 
       - name: Report free space after libraries
         shell: pwsh
