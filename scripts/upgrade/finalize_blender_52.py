@@ -134,7 +134,7 @@ def fix_checks():
         )
     insertions = (
         ("core/custom_provider.py", "core/openai_models.py"),
-        ("operators/byok_custom_provider_ops.py", "operators/byok_custom_models_ops.py"),
+        ("ui/operators/byok_custom_provider_ops.py", "ui/operators/byok_custom_models_ops.py"),
         ("tests/test_byok_custom_provider.py", "tests/test_byok_openai_models.py"),
     )
     for anchor, item in insertions:

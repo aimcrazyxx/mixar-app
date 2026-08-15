@@ -54,7 +54,7 @@ REM Build settings (constants)
 REM Keep BLENDER_VERSION in sync with the pinned upstream\ submodule revision.
 REM Use scripts/upgrade/set_blender_version.sh to change both at once.
 if not defined BLENDER_VERSION set "BLENDER_VERSION=5.2"
-if not defined PYTHON_VERSION set "PYTHON_VERSION=3.11"
+if not defined PYTHON_VERSION set "PYTHON_VERSION=3.13"
 if not defined REQUIRED_CMAKE_VERSION set "REQUIRED_CMAKE_VERSION=3.16"
 
 REM Windows-specific build settings
