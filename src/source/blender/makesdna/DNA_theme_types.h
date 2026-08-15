@@ -662,14 +662,8 @@ typedef struct bTheme {
 #define UI_THEMESPACE_START(btheme) \
   (CHECK_TYPE_INLINE(btheme, bTheme *), &((btheme)->space_properties))
 #define UI_THEMESPACE_END(btheme) \
-<<<<<<< /tmp/tmprryzx29k/new
-  (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->space_spreadsheet) + 1))
+  (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->space_agent_bubble) + 1))
 
 #ifdef __cplusplus
 }  // namespace blender
 #endif
-||||||| /tmp/tmprryzx29k/old
-  (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->space_spreadsheet) + 1))
-=======
-  (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->space_agent_bubble) + 1))
->>>>>>> /tmp/tmprryzx29k/modified

@@ -264,7 +264,6 @@ endif()
 # ------------------------------------------------------------------------------
 
 add_blender_test(
-<<<<<<< /tmp/tmpykn635rz/new
   script_pyapi_bpy_app
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_bpy_app.py
 )
@@ -296,19 +295,6 @@ if(WITH_GPU_BACKEND_TESTS)
 endif()
 
 add_blender_test(
-  script_pyapi_bpy_app_tempdir
-  --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_bpy_app_tempdir.py
-)
-
-add_blender_test(
-||||||| /tmp/tmpykn635rz/old
-  script_pyapi_bpy_app_tempdir
-  --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_bpy_app_tempdir.py
-)
-
-add_blender_test(
-=======
->>>>>>> /tmp/tmpykn635rz/modified
   script_pyapi_bpy_path
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_bpy_path.py
 )

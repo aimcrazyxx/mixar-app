@@ -214,13 +214,7 @@ bool BLI_windows_register_blend_extension(const bool all_users)
   }
 
   if (!register_blender_prog_id(prog_id, blender_path, friendly_name, all_users)) {
-<<<<<<< /tmp/tmprp1oxz4t/new
-    registry_error(root, "Unable to register Blender file type");
-||||||| /tmp/tmprp1oxz4t/old
-    registry_error(root, "Unable to register Blend document type");
-=======
-    registry_error(root, "Unable to register Mixar document type");
->>>>>>> /tmp/tmprp1oxz4t/modified
+    registry_error(root, "Unable to register Mixar file type");
     return false;
   }
 
@@ -231,13 +225,7 @@ bool BLI_windows_register_blend_extension(const bool all_users)
     lresult = RegSetValueEx(hkey, nullptr, 0, REG_SZ, (BYTE *)prog_id, strlen(prog_id) + 1);
 
     if (lresult != ERROR_SUCCESS) {
-<<<<<<< /tmp/tmprp1oxz4t/new
-      registry_error(root, "Unable to register Blender file type");
-||||||| /tmp/tmprp1oxz4t/old
-      registry_error(root, "Unable to register Blend document type");
-=======
-      registry_error(root, "Unable to register Mixar document type");
->>>>>>> /tmp/tmprp1oxz4t/modified
+      registry_error(root, "Unable to register Mixar file type");
       RegCloseKey(hkey);
       return false;
     }
@@ -254,13 +242,7 @@ bool BLI_windows_register_blend_extension(const bool all_users)
                              &dwd);
 
     if (lresult != ERROR_SUCCESS) {
-<<<<<<< /tmp/tmprp1oxz4t/new
-      registry_error(root, "Unable to register Blender file type");
-||||||| /tmp/tmprp1oxz4t/old
-      registry_error(root, "Unable to register Blend document type");
-=======
-      registry_error(root, "Unable to register Mixar document type");
->>>>>>> /tmp/tmprp1oxz4t/modified
+      registry_error(root, "Unable to register Mixar file type");
       RegCloseKey(hkey);
       return false;
     }
@@ -269,13 +251,7 @@ bool BLI_windows_register_blend_extension(const bool all_users)
   }
 
   if (lresult != ERROR_SUCCESS) {
-<<<<<<< /tmp/tmprp1oxz4t/new
-    registry_error(root, "Unable to register Blender file type");
-||||||| /tmp/tmprp1oxz4t/old
-    registry_error(root, "Unable to register Blend document type");
-=======
-    registry_error(root, "Unable to register Mixar document type");
->>>>>>> /tmp/tmprp1oxz4t/modified
+    registry_error(root, "Unable to register Mixar file type");
     return false;
   }
 

@@ -206,11 +206,7 @@ enum {
 #define BLENDER_HISTORY_FILE "recent-files.txt"
 #define BLENDER_RECENT_SEARCHES_FILE "recent-searches.txt"
 #define BLENDER_PLATFORM_SUPPORT_FILE "platform_support.txt"
-<<<<<<< /tmp/tmp8myodmwn/new
-
-}  // namespace blender
-||||||| /tmp/tmp8myodmwn/old
-=======
 
 #define MIXAR_USERPREF_FILE "mixar_userpref.blend"
->>>>>>> /tmp/tmp8myodmwn/modified
+
+}  // namespace blender

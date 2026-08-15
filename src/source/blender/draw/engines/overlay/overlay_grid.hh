@@ -161,51 +161,11 @@ class Grid : Overlay {
     if (!show_grid) {
       return false;
     }
-<<<<<<< /tmp/tmpcqxgia8y/new
 
     /* Configure grid flags s.t. GRID_OVER_IMAGE is taken into account. */
     grid_flag_ = SHOW_GRID | GRID_SIMA;
     if (sima->flag & SI_GRID_OVER_IMAGE) {
       grid_flag_ |= GRID_OVER_IMAGE;
-||||||| /tmp/tmpcqxgia8y/old
-    SpaceImage *sima = (SpaceImage *)state.space_data;
-    const View2D *v2d = &state.region->v2d;
-    std::array<float, SI_GRID_STEPS_LEN> grid_steps_x = {
-        0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f, 10000.0f};
-    std::array<float, SI_GRID_STEPS_LEN> grid_steps_y = {0.0f};
-
-    /* Only UV Edit mode has the various Overlay options for now. */
-    const bool is_uv_edit = sima->mode == SI_MODE_UV;
-
-    const bool background_enabled = is_uv_edit ? (!state.hide_overlays &&
-                                                  (sima->overlay.flag &
-                                                   SI_OVERLAY_SHOW_GRID_BACKGROUND) != 0) :
-                                                 true;
-    if (background_enabled) {
-      grid_flag_ = GRID_BACK | PLANE_IMAGE;
-      if (sima->flag & SI_GRID_OVER_IMAGE) {
-        grid_flag_ = PLANE_IMAGE;
-      }
-=======
-    SpaceImage *sima = (SpaceImage *)state.space_data;
-    const View2D *v2d = &state.region->v2d;
-    std::array<float, SI_GRID_STEPS_LEN> grid_steps_x = {
-        0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f, 10000.0f};
-    std::array<float, SI_GRID_STEPS_LEN> grid_steps_y = {0.0f};
-
-    /* Only UV Edit mode has the various Overlay options for now. */
-    const bool is_uv_edit = ELEM(sima->mode, SI_MODE_UV, SI_MODE_MIXAR_UV);
-
-    const bool background_enabled = is_uv_edit ? (!state.hide_overlays &&
-                                                  (sima->overlay.flag &
-                                                   SI_OVERLAY_SHOW_GRID_BACKGROUND) != 0) :
-                                                 true;
-    if (background_enabled) {
-      grid_flag_ = GRID_BACK | PLANE_IMAGE;
-      if (sima->flag & SI_GRID_OVER_IMAGE) {
-        grid_flag_ = PLANE_IMAGE;
-      }
->>>>>>> /tmp/tmpcqxgia8y/modified
     }
 
     /* Query grid step/level scaling; these can differ per axis. */

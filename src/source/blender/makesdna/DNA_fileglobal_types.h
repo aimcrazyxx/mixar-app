@@ -19,12 +19,19 @@ namespace blender {
  */
 struct FileGlobal {
   /** Needs to be here, for human file-format recognition (keep first!). */
-<<<<<<< /tmp/tmpb3mvtlxc/new
   char subvstr[4] = "";
 
   short subversion = 0;
   short minversion = 0, minsubversion = 0;
-  char _pad[6] = {};
+
+  /* Mixar file version fields, repurposing the original 6-byte _pad.
+   * SDNA handles the field rename: old files (which had char _pad[6]) read as 0,
+   * new files store actual Mixar version values.
+   * 3 shorts = 6 bytes = same size as the original _pad[6]. */
+  short mixar_version = 0;      /* MIXAR_FILE_VERSION when saved; 0 for pre-versioning files */
+  short mixar_subversion = 0;   /* MIXAR_FILE_SUBVERSION when saved */
+  short mixar_min_version = 0;  /* Minimum Mixar version that can read this file */
+
   struct bScreen *curscreen = nullptr;
   struct Scene *curscene = nullptr;
   struct ViewLayer *cur_view_layer = nullptr;
@@ -32,41 +39,6 @@ struct FileGlobal {
 
   int fileflags = 0;
   int globalf = 0;
-||||||| /tmp/tmpb3mvtlxc/old
-  char subvstr[4];
-
-  short subversion;
-  short minversion, minsubversion;
-  char _pad[6];
-  struct bScreen *curscreen;
-  struct Scene *curscene;
-  struct ViewLayer *cur_view_layer;
-  void *_pad1;
-
-  int fileflags;
-  int globalf;
-=======
-  char subvstr[4];
-
-  short subversion;
-  short minversion, minsubversion;
-
-  /* Mixar file version fields, repurposing the original 6-byte _pad.
-   * SDNA handles the field rename: old files (which had char _pad[6]) read as 0,
-   * new files store actual Mixar version values.
-   * 3 shorts = 6 bytes = same size as the original _pad[6]. */
-  short mixar_version;      /* MIXAR_FILE_VERSION when saved; 0 for pre-versioning files */
-  short mixar_subversion;   /* MIXAR_FILE_SUBVERSION when saved */
-  short mixar_min_version;  /* Minimum Mixar version that can read this file */
-
-  struct bScreen *curscreen;
-  struct Scene *curscene;
-  struct ViewLayer *cur_view_layer;
-  void *_pad1;
-
-  int fileflags;
-  int globalf;
->>>>>>> /tmp/tmpb3mvtlxc/modified
   /** Commit timestamp from `buildinfo`. */
   uint64_t build_commit_timestamp = 0;
   /** Hash from `buildinfo`. */
