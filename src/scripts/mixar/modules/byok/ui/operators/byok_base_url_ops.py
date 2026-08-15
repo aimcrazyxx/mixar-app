@@ -37,6 +37,21 @@ logger = get_logger(__name__)
 # back to the stored value mid-edit and the error stays on screen.
 _draft = {"value": None}
 
+# The status line carries exception text, and a TLS or socket error can be a
+# paragraph with newlines in it. It is a single-line RNA string in a dialog, and
+# this codebase caps its other UI strings for the same reason (see the
+# GRAPH_*_MAXLEN constants in scene_graph), so every message goes through
+# _clip() and the property declares a maxlen of its own.
+STATUS_MAXLEN = 200
+
+
+def _clip(message) -> str:
+    """One line, bounded length, safe to hand to an RNA string property."""
+    text = " ".join(str(message or "").split())
+    if len(text) > STATUS_MAXLEN:
+        text = text[:STATUS_MAXLEN - 1].rstrip() + "\u2026"
+    return text
+
 
 # ---------------------------------------------------------------------------
 # RNA property backing
@@ -55,17 +70,17 @@ def _get_base_url(self) -> str:
 def _set_base_url(self, value) -> None:
     text = value or ""
     if base_url_core.is_locked_by_env():
-        self.byok_base_url_status = "Locked by {0}".format(base_url_core.ENV_VAR)
+        self.byok_base_url_status = _clip("Locked by {0}".format(base_url_core.ENV_VAR))
         return
     try:
         stored = base_url_core.set_stored(text)
     except base_url_core.BaseUrlError as exc:
         _draft["value"] = text
-        self.byok_base_url_status = str(exc)
+        self.byok_base_url_status = _clip(exc)
         return
     except Exception as exc:  # noqa: BLE001
         _draft["value"] = text
-        self.byok_base_url_status = "Could not save: {0}".format(exc)
+        self.byok_base_url_status = _clip("Could not save: {0}".format(exc))
         return
     _draft["value"] = None
     self.byok_base_url_status = "Saved" if stored else "Cleared — using the default endpoint"
@@ -92,8 +107,16 @@ class MIXAR_BYOK_OT_base_url_test(Operator):
         try:
             base_url_core.probe(wm.byok_form_base_url, _on_probe_done)
         except base_url_core.BaseUrlError as exc:
-            wm.byok_base_url_status = str(exc)
+            wm.byok_base_url_status = _clip(exc)
             self.report({'ERROR'}, str(exc))
+            return {'CANCELLED'}
+        except Exception as exc:  # noqa: BLE001 - a dialog button must not
+            # raise: anything escaping here is a Blender traceback popup on top
+            # of the open dialog, and the status would stay on "Testing...".
+            logger.warning("BYOK base URL test could not start: %s", exc, exc_info=True)
+            wm.byok_base_url_status = _clip("Could not test: {0}".format(exc))
+            self.report({'ERROR'}, "Could not test the endpoint: {0}".format(exc))
+            _redraw()
             return {'CANCELLED'}
         _redraw()
         return {'FINISHED'}
@@ -115,6 +138,7 @@ class MIXAR_BYOK_OT_base_url_clear(Operator):
         try:
             base_url_core.set_stored("")
         except Exception as exc:  # noqa: BLE001
+            wm.byok_base_url_status = _clip("Could not clear: {0}".format(exc))
             self.report({'ERROR'}, "Could not clear: {0}".format(exc))
             return {'CANCELLED'}
         wm.byok_base_url_status = "Cleared — using the default endpoint"
@@ -123,10 +147,12 @@ class MIXAR_BYOK_OT_base_url_clear(Operator):
 
 
 def _on_probe_done(ok: bool, message: str) -> None:
-    """Main-thread probe callback."""
+    """Probe result, always delivered on the main thread by base_url.probe."""
     try:
         wm = bpy.context.window_manager
-        wm.byok_base_url_status = message if ok else "Unreachable — {0}".format(message)
+        wm.byok_base_url_status = _clip(
+            message if ok else "Unreachable — {0}".format(message)
+        )
         _redraw()
     except Exception as exc:  # noqa: BLE001
         logger.debug("BYOK base URL probe callback failed: %s", exc)
@@ -173,7 +199,7 @@ def _draw_base_url_section(layout, wm, disabled: bool) -> None:
     status = (wm.byok_base_url_status or "").strip()
     if status:
         status_row = box.row()
-        status_row.alert = status.startswith(("Unreachable", "Refusing", "Could not", "Use an", "Missing", "URL", "Base URL", "Enter", "Locked"))
+        status_row.alert = status.startswith(("Unreachable", "Refusing", "Could not", "Use an", "Missing", "URL", "Base URL", "Enter", "Locked", "no HTTP client"))
         status_row.label(
             text=status,
             icon='CHECKMARK' if status.startswith(("Reachable", "Saved", "Cleared")) else 'INFO',
@@ -220,7 +246,11 @@ def _install_properties_and_patches() -> None:
 
     WM = bpy.types.WindowManager
     if not hasattr(WM, 'byok_base_url_status'):
-        WM.byok_base_url_status = StringProperty(default='', options={'SKIP_SAVE'})
+        WM.byok_base_url_status = StringProperty(
+            default='',
+            maxlen=STATUS_MAXLEN + 8,
+            options={'SKIP_SAVE'},
+        )
     if not hasattr(WM, 'byok_form_base_url'):
         WM.byok_form_base_url = StringProperty(
             name="Base URL",

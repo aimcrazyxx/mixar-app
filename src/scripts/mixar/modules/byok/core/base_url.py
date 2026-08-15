@@ -353,7 +353,7 @@ def _schedule_on_main(callback: Callable[..., None], *args) -> None:
     try:
         bpy.app.timers.register(_run, first_interval=0.0)
     except Exception as exc:  # noqa: BLE001 - losing the result is worse
-        logger.debug("Could not schedule on the main thread (%s); calling直接", exc)
+        logger.debug("Could not schedule on the main thread (%s); calling directly", exc)
         _run()
 
 

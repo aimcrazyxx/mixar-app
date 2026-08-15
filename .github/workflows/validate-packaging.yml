@@ -16,6 +16,7 @@ on:
     paths:
       - "installer/**"
       - "scripts/packaging/**"
+      - "scripts/upgrade/**"
       - "src/scripts/mixar/modules/byok/**"
       - "src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py"
@@ -26,6 +27,7 @@ on:
     paths:
       - "installer/**"
       - "scripts/packaging/**"
+      - "scripts/upgrade/**"
       - "src/scripts/mixar/modules/byok/**"
       - "src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py"
@@ -64,8 +66,22 @@ jobs:
           sudo apt-get install -y --no-install-recommends nsis
           makensis -VERSION
 
-      - name: Byte-compile the packaging scripts
-        run: python3 -m compileall -q scripts/packaging
+      # byok_base_url_ops.py imports bpy, so no test on a bare runner can
+      # import it - compileall is the only syntax gate it can have, and without
+      # this step a typo in the file with the most UI code in it would ship in
+      # an installer. Listed file by file on purpose: only what this fork owns,
+      # never upstream trees that a future Python may parse differently.
+      - name: Byte-compile every file this fork owns
+        run: |
+          python3 -m compileall -q \
+            scripts/packaging \
+            src/scripts/mixar/modules/byok/core/base_url.py \
+            src/scripts/mixar/modules/byok/ui/operators/byok_base_url_ops.py \
+            src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py \
+            src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py \
+            tests/test_byok_base_url.py \
+            tests/test_provider_errors.py
+          bash -n scripts/upgrade/set_blender_version.sh
 
       - name: Self-test the packager and compile the installer
         run: |

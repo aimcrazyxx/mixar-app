@@ -355,10 +355,13 @@ def case_helpers() -> None:
     check("four_part_version ignores text", module.four_part_version("v2.1.3-rc4") == "2.1.3.4")
     check("four_part_version truncates", module.four_part_version("1.2.3.4.5") == "1.2.3.4")
     # The two lists that have to agree, or a real package aborts on a bundle
-    # that is in fact correct.
+    # that is in fact correct. Compare as POSIX text: the markers are Path
+    # objects, and str(WindowsPath) uses backslashes, which used to fail this
+    # check on Windows only - where nobody could see it, because CI is ubuntu.
+    markers = [Path(p).as_posix() for p in module.OVERLAY_MARKERS]
     check("marker lists agree",
-          tuple(str(p) for p in module.OVERLAY_MARKERS) == OVERLAY_FILES,
-          f"{[str(p) for p in module.OVERLAY_MARKERS]} vs {list(OVERLAY_FILES)}")
+          tuple(markers) == OVERLAY_FILES,
+          f"{markers} vs {list(OVERLAY_FILES)}")
     # The POSIX build of makensis reads "/V2" as a file name, so the switch
     # prefix has to follow the binary, not the author's habits.
     posix = module.nsis_switch_prefix(Path("/usr/bin/makensis"))
