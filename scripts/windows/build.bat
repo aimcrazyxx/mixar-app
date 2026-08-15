@@ -222,7 +222,16 @@ if defined CUDA_FOUND (
 ) else (
     echo Warning: CUDA toolkit not found. CUDA support will be disabled.
     echo   Install from: https://developer.nvidia.com/cuda-downloads
-    set "CUDA_CMAKE_ARGS=-DWITH_CYCLES_DEVICE_CUDA=OFF"
+    REM WITH_CYCLES_CUDA_BINARIES has to go off together with the device switch.
+    REM cmake/mixar_overrides.cmake forces it ON for developer machines, and
+    REM upstream intern/cycles/CMakeLists.txt then reaches
+    REM   if(${CUDA_VERSION} EQUAL "8.0")
+    REM With no toolkit, CUDA_VERSION is empty, so that line collapses to
+    REM   if( EQUAL "8.0")
+    REM which is a hard "Unknown arguments specified" configure error, not a
+    REM false branch. Leaving it ON would also make the build compile the CUDA
+    REM kernels, which is pointless without nvcc.
+    set "CUDA_CMAKE_ARGS=-DWITH_CYCLES_DEVICE_CUDA=OFF -DWITH_CYCLES_CUDA_BINARIES=OFF"
 )
 
 REM --- OptiX SDK Detection ---
@@ -301,6 +310,7 @@ if defined BUILD_WITH_NINJA (
 if "%MUST_CONFIGURE%"=="1" (
     echo Configuring CMake...
     echo   Blender: %BLENDER_BUILD_ENV%   Mixar: %MIXAR_ENV%   Platform: %PLATFORM%
+    echo   Cycles overrides:%CUDA_CMAKE_ARGS%
 
     cmake -C "%CMAKE_DIR%\mixar_overrides.cmake" ^
         %CMAKE_GENERATOR_ARGS% ^
