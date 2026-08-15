@@ -52,14 +52,20 @@ export MIXAR_BUNDLE_IDENTIFIER="${MIXAR_BUNDLE_IDENTIFIER:-com.mixar.mixar}"
 export MIXAR_BUNDLE_COPYRIGHT="${MIXAR_BUNDLE_COPYRIGHT:-© 2025 Mixar}"
 
 # Build settings (constants)
-# Keep this in sync with the pinned upstream/ submodule revision.
-# Use scripts/upgrade/set_blender_version.sh to change both at once.
-export BLENDER_VERSION="${BLENDER_VERSION:-5.2}"
-# Blender 5.2 ships Python 3.13 in lib/<platform>/python/313. This said 3.11
-# until now, left over from the 4.x libraries. cmake does not read this value -
-# the platform_*.cmake files derive the real version from the lib folder - so it
-# only affects our own scripts.
-export PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
+# BLENDER_VERSION has to agree with two other things, not one:
+#   * the revision upstream/ is pinned to, and
+#   * src/source/blender/blenkernel/BKE_blender_version.h, which is what
+#     actually gets compiled - src/ overlays whole copies of Blender files over
+#     upstream/ and always wins.
+# That header says BLENDER_VERSION 500, so this tree is Blender 5.0.
+# Use scripts/upgrade/set_blender_version.sh to change all of them at once.
+export BLENDER_VERSION="${BLENDER_VERSION:-5.0}"
+# Blender 5.0 ships Python 3.11 in lib/<platform>/python/311. This briefly said
+# 3.13 because I read the upstream v5.2.0 pin as the version being built; the
+# overlay in src/ is 5.0, so 3.11 was right all along. cmake does not read this
+# value - the platform_*.cmake files derive the real version from the lib
+# folder - so it only affects our own scripts.
+export PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
 export REQUIRED_CMAKE_VERSION="${REQUIRED_CMAKE_VERSION:-3.16}"
 
 # Directory Structure

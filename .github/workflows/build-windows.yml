@@ -5,12 +5,26 @@
 # Builds Mixar on Windows against a pinned Blender revision and uploads a real
 # installer (.exe) plus a portable zip.
 #
+# Which Blender: 5.0, and that is not a choice this workflow gets to make.
+# src/ is not a patch set - it holds whole copies of Blender files, and
+# overlay.bat writes them over upstream/ with src always winning. The version
+# that actually compiles is the one in src/source/blender/blenkernel/
+# BKE_blender_version.h, which reads BLENDER_VERSION 500. Pinning upstream to
+# v5.2.0 mixed two releases and cost several runs: 5.2's
+# dependency_targets.cmake asked for imported targets that only 5.2's
+# platform_win32.cmake creates, and the 5.0 copy of that file had just
+# overwritten it. "Check the overlay matches the pinned Blender revision" below
+# now catches that in seconds. Moving to 5.2 for real means rebasing every
+# vendored copy in src/ onto 5.2 first, then bumping the pin.
+#
 # Reality check before you start this: a from-scratch Blender build needs tens
 # of GB of precompiled libraries and hours of CPU. GitHub-hosted Windows
 # runners ship with roughly 14 GB free and are hard-killed at the 6 hour job
 # limit, so the honest way to run this is a larger runner or a self-hosted
 # Windows runner with VS 2022 (Desktop C++), CMake and Git LFS. windows-latest
-# stays the default only so that a first attempt costs a single click.
+# stays the default only so that a first attempt costs a single click. In
+# practice the reclaim step below leaves 47 GB free and the libraries take 6.5
+# GB of it, so disk has not been the binding constraint - time is.
 #
 # Two ways to start it:
 #   * Actions -> "Build Windows installer" -> Run workflow  (full control)
@@ -37,13 +51,13 @@ on:
         required: true
         default: "windows-latest"
       blender_ref:
-        description: "Blender tag or commit to pin upstream/ to"
+        description: "Blender tag or commit to pin upstream/ to (must match the release src/ vendors)"
         required: true
-        default: "v5.2.0"
+        default: "v5.0.0"
       blender_version:
         description: "Blender X.Y resource directory version (must match the tag)"
         required: true
-        default: "5.2"
+        default: "5.0"
       mixar_env:
         description: "Build environment"
         type: choice
@@ -82,7 +96,7 @@ permissions:
 
 jobs:
   build:
-    name: ${{ inputs.mixar_env || 'Prod' }} / Blender ${{ inputs.blender_version || '5.2' }}
+    name: ${{ inputs.mixar_env || 'Prod' }} / Blender ${{ inputs.blender_version || '5.0' }}
     runs-on: ${{ inputs.runner || 'windows-latest' }}
     timeout-minutes: 600
     env:
@@ -90,8 +104,8 @@ jobs:
       # inputs context is empty, and an empty runs-on or blender ref would fail
       # the run minutes in, after the checkout has already burned time.
       MIXAR_ENV: ${{ inputs.mixar_env || 'Prod' }}
-      BLENDER_VERSION: ${{ inputs.blender_version || '5.2' }}
-      BLENDER_REF: ${{ inputs.blender_ref || 'v5.2.0' }}
+      BLENDER_VERSION: ${{ inputs.blender_version || '5.0' }}
+      BLENDER_REF: ${{ inputs.blender_ref || 'v5.0.0' }}
       BUILD_WITH_NINJA: ${{ github.event_name == 'workflow_dispatch' && (inputs.use_ninja && '1' || '0') || '1' }}
       MAKE_INSTALLER: ${{ github.event_name == 'workflow_dispatch' && (inputs.make_installer && 'true' || 'false') || 'true' }}
       # GIT_LFS_SKIP_SMUDGE is deliberately absent. It was set here as a
@@ -275,10 +289,44 @@ jobs:
           git -C upstream checkout --force --detach FETCH_HEAD
           git -C upstream log -1 --format='upstream pinned to %H%d'
 
-      - name: Check the resource version matches the pinned tag
+      - name: Check the overlay matches the pinned Blender revision
         shell: bash
         run: |
           set -euo pipefail
+          # The check that was missing while five runs failed.
+          #
+          # src/ holds whole copies of Blender files - CMakeLists.txt,
+          # build_files/cmake/platform/*, macros.cmake, source/, intern/ - and
+          # overlay.bat copies them over upstream/ with src always winning. So
+          # the release being compiled is whatever src/ says, and pinning
+          # upstream/ somewhere else silently blends two Blender versions in one
+          # tree. When that happened, cmake died 25 minutes in on missing ALIAS
+          # targets and a wrong Python version, and named neither cause.
+          version_of() {
+            local raw
+            raw=$(grep -E '^#define BLENDER_VERSION[[:space:]]+[0-9]+' "$1" | awk '{print $3}')
+            echo "$((raw / 100)).$((raw % 100))"
+          }
+          overlay=$(version_of src/source/blender/blenkernel/BKE_blender_version.h)
+          pinned=$(version_of upstream/source/blender/blenkernel/BKE_blender_version.h)
+          echo "overlay in src/     : Blender $overlay"
+          echo "pinned upstream/    : Blender $pinned ($BLENDER_REF)"
+          echo "BLENDER_VERSION env : $BLENDER_VERSION"
+
+          if [ "$overlay" != "$pinned" ]; then
+            echo "::error::src/ vendors Blender $overlay but upstream/ is pinned to Blender $pinned."
+            echo "The overlay overwrites upstream, so this mixes two releases and cannot configure."
+            echo "Either pin blender_ref to a v${overlay}.x tag, or rebase every vendored copy"
+            echo "in src/ onto Blender $pinned before bumping the pin."
+            exit 1
+          fi
+          if [ "$BLENDER_VERSION" != "$overlay" ]; then
+            echo "::error::BLENDER_VERSION=$BLENDER_VERSION but the tree is Blender $overlay."
+            echo "The resource directory and the packaging paths would both look in the wrong place."
+            exit 1
+          fi
+          echo "overlay, pin and BLENDER_VERSION all agree on Blender $overlay"
+
           grep -n "BLENDER_VERSION=" scripts/windows/settings.bat scripts/unix/settings.sh || true
           if ! grep -q "BLENDER_VERSION=${BLENDER_VERSION}" scripts/windows/settings.bat; then
             echo "::warning::scripts/windows/settings.bat does not pin BLENDER_VERSION=${BLENDER_VERSION};" \
@@ -296,7 +344,7 @@ jobs:
           #       update = none
           #       path = lib/windows_x64
           #       url = https://projects.blender.org/blender/lib-windows_x64.git
-          #       branch = blender-v5.2-release
+          #       branch = blender-v5.0-release
           #
           # `update = none` makes a plain `git submodule update --init` walk
           # straight past them, and passing --checkout does not override it in
@@ -304,7 +352,7 @@ jobs:
           # initialize_precompiled_libraries() writes
           # submodule.<path>.update=checkout into .git/config, and only then
           # submodules_lib_update() updates the submodule. This works - it
-          # fetched 6.5 GB of libraries on the previous run.
+          # fetched 6.5 GB of libraries on the first run that used it.
           #
           # Calling the script directly also avoids the interactive "download
           # libraries? (y/n)" prompt - that comes from make.bat, not from here.
@@ -335,20 +383,14 @@ jobs:
             git -C lib\windows_x64 lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
           }
 
-          # Do not hardcode the Python version here. build_files/cmake/platform/
-          # platform_win32.cmake decides it from the lib folder itself:
-          #
-          #   set(_PYTHON_VERSION "3.13")
-          #   if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
-          #     set(_PYTHON_VERSION "3.11")
-          #
-          # The previous probe was pinned to 311 because that number appeared in
-          # an earlier cmake error - but that was this fallback firing on an
-          # empty lib folder, not the version Blender wants. 5.2 ships
-          # python/313, so the probe failed on a complete library set. Accept
-          # whichever version is really there, in cmake's own order.
+          # Do not hardcode the Python version here. It belongs to whichever
+          # Blender release is pinned - 5.0 ships python/311, 5.2 ships
+          # python/313 - and cmake reads it off the lib folder itself. This
+          # probe was pinned to 311, then "fixed" to 313, and both were guesses
+          # about a value that can simply be looked up at runtime. The second
+          # guess rejected a complete 6.5 GB library set. Accept what is there.
           $pythonHeader = $null
-          foreach ($version in @("313", "311")) {
+          foreach ($version in @("311", "313")) {
             $candidate = "lib\windows_x64\python\$version\include\Python.h"
             if (Test-Path $candidate) {
               $pythonHeader = $candidate
@@ -370,7 +412,7 @@ jobs:
                 $diag.Add("(command failed: $_)")
               }
             }
-            $diag.Add("=== no python/{313,311}/include/Python.h under lib\windows_x64 ===")
+            $diag.Add("=== no python/{311,313}/include/Python.h under lib\windows_x64 ===")
             Add-Diag "git submodule status" { git submodule status }
             Add-Diag "submodule config in .git/config" { git config --get-regexp '^submodule\.' }
             Add-Diag "submodule paths in .gitmodules" { git config -f .gitmodules --get-regexp '^submodule\..*\.(path|url|update)$' }
@@ -378,7 +420,7 @@ jobs:
             Add-Diag "git lfs env" { git lfs env }
             $diag | ForEach-Object { Write-Host $_ }
             $diag | Add-Content -Path ..\logs\libs.log
-            throw "precompiled libraries missing: no python/{313,311}/include/Python.h under lib\windows_x64"
+            throw "precompiled libraries missing: no python/{311,313}/include/Python.h under lib\windows_x64"
           }
 
           $size = (Get-Item $pythonHeader).Length
@@ -388,8 +430,7 @@ jobs:
           Write-Host "libraries present ($pythonHeader is $size bytes)"
 
           # A warning, not a failure: cmake names the exact missing target far
-          # more precisely than a folder check can, and these were the ones that
-          # showed up as absent ALIAS targets when lib/ was empty.
+          # more precisely than a folder check can.
           $required = @("fmt", "opencolorio", "openexr", "OpenImageIO", "osl")
           $missing = $required | Where-Object { -not (Test-Path "lib\windows_x64\$_") }
           if ($missing) {

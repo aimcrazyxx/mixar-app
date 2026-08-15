@@ -51,14 +51,20 @@ if not defined MIXAR_BUNDLE_IDENTIFIER set "MIXAR_BUNDLE_IDENTIFIER=com.mixar.mi
 if not defined MIXAR_BUNDLE_COPYRIGHT set "MIXAR_BUNDLE_COPYRIGHT=© 2025 Mixar"
 
 REM Build settings (constants)
-REM Keep BLENDER_VERSION in sync with the pinned upstream\ submodule revision.
-REM Use scripts/upgrade/set_blender_version.sh to change both at once.
-if not defined BLENDER_VERSION set "BLENDER_VERSION=5.2"
-REM Blender 5.2 ships Python 3.13 in lib/windows_x64/python/313. This said 3.11
-REM until now, left over from the 4.x libraries. cmake does not read this value
-REM - build_files/cmake/platform/platform_win32.cmake derives the real version
-REM from the lib folder - so it only affects our own scripts.
-if not defined PYTHON_VERSION set "PYTHON_VERSION=3.13"
+REM BLENDER_VERSION has to agree with two other things, not one:
+REM   * the revision upstream\ is pinned to, and
+REM   * src\source\blender\blenkernel\BKE_blender_version.h, which is what
+REM     actually gets compiled - src\ overlays whole copies of Blender files
+REM     over upstream\ and always wins.
+REM That header says BLENDER_VERSION 500, so this tree is Blender 5.0.
+REM Use scripts/upgrade/set_blender_version.sh to change all of them at once.
+if not defined BLENDER_VERSION set "BLENDER_VERSION=5.0"
+REM Blender 5.0 ships Python 3.11 in lib/windows_x64/python/311. This briefly
+REM said 3.13 because I read the upstream v5.2.0 pin as the version being
+REM built; the overlay in src\ is 5.0, so 3.11 was right all along. cmake does
+REM not read this value - platform_win32.cmake derives the real version from
+REM the lib folder - so it only affects our own scripts.
+if not defined PYTHON_VERSION set "PYTHON_VERSION=3.11"
 if not defined REQUIRED_CMAKE_VERSION set "REQUIRED_CMAKE_VERSION=3.16"
 
 REM Windows-specific build settings
