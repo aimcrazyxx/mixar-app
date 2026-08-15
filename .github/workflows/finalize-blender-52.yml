@@ -15,9 +15,12 @@ jobs:
       - uses: actions/setup-python@v6
         with: {python-version: "3.13"}
       - run: |
-          set -euo pipefail
+          set -Eeuo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          LOG=/tmp/finalize.log; exec > >(tee "$LOG") 2>&1
+          failed() { rc=$?; trap - ERR; { echo '# Blender 5.2 finalization failure'; echo '```text'; tail -n 160 "$LOG"; echo '```'; } > docs/migration/finalize-blender-52-failure.md; git add docs/migration/finalize-blender-52-failure.md; git commit -m 'ci: update Blender 5.2 failure diagnostic'; git push origin HEAD:refs/heads/migration/blender-5.2; exit $rc; }
+          trap failed ERR
           python3 -m pip install -q pytest
           git submodule update --init --force --depth 1 upstream
           git -C upstream fetch --depth 1 origin tag v5.2.0
