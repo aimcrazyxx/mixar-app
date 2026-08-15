@@ -17,11 +17,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh run view 31913537531 --repo aimcrazyxx/mixar-app --log-failed > /tmp/reuse.log
+          gh run view 31913655256 --repo aimcrazyxx/mixar-app --log-failed > /tmp/reuse.log
           mkdir -p docs/migration
           { echo '<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->'; echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'; echo; echo '# REUSE lint failure'; echo; echo '```text'; tail -n 250 /tmp/reuse.log; echo '```'; } > docs/migration/latest-reuse-log.md
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/migration/latest-reuse-log.md
-          git commit -m 'ci: record REUSE lint failure'
+          git commit -m 'ci: record cleaned-branch REUSE failure'
           git push origin HEAD:refs/heads/migration/blender-5.2
