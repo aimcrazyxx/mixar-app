@@ -28,11 +28,11 @@ jobs:
           }
           fetch_file() {
             mkdir -p "$(dirname "$2")"
-            gh api "repos/blender/blender/contents/$1" -f ref=v5.2.0 --jq .content | base64 --decode > "$2"
+            gh api --method GET "repos/blender/blender/contents/$1" -f ref=v5.2.0 --jq .content | base64 --decode > "$2"
             test -s "$2"
             checkpoint "$3"
           }
-          checkpoint api-fetch-started
+          checkpoint api-get-started
           fetch_file source/blender/blenloader_core/intern/blo_core_blend_header.cc src/source/blender/blenloader_core/intern/blo_core_blend_header.cc decoder-fetched
           fetch_file source/blender/editors/space_file/space_file.cc src/source/blender/editors/space_file/space_file.cc space-file-fetched
           fetch_file source/blender/editors/space_file/file_intern.hh src/source/blender/editors/space_file/file_intern.hh file-header-fetched
