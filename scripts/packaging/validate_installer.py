@@ -47,7 +47,9 @@ RESOURCE_DIR = "5.2"
 # missing them, and the stub payload below has to look like a real overlay.
 OVERLAY_FILES = (
     "scripts/mixar/modules/byok/core/base_url.py",
+    "scripts/mixar/modules/byok/core/custom_provider.py",
     "scripts/mixar/modules/byok/ui/operators/byok_base_url_ops.py",
+    "scripts/mixar/modules/byok/ui/operators/byok_custom_provider_ops.py",
 )
 
 PASSES: list[str] = []

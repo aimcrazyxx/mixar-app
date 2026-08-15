@@ -91,3 +91,9 @@ constants in `scene_graph`).
 the env lock without Blender; the packaging workflow byte-compiles both files
 on every push, which is the only syntax gate the UI file can have — it imports
 `bpy`, so no test on a bare runner can import it.
+
+## See also
+
+- [CUSTOM_PROVIDER.md](CUSTOM_PROVIDER.md) - the provider entry that puts this
+  base URL to work: free-text model, your own key, any OpenAI-compatible
+  endpoint.

@@ -58,12 +58,15 @@ EXCLUDE_NAMES = {"__pycache__", ".git", ".gitignore", ".gitattributes", "CMakeFi
 EXCLUDE_SUFFIXES = (".pdb", ".ilk", ".exp", ".obj", ".log", ".tmp")
 
 # Proof that install.bat overlaid this fork's work into the bundle. Without
-# these files the artifact is just vanilla Mixar and the custom provider base
-# URL would be silently missing. Keep this list in sync with OVERLAY_FILES in
-# validate_installer.py - the fork owns exactly these two modules.
+# these files the artifact is just vanilla Mixar: the custom base URL and the
+# custom provider option would both be silently missing. Keep this list in sync
+# with OVERLAY_FILES in validate_installer.py - the fork owns exactly these
+# four modules.
 OVERLAY_MARKERS = (
     Path("scripts/mixar/modules/byok/core/base_url.py"),
+    Path("scripts/mixar/modules/byok/core/custom_provider.py"),
     Path("scripts/mixar/modules/byok/ui/operators/byok_base_url_ops.py"),
+    Path("scripts/mixar/modules/byok/ui/operators/byok_custom_provider_ops.py"),
 )
 
 VERSION_DIR_RE = re.compile(r"^\d+\.\d+$")
