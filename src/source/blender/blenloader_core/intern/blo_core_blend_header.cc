@@ -35,7 +35,9 @@ BlenderHeaderVariant BLO_readfile_blender_header_decode(FileReader *file)
   if (readsize != MIN_SIZEOFBLENDERHEADER) {
     return BlenderHeaderInvalid{};
   }
-  if (!STREQLEN(header_bytes, "BLENDER", 7)) {
+  const bool is_blender_header = STREQLEN(header_bytes, "BLENDER", 7);
+  const bool is_mixar_header = STREQLEN(header_bytes, "MIXAR", 5);
+  if (!is_blender_header && !is_mixar_header) {
     return BlenderHeaderInvalid{};
   }
   /* If the first 7 bytes are BLENDER, it is very likely that this is a newer version of the

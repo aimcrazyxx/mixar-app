@@ -705,6 +705,7 @@ static void file_operatortypes()
   WM_operatortype_append(FILE_OT_edit_directory_path);
   WM_operatortype_append(FILE_OT_view_selected);
   WM_operatortype_append(FILE_OT_external_operation);
+  WM_operatortype_append(FILE_OT_open_blend);
 }
 
 /* NOTE: do not add .blend file reading on this level */

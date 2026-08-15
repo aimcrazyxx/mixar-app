@@ -112,6 +112,7 @@ void FILE_OT_filepath_drop(wmOperatorType *ot);
 void FILE_OT_start_filter(wmOperatorType *ot);
 void FILE_OT_edit_directory_path(wmOperatorType *ot);
 void FILE_OT_view_selected(wmOperatorType *ot);
+void FILE_OT_open_blend(wmOperatorType *ot);
 
 /**
  * This callback runs when the user has entered a new path in the file selectors directory field.

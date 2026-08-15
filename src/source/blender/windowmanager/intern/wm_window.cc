@@ -284,7 +284,7 @@ void wm_window_free(bContext *C, wmWindowManager *wm, wmWindow *win)
    * invalidated. A stale entry there is a use-after-free that typically
    * surfaces later as a GPU-driver access violation in an unrelated
    * present/swap, not at the point of the bad access. */
-  void *ghostwin_freed = win->ghostwin;
+  void *ghostwin_freed = win->runtime->ghostwin;
 
   /* Update context. */
   if (C) {

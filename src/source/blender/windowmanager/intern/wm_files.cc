@@ -593,7 +593,7 @@ static void wm_file_read_strip_agent_bubble_windows(bContext *C, wmWindowManager
   while (closed_one) {
     closed_one = false;
     LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-      if (win->ghostwin != nullptr || !wm_window_contains_agent_bubble_space(win)) {
+      if (win->runtime->ghostwin != nullptr || !wm_window_contains_agent_bubble_space(win)) {
         continue;
       }
       wm_window_close(C, wm, win);
