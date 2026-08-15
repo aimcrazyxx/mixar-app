@@ -174,6 +174,7 @@ jobs:
           cmake --version
           git --version
           git lfs version
+          python --version
           if (Get-Command ninja -ErrorAction SilentlyContinue) {
             ninja --version
           } else {
@@ -288,57 +289,82 @@ jobs:
         shell: pwsh
         working-directory: upstream
         run: |
-          # Blender keeps its precompiled libraries in per-platform submodules,
-          # and .gitmodules registers every one of them like this:
+          # Blender keeps its precompiled libraries in per-platform submodules.
+          # .gitmodules registers all four of them like this:
           #
           #   [submodule "lib/windows_x64"]
           #       update = none
+          #       path = lib/windows_x64
+          #       url = https://projects.blender.org/blender/lib-windows_x64.git
           #       branch = blender-v5.2-release
           #
-          # `update = none` means a plain `git submodule update --init` walks
-          # straight past them and leaves an empty lib/windows_x64 directory
-          # behind. Nothing complains: cmake sees the directory, accepts LIBDIR
-          # as valid, and only falls over much later with "Missing Python.h"
-          # and a screenful of absent dependency targets.
+          # `update = none` makes a plain `git submodule update --init` walk
+          # straight past them, leaving an empty lib/windows_x64 behind. cmake
+          # then accepts LIBDIR as valid and only fails much later, on a missing
+          # Python.h and a screenful of absent dependency targets.
           #
-          # `make update` is what normally handles these, but it resolves which
-          # library revision to fetch from the current *branch* name, and this
-          # checkout is deliberately detached at a tag - so it can do nothing at
-          # all and still exit 0. Naming the submodule with --checkout overrides
-          # `update = none` and needs no branch, which makes it the only form
-          # that is correct on a detached pin.
-          $ErrorActionPreference = "Stop"
+          # Passing --checkout is supposed to override that setting. It did not
+          # take, so stop fighting git's submodule semantics and use Blender's
+          # own updater, which is the supported path:
+          # initialize_precompiled_libraries() writes
+          # submodule.<path>.update=checkout into .git/config, and only then
+          # submodules_lib_update() updates the submodule.
+          #
+          # Calling the script directly also avoids the interactive "download
+          # libraries? (y/n)" prompt - that comes from make.bat, not from here.
+          # --no-blender skips the `git pull --rebase` that cannot work on a
+          # detached tag checkout, and --no-lfs-fallback skips adding a second
+          # remote to refetch LFS objects we are about to pull anyway.
+          $ErrorActionPreference = "Continue"
+          $probe = "lib\windows_x64\python\311\include\Python.h"
+          New-Item -ItemType Directory -Force -Path ..\logs | Out-Null
 
-          git lfs install --local
-          git submodule sync -- lib/windows_x64
-
-          # Shallow first: this repository is several GB. If the recorded commit
-          # is not the tip of the release branch a shallow fetch cannot reach
-          # it, so fall back to full depth instead of failing the run.
-          & git submodule update --init --force --checkout --depth 1 -- lib/windows_x64 2>&1 |
+          python build_files\utils\make_update.py --no-blender --no-lfs-fallback 2>&1 |
             Tee-Object -FilePath ..\logs\libs.log
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::warning::shallow fetch of lib/windows_x64 failed, retrying at full depth"
-            & git submodule update --init --force --checkout -- lib/windows_x64 2>&1 |
+          Write-Host "make_update.py exited with $LASTEXITCODE"
+
+          if (-not (Test-Path $probe)) {
+            Write-Host "::warning::libraries still missing after make_update.py, forcing the submodule by hand"
+            # The same two operations make_update.py performs, without the wrapper.
+            git config submodule."lib/windows_x64".update checkout
+            git submodule sync -- lib/windows_x64
+            git submodule update --init --force --checkout -- lib/windows_x64 2>&1 |
               Tee-Object -Append -FilePath ..\logs\libs.log
-            if ($LASTEXITCODE -ne 0) { throw "could not check out lib/windows_x64" }
+            Write-Host "manual submodule update exited with $LASTEXITCODE"
           }
 
-          # The libraries are git-lfs objects. Materialise them explicitly: a
-          # checkout that skipped the smudge filter leaves pointer files that
-          # look fine to cmake and only fail hours later, at link time.
-          & git -C lib\windows_x64 lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
+          # The libraries are git-lfs objects. Materialise them in case the
+          # checkout only wrote the ~130 byte pointer files, which look fine to
+          # cmake and fail hours later at link time.
+          if (Test-Path lib\windows_x64) {
+            git -C lib\windows_x64 lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
+          }
 
-          # Verify instead of hoping. Every earlier version of this step only
-          # checked that lib\ existed, which an empty submodule directory
-          # satisfies perfectly - that is precisely how this got through twice.
-          $probe = "lib\windows_x64\python\311\include\Python.h"
           if (-not (Test-Path $probe)) {
-            Write-Host "::error::lib\windows_x64 was not checked out"
-            Get-ChildItem lib -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue |
-              Select-Object FullName | Format-Table -AutoSize
+            # Everything here also goes into libs.log, so the diagnosis travels
+            # with the failure report instead of dying in an Actions log that no
+            # API token can read.
+            $diag = New-Object System.Collections.Generic.List[string]
+            function Add-Diag($title, $block) {
+              $diag.Add("")
+              $diag.Add("--- $title ---")
+              try {
+                & $block 2>&1 | ForEach-Object { $diag.Add([string]$_) }
+              } catch {
+                $diag.Add("(command failed: $_)")
+              }
+            }
+            $diag.Add("=== probe missing: $probe ===")
+            Add-Diag "git submodule status" { git submodule status }
+            Add-Diag "submodule config in .git/config" { git config --get-regexp '^submodule\.' }
+            Add-Diag "submodule paths in .gitmodules" { git config -f .gitmodules --get-regexp '^submodule\..*\.(path|url|update)$' }
+            Add-Diag "lib tree, two levels" { Get-ChildItem lib -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName } }
+            Add-Diag "git lfs env" { git lfs env }
+            $diag | ForEach-Object { Write-Host $_ }
+            $diag | Add-Content -Path ..\logs\libs.log
             throw "precompiled libraries missing: $probe"
           }
+
           $size = (Get-Item $probe).Length
           if ($size -lt 1kb) {
             throw "precompiled libraries are git-lfs pointers, not real files ($probe is $size bytes)"
@@ -461,9 +487,7 @@ jobs:
         run: |
           # An Actions log can only be read by a human with a browser. A pull
           # request comment can be read by anything holding a token, which is
-          # the whole point. The previous version filed an issue instead, and
-          # that report was lost: this repository is a fork, and forks are
-          # created with Issues switched off.
+          # the whole point.
           $out = New-Object System.Collections.Generic.List[string]
           $out.Add("Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
           $out.Add("Commit: ${{ github.sha }}")
@@ -485,7 +509,7 @@ jobs:
 
           Add-Block "Free disk after each stage" "logs\disk.log" 40
           Add-Block "Directory sizes" "logs\sizes.log" 40
-          Add-Block "Library fetch (tail)" "logs\libs.log" 100
+          Add-Block "Library fetch (tail)" "logs\libs.log" 150
           Add-Block "build.bat (tail)" "logs\build.log" 200
           Add-Block "CMakeError.log (tail)" "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log" 120
 
@@ -500,12 +524,15 @@ jobs:
           # Mirrored into the job summary so the same text is one click away.
           Get-Content failure-report.md | Add-Content -Path $env:GITHUB_STEP_SUMMARY
 
-          $pr = gh pr list --repo $env:GITHUB_REPOSITORY --head $env:GITHUB_REF_NAME --state open --json number --jq '.[0].number'
+          # --state all, not --state open: once the pull request for this branch
+          # was merged, --state open matched nothing and the report was silently
+          # dropped. Merged pull requests still accept comments.
+          $pr = gh pr list --repo $env:GITHUB_REPOSITORY --head $env:GITHUB_REF_NAME --state all --json number --jq '.[0].number'
           if ($pr) {
             gh pr comment $pr --repo $env:GITHUB_REPOSITORY --body-file failure-report.md
             Write-Host "reported on pull request #$pr"
           } else {
-            Write-Host "no open pull request for $env:GITHUB_REF_NAME - trying Issues"
+            Write-Host "no pull request for $env:GITHUB_REF_NAME - trying Issues"
             gh issue create --repo $env:GITHUB_REPOSITORY `
               --title "Windows build failed - run ${{ github.run_id }}" `
               --body-file failure-report.md
