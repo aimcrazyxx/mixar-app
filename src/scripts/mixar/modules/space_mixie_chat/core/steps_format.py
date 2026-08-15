@@ -346,3 +346,39 @@ def apply_steps_to_bubble(bubble, steps_data: dict) -> None:
 
     explicit = steps_data.get("summary") or ""
     bubble.steps_summary = explicit if explicit else format_steps_summary(applied_kinds)
+
+
+# --- fork addition: readable provider failures -------------------------------
+# Appended instead of edited into finish_step_on_bubble above, so everything
+# before this line stays byte-for-byte upstream and future upstream changes to
+# that function still apply cleanly. The wrapper touches only the FAILED
+# branch, swapping the bare "Failed" label and the raw error dump for one
+# explanatory line plus the original text. An unrecognized error is passed
+# through unchanged, so ordinary Blender tracebacks read exactly as before.
+from .provider_errors import describe as _describe_provider_failure  # noqa: E402
+
+_upstream_finish_step_on_bubble = finish_step_on_bubble
+
+
+def finish_step_on_bubble(bubble, request_id: str, result: dict) -> bool:  # noqa: F811
+    """Upstream finish_step_on_bubble, with a readable message on failure.
+
+    A sub-task the backend delegates to a model can be rejected wholesale by
+    the provider, and that rejection arrives as kilobytes of escaped JSON. See
+    provider_errors and docs/PROVIDER_ERROR_400_TOOLS.md.
+    """
+    updated = _upstream_finish_step_on_bubble(bubble, request_id, result)
+    if not updated or bool(result.get("success")):
+        return updated
+    raw = result.get("error") or ""
+    if not raw:
+        return updated
+    label, detail = _describe_provider_failure(raw)
+    # Same newest-first scan the upstream helper used, so the same row wins.
+    for i in range(len(bubble.step_items) - 1, -1, -1):
+        row = bubble.step_items[i]
+        if row.item_id == request_id:
+            row.label = label
+            row.detail = detail
+            break
+    return updated
