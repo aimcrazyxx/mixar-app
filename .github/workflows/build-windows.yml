@@ -20,6 +20,12 @@
 # saved even when the job is cancelled or times out, so the next run resumes
 # instead of starting from zero. cmake/mixar_overrides.cmake enables
 # WITH_WINDOWS_SCCACHE by itself as soon as sccache is on PATH.
+#
+# Reading a failure without opening the browser: the heavy steps tee their
+# output into logs/, every stage records free disk, and a failed job publishes
+# the tails as a repository issue. Anything that can only be seen in the raw
+# Actions log is invisible to tooling, and that made the last three attempts
+# guesswork.
 
 name: Build Windows installer
 
@@ -68,6 +74,9 @@ concurrency:
 
 permissions:
   contents: read
+  # The failure report is filed as an issue so it can be read back through the
+  # API. Actions run logs cannot.
+  issues: write
 
 jobs:
   build:
@@ -102,6 +111,16 @@ jobs:
         with:
           submodules: false
           fetch-depth: 1
+
+      - name: Start the disk ledger
+        shell: pwsh
+        run: |
+          # Free space is sampled after every heavy stage and printed in full if
+          # the job dies, so "it ran out of disk" stops being a hypothesis.
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          $free = (Get-PSDrive C).Free / 1GB
+          Set-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after checkout", $free)
+          Get-Content logs\disk.log
 
       - name: Report runner state
         shell: pwsh
@@ -161,7 +180,9 @@ jobs:
               Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
             }
           }
-          Get-PSDrive C | Select-Object Used, Free | Format-List
+          $free = (Get-PSDrive C).Free / 1GB
+          Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after reclaim", $free)
+          Get-Content logs\disk.log
 
       - name: Install NSIS, Ninja and sccache if missing
         shell: pwsh
@@ -226,10 +247,10 @@ jobs:
           # are missing / Would you like to download them? (y/n)". With no stdin
           # it answers for us, prints "Not downloading libraries" and exits 1, so
           # the answer has to be piped in.
-          "y" | cmd /c "make update"
+          "y" | cmd /c "make update" 2>&1 | Tee-Object -FilePath ..\logs\libs.log
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::warning::make update failed, retrying with make_update.py"
-            python build_files\utils\make_update.py
+            python build_files\utils\make_update.py 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
             if ($LASTEXITCODE -ne 0) {
               throw "could not fetch Blender's precompiled libraries"
             }
@@ -239,20 +260,40 @@ jobs:
           # link as corrupt objects much later in the build.
           Get-ChildItem lib -Directory -ErrorAction SilentlyContinue | ForEach-Object {
             Write-Host "git lfs pull in lib\$($_.Name)"
-            git -C $_.FullName lfs pull
+            git -C $_.FullName lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
           }
           if (-not (Test-Path "lib")) {
             throw "lib\ is still missing after make update"
           }
           Get-ChildItem lib | Select-Object Name | Format-Table -AutoSize
 
-      - name: Report free space after libraries
+      - name: Measure what the libraries cost
+        if: always()
+        continue-on-error: true
         shell: pwsh
         run: |
-          # Disk, not CPU, is what ends this job early on hosted runners. The
-          # overlay below copies the whole upstream tree into source\, so
-          # whatever is free here still has to absorb a second copy plus objects.
-          Get-PSDrive C | Select-Object Used, Free | Format-List
+          # git-lfs keeps every object twice: once under .git/lfs/objects and
+          # once materialised in the working tree. overlay.bat then copies
+          # upstream\ into source\ without excluding lib\, so the same bytes can
+          # land on this disk a third time. These numbers say whether that is
+          # what is killing the job.
+          function Get-SizeGB($path) {
+            if (-not (Test-Path $path)) { return "absent" }
+            $bytes = (Get-ChildItem $path -Recurse -File -Force -ErrorAction SilentlyContinue |
+              Measure-Object -Property Length -Sum).Sum
+            return ("{0:N1} GB" -f ($bytes / 1GB))
+          }
+          $rows = @(
+            [pscustomobject]@{ Path = "upstream\lib";        Size = Get-SizeGB "upstream\lib" }
+            [pscustomobject]@{ Path = "upstream\.git";       Size = Get-SizeGB "upstream\.git" }
+            [pscustomobject]@{ Path = "source";              Size = Get-SizeGB "source" }
+            [pscustomobject]@{ Path = "build";               Size = Get-SizeGB "build" }
+          )
+          $rows | Format-Table -AutoSize
+          $rows | ForEach-Object { Add-Content -Path logs\sizes.log -Value ("{0,-24} {1}" -f $_.Path, $_.Size) }
+          $free = (Get-PSDrive C).Free / 1GB
+          Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after libraries", $free)
+          Get-Content logs\disk.log
 
       - name: Apply backend URL override
         if: ${{ inputs.backend_url != '' }}
@@ -268,8 +309,15 @@ jobs:
           Write-Host "MIXAR_ENV=$env:MIXAR_ENV BLENDER_VERSION=$env:BLENDER_VERSION BUILD_WITH_NINJA=$env:BUILD_WITH_NINJA BUILD_CORES=$env:BUILD_CORES"
 
       - name: Build Mixar
-        shell: cmd
-        run: call scripts\windows\build.bat
+        shell: pwsh
+        run: |
+          # Run through pwsh rather than shell: cmd purely so the output can be
+          # teed to a file the failure report can quote.
+          & cmd /c "call scripts\windows\build.bat" 2>&1 | Tee-Object -FilePath logs\build.log
+          $code = $LASTEXITCODE
+          $free = (Get-PSDrive C).Free / 1GB
+          Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after build.bat (exit $code)", $free)
+          if ($code -ne 0) { throw "build.bat exited with $code" }
 
       - name: Compiler cache statistics
         if: always()
@@ -326,12 +374,61 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+      - name: Publish the failure report as an issue
+        if: failure()
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # An Actions log can only be read by a human with a browser. An issue
+          # can be read by anything holding a token, which is the whole point.
+          $out = New-Object System.Collections.Generic.List[string]
+          $out.Add("Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          $out.Add("Commit: ${{ github.sha }}")
+          $out.Add("Runner: ${{ runner.os }} / ${{ inputs.runner || 'windows-latest' }}")
+          $out.Add("")
+
+          function Add-Block($title, $path, $tail) {
+            $out.Add("")
+            $out.Add("## $title")
+            if (Test-Path $path) {
+              $out.Add('```')
+              Get-Content $path -Tail $tail -ErrorAction SilentlyContinue |
+                ForEach-Object { $out.Add($_) }
+              $out.Add('```')
+            } else {
+              $out.Add("not produced - the job died before this file existed")
+            }
+          }
+
+          Add-Block "Free disk after each stage" "logs\disk.log" 40
+          Add-Block "Directory sizes" "logs\sizes.log" 40
+          Add-Block "Library download (tail)" "logs\libs.log" 100
+          Add-Block "build.bat (tail)" "logs\build.log" 200
+          Add-Block "CMakeError.log (tail)" "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log" 120
+
+          $out.Add("")
+          $out.Add("## Free space right now")
+          $out.Add('```')
+          $drive = Get-PSDrive C
+          $out.Add(("free {0:N1} GB, used {1:N1} GB" -f ($drive.Free / 1GB), ($drive.Used / 1GB)))
+          $out.Add('```')
+
+          Set-Content -Path failure-report.md -Value $out -Encoding utf8
+          # Mirrored into the job summary so the same text is one click away.
+          Get-Content failure-report.md | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          gh issue create --repo $env:GITHUB_REPOSITORY `
+            --title "Windows build failed - run ${{ github.run_id }}" `
+            --body-file failure-report.md
+
       - name: Failure diagnostics
         if: failure()
         continue-on-error: true
         shell: pwsh
         run: |
           Get-PSDrive C | Select-Object Used, Free | Format-List
+          if (Test-Path logs\disk.log) { Get-Content logs\disk.log }
           $errorLog = "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log"
           if (Test-Path $errorLog) {
             Write-Host "--- tail of $errorLog ---"
@@ -340,3 +437,13 @@ jobs:
           if (Test-Path "build\$env:MIXAR_ENV\bin") {
             Get-ChildItem "build\$env:MIXAR_ENV\bin" | Select-Object Name | Format-Table -AutoSize
           }
+
+      - name: Upload logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_id }}
+          path: logs/
+          if-no-files-found: warn
+          retention-days: 14
