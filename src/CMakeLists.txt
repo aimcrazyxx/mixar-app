@@ -190,16 +190,8 @@ set(CMAKE_OPTIMIZE_DEPENDENCIES ON CACHE INTERNAL "")
 # -----------------------------------------------------------------------------
 # Declare Options
 
-<<<<<<< /tmp/tmprtykmfdk/new
-# Blender internal features
-option(WITH_BLENDER "Build Blender (disable to build only Cycles stand-alone)." ON)
-||||||| /tmp/tmprtykmfdk/old
-# Blender internal features
-option(WITH_BLENDER "Build blender (disable to build only Cycles stand-alone)." ON)
-=======
 # Mixar internal features
-option(WITH_BLENDER "Build mixar (disable to build only Cycles stand-alone)." ON)
->>>>>>> /tmp/tmprtykmfdk/modified
+option(WITH_BLENDER "Build Mixar (disable to build only Cycles stand-alone)." ON)
 mark_as_advanced(WITH_BLENDER)
 
 if(WIN32)
@@ -239,16 +231,8 @@ Enable internal API error checking to track invalid data to prevent crash on acc
 )
 mark_as_advanced(WITH_PYTHON_SAFETY)
 option(WITH_PYTHON_MODULE "\
-<<<<<<< /tmp/tmprtykmfdk/new
 Enable building as a Python module which runs without a user interface, \
-like running regular Blender in background mode (only enable for development), \
-||||||| /tmp/tmprtykmfdk/old
-Enable building as a python module which runs without a user interface, \
-like running regular blender in background mode (only enable for development), \
-=======
-Enable building as a python module which runs without a user interface, \
-like running regular mixar in background mode (only enable for development), \
->>>>>>> /tmp/tmprtykmfdk/modified
+like running regular Mixar in background mode (only enable for development), \
 installs to PYTHON_SITE_PACKAGES (or CMAKE_INSTALL_PREFIX if WITH_INSTALL_PORTABLE is enabled)."
   OFF
 )
@@ -400,30 +384,8 @@ mark_as_advanced(WITH_HEADLESS)
 
 option(WITH_QUADRIFLOW "Build with QuadriFlow remesher support" ON)
 
-<<<<<<< /tmp/tmprtykmfdk/new
-option(WITH_AUDASPACE "Build with Audaspace (base Blender audio library)" ON)
+option(WITH_AUDASPACE "Build with Audaspace (base Mixar audio library)" ON)
 option(WITH_SYSTEM_AUDASPACE "Build with external Audaspace library installed on the system" OFF)
-||||||| /tmp/tmprtykmfdk/old
-option(WITH_AUDASPACE "\
-Build with blenders audio library (only disable if you know what you're doing!)"
-  ON
-)
-option(WITH_SYSTEM_AUDASPACE "\
-Build with external audaspace library installed on the system \
-(only enable if you know what you're doing!)"
-  OFF
-)
-=======
-option(WITH_AUDASPACE "\
-Build with mixars audio library (only disable if you know what you're doing!)"
-  ON
-)
-option(WITH_SYSTEM_AUDASPACE "\
-Build with external audaspace library installed on the system \
-(only enable if you know what you're doing!)"
-  OFF
-)
->>>>>>> /tmp/tmprtykmfdk/modified
 option(WITH_RUBBERBAND "\
 Build with Rubber Band for audio time-stretching and pitch-scaling (used by Audaspace)"
   ON
@@ -574,13 +536,7 @@ that point to pre-compiled libraries will be left as-is."
 
   option(WITH_STATIC_LIBS "\
 Try to link with static libraries, as much as possible, \
-<<<<<<< /tmp/tmprtykmfdk/new
-to make Blender more portable across distributions"
-||||||| /tmp/tmprtykmfdk/old
-to make blender more portable across distributions"
-=======
-to make mixar more portable across distributions"
->>>>>>> /tmp/tmprtykmfdk/modified
+to make Mixar more portable across distributions"
     OFF
   )
 endif()
@@ -601,22 +557,10 @@ Install redistributable runtime, otherwise install into CMAKE_INSTALL_PREFIX"
   )
 endif()
 
-<<<<<<< /tmp/tmprtykmfdk/new
-option(WITH_PYTHON_INSTALL "Copy system Python into the Blender install directory" ON)
-||||||| /tmp/tmprtykmfdk/old
-option(WITH_PYTHON_INSTALL "Copy system python into the blender install directory" ON)
-=======
-option(WITH_PYTHON_INSTALL "Copy system python into the mixar install directory" ON)
->>>>>>> /tmp/tmprtykmfdk/modified
+option(WITH_PYTHON_INSTALL "Copy system Python into the Mixar install directory" ON)
 
 option(WITH_INSTALL_COPYRIGHT "\
-<<<<<<< /tmp/tmprtykmfdk/new
-Copy the official Blender Authors copyright.txt into the Blender install directory"
-||||||| /tmp/tmprtykmfdk/old
-Copy the official Blender Authors's copyright.txt into the Blender install directory"
-=======
-Copy the official Blender Authors's copyright.txt into the Mixar install directory"
->>>>>>> /tmp/tmprtykmfdk/modified
+Copy the official Blender Authors copyright.txt into the Mixar install directory"
   OFF
 )
 mark_as_advanced(WITH_INSTALL_COPYRIGHT)
@@ -636,23 +580,11 @@ Path to python site-packages or dist-packages containing 'numpy' module"
   mark_as_advanced(PYTHON_NUMPY_INCLUDE_DIRS)
 endif()
 if(WITH_PYTHON_INSTALL)
-<<<<<<< /tmp/tmprtykmfdk/new
-  option(WITH_PYTHON_INSTALL_NUMPY "Copy system NumPy into the Blender install directory" ON)
-||||||| /tmp/tmprtykmfdk/old
-  option(WITH_PYTHON_INSTALL_NUMPY "Copy system NumPy into the blender install directory" ON)
-=======
-  option(WITH_PYTHON_INSTALL_NUMPY "Copy system NumPy into the mixar install directory" ON)
->>>>>>> /tmp/tmprtykmfdk/modified
+  option(WITH_PYTHON_INSTALL_NUMPY "Copy system NumPy into the Mixar install directory" ON)
 
   if(UNIX AND NOT APPLE)
     option(WITH_PYTHON_INSTALL_REQUESTS "\
-<<<<<<< /tmp/tmprtykmfdk/new
-Copy system requests into the Blender install directory"
-||||||| /tmp/tmprtykmfdk/old
-Copy system requests into the blender install directory"
-=======
-Copy system requests into the mixar install directory"
->>>>>>> /tmp/tmprtykmfdk/modified
+Copy system requests into the Mixar install directory"
       ON
     )
     set(PYTHON_REQUESTS_PATH "" CACHE PATH "\
@@ -661,13 +593,7 @@ Path to python site-packages or dist-packages containing 'requests' module"
     mark_as_advanced(PYTHON_REQUESTS_PATH)
   endif()
 
-<<<<<<< /tmp/tmprtykmfdk/new
-  option(WITH_PYTHON_INSTALL_ZSTANDARD "Copy Zstandard into the Blender install directory" ON)
-||||||| /tmp/tmprtykmfdk/old
-  option(WITH_PYTHON_INSTALL_ZSTANDARD "Copy zstandard into the blender install directory" ON)
-=======
-  option(WITH_PYTHON_INSTALL_ZSTANDARD "Copy zstandard into the mixar install directory" ON)
->>>>>>> /tmp/tmprtykmfdk/modified
+  option(WITH_PYTHON_INSTALL_ZSTANDARD "Copy Zstandard into the Mixar install directory" ON)
   set(PYTHON_ZSTANDARD_PATH "" CACHE PATH "\
 Path to python site-packages or dist-packages containing 'zstandard' module"
   )

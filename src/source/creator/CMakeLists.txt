@@ -464,21 +464,13 @@ if(UNIX AND NOT APPLE)
       set(TARGETDIR_TEXT ".")
       set(TARGETDIR_LIB "lib")
     else()
-<<<<<<< /tmp/tmp5brgvcd8/new
-      set(TARGETDIR_VER "share/blender/${BLENDER_VERSION}")
-      set(TARGETDIR_TEXT "share/doc/blender")
-      if(CMAKE_INSTALL_LIBDIR)
-        set(TARGETDIR_VER_LIBS "${CMAKE_INSTALL_LIBDIR}/blender/${BLENDER_VERSION}")
-      else()
-        set(TARGETDIR_VER_LIBS "lib/blender/${BLENDER_VERSION}")
-      endif()
-||||||| /tmp/tmp5brgvcd8/old
-      set(TARGETDIR_VER "share/blender/${BLENDER_VERSION}")
-      set(TARGETDIR_TEXT "share/doc/blender")
-=======
       set(TARGETDIR_VER "share/mixar/${BLENDER_VERSION}")
       set(TARGETDIR_TEXT "share/doc/mixar")
->>>>>>> /tmp/tmp5brgvcd8/modified
+      if(CMAKE_INSTALL_LIBDIR)
+        set(TARGETDIR_VER_LIBS "${CMAKE_INSTALL_LIBDIR}/mixar/${BLENDER_VERSION}")
+      else()
+        set(TARGETDIR_VER_LIBS "lib/mixar/${BLENDER_VERSION}")
+      endif()
     endif()
   endif()
   set(TARGETDIR_SITE_PACKAGES "${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages")
@@ -885,15 +877,7 @@ if(UNIX AND NOT APPLE)
     elseif(EXISTS ${LIBDIR})
       install(
         PROGRAMS
-<<<<<<< /tmp/tmp5brgvcd8/new
-        ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
-||||||| /tmp/tmp5brgvcd8/old
-        ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
-        ${CMAKE_SOURCE_DIR}/release/bin/blender-softwaregl
-=======
         ${CMAKE_SOURCE_DIR}/release/bin/mixar-launcher
-        ${CMAKE_SOURCE_DIR}/release/bin/mixar-softwaregl
->>>>>>> /tmp/tmp5brgvcd8/modified
         DESTINATION "."
       )
     endif()
@@ -2082,25 +2066,9 @@ add_dependencies(mixar makesdna)
 target_link_libraries(mixar PRIVATE ${LIB})
 unset(LIB)
 
-<<<<<<< /tmp/tmp5brgvcd8/new
-setup_platform_linker_flags(blender)
-setup_platform_linker_libs(blender)
-setup_platform_linker_symbol_hiding(blender)
-||||||| /tmp/tmp5brgvcd8/old
-setup_platform_linker_flags(blender)
-setup_platform_linker_libs(blender)
-
-if(DEFINED PLATFORM_SYMBOLS_MAP)
-  set_target_properties(blender PROPERTIES LINK_DEPENDS ${PLATFORM_SYMBOLS_MAP})
-endif()
-=======
 setup_platform_linker_flags(mixar)
 setup_platform_linker_libs(mixar)
-
-if(DEFINED PLATFORM_SYMBOLS_MAP)
-  set_target_properties(mixar PROPERTIES LINK_DEPENDS ${PLATFORM_SYMBOLS_MAP})
-endif()
->>>>>>> /tmp/tmp5brgvcd8/modified
+setup_platform_linker_symbol_hiding(mixar)
 
 blender_target_include_dirs(mixar ${INC})
 
@@ -2131,23 +2099,7 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         ${USD_LIBRARY_DIR}/usd
         DESTINATION ${TARGETDIR_LIB}
       )
-<<<<<<< /tmp/tmp5brgvcd8/new
-      install(DIRECTORY ${LIBDIR}/usd/plugin/usd/ DESTINATION "blender.shared/usd")
-||||||| /tmp/tmp5brgvcd8/old
-      install(DIRECTORY
-        ${LIBDIR}/usd/plugin/usd/hdStorm
-        ${LIBDIR}/usd/plugin/usd/usdShaders
-        ${LIBDIR}/usd/plugin/usd/hioOiio
-        DESTINATION "blender.shared/usd"
-      )
-=======
-      install(DIRECTORY
-        ${LIBDIR}/usd/plugin/usd/hdStorm
-        ${LIBDIR}/usd/plugin/usd/usdShaders
-        ${LIBDIR}/usd/plugin/usd/hioOiio
-        DESTINATION "mixar.shared/usd"
-      )
->>>>>>> /tmp/tmp5brgvcd8/modified
+      install(DIRECTORY ${LIBDIR}/usd/plugin/usd/ DESTINATION "mixar.shared/usd")
     elseif(USD_PYTHON_SUPPORT)
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd

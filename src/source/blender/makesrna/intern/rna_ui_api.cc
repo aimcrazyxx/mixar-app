@@ -69,19 +69,12 @@ enum class TextAlignAnchor : int {
 
 #  include "WM_api.hh"
 
-<<<<<<< /tmp/tmpuxg1j09j/new
-namespace blender {
-
-using ui::Layout;
-||||||| /tmp/tmpuxg1j09j/old
-using blender::StringRefNull;
-=======
 /* Mixar custom section widget. */
 #  include "../../editors/interface/interface_mixar_section.hh"
 
+namespace blender {
 
-using blender::StringRefNull;
->>>>>>> /tmp/tmpuxg1j09j/modified
+using ui::Layout;
 
 std::optional<StringRefNull> rna_translate_ui_text(
     const char *text, const char *text_ctxt, StructRNA *type, PropertyRNA *prop, bool translate)

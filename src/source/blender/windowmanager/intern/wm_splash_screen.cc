@@ -51,17 +51,13 @@
 
 #include "wm.hh"
 
-<<<<<<< /tmp/tmpermat8p_/new
 namespace blender {
 
-||||||| /tmp/tmpermat8p_/old
-=======
 #if defined(__APPLE__) || defined(_WIN32)
 extern "C" void Mixar_FloatingDocksSuppressForModal();
 extern "C" void Mixar_FloatingDocksRestoreAfterModal();
 #endif
 
->>>>>>> /tmp/tmpermat8p_/modified
 /* -------------------------------------------------------------------- */
 /** \name Splash Screen
  * \{ */
@@ -94,14 +90,8 @@ static void wm_block_splash_close(bContext *C, void *arg_block, void * /*arg*/)
 >>>>>>> /tmp/tmpermat8p_/modified
 {
   wmWindow *win = CTX_wm_window(C);
-<<<<<<< /tmp/tmpermat8p_/new
   popup_block_close(C, win, block);
-||||||| /tmp/tmpermat8p_/old
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
-=======
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
   wm_mixar_floating_docks_restore_after_modal();
->>>>>>> /tmp/tmpermat8p_/modified
 }
 
 static void wm_block_splash_add_label(ui::Block *block, const char *label, int x, int y)
@@ -417,56 +407,8 @@ static ui::Block *wm_block_splash_create(bContext *C, ARegion *region, void * /*
   {
     layout.separator(2.0f, ui::LayoutSeparatorType::Line);
 
-<<<<<<< /tmp/tmpermat8p_/new
-    ui::Layout &split = layout.split(0.725, true);
-    ui::Layout &row1 = split.row(true);
-    ui::Layout &row2 = split.row(true);
-
-    row1.label(RPT_("Intel binary detected. Expect reduced performance."), ICON_ERROR);
-
-    PointerRNA op_ptr = row2.op("WM_OT_url_open",
-                                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Learn More"),
-                                ICON_URL,
-                                wm::OpCallContext::InvokeDefault,
-                                UI_ITEM_NONE);
-#  if defined(__APPLE__)
-    RNA_string_set(
-        &op_ptr,
-        "url",
-        "https://docs.blender.org/manual/en/latest/getting_started/installing/macos.html");
-#  elif defined(_M_X64)
-    RNA_string_set(
-        &op_ptr,
-        "url",
-        "https://docs.blender.org/manual/en/latest/getting_started/installing/windows.html");
-#  endif
-||||||| /tmp/tmpermat8p_/old
-    uiLayout *split = &layout.split(0.725, true);
-    uiLayout *row1 = &split->row(true);
-    uiLayout *row2 = &split->row(true);
-
-    row1->label(RPT_("Intel binary detected. Expect reduced performance."), ICON_ERROR);
-
-    PointerRNA op_ptr = row2->op("WM_OT_url_open",
-                                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Learn More"),
-                                 ICON_URL,
-                                 blender::wm::OpCallContext::InvokeDefault,
-                                 UI_ITEM_NONE);
-#  if defined(__APPLE__)
-    RNA_string_set(
-        &op_ptr,
-        "url",
-        "https://docs.blender.org/manual/en/latest/getting_started/installing/macos.html");
-#  elif defined(_M_X64)
-    RNA_string_set(
-        &op_ptr,
-        "url",
-        "https://docs.blender.org/manual/en/latest/getting_started/installing/windows.html");
-#  endif
-=======
     uiLayout *row = &layout.row(true);
     row->label(RPT_("Intel binary detected. Expect reduced performance."), ICON_ERROR);
->>>>>>> /tmp/tmpermat8p_/modified
 
     layout.separator();
   }
@@ -481,15 +423,9 @@ static wmOperatorStatus wm_splash_invoke(bContext *C,
                                          wmOperator * /*op*/,
                                          const wmEvent * /*event*/)
 {
-<<<<<<< /tmp/tmpermat8p_/new
-  ui::popup_block_invoke(C, wm_block_splash_create, nullptr, nullptr);
-||||||| /tmp/tmpermat8p_/old
-  UI_popup_block_invoke(C, wm_block_splash_create, nullptr, nullptr);
-=======
   wm_mixar_floating_docks_suppress_for_modal();
-  UI_popup_block_invoke(
+  ui::popup_block_invoke(
       C, wm_block_splash_create, nullptr, wm_mixar_floating_docks_restore_after_modal_free);
->>>>>>> /tmp/tmpermat8p_/modified
 
   return OPERATOR_FINISHED;
 }
@@ -505,176 +441,3 @@ void WM_OT_splash(wmOperatorType *ot)
 }
 
 /** \} */
-<<<<<<< /tmp/tmpermat8p_/new
-
-/* -------------------------------------------------------------------- */
-/** \name Splash Screen: About
- * \{ */
-
-static ui::Block *wm_block_about_create(bContext *C, ARegion *region, void * /*arg*/)
-{
-  const uiStyle *style = ui::style_get_dpi();
-  const int dialog_width = style->widget.points * 42 * UI_SCALE_FAC;
-
-  ui::Block *block = block_begin(C, region, "about", ui::EmbossType::Emboss);
-
-  block_flag_enable(block, ui::BLOCK_KEEP_OPEN | ui::BLOCK_LOOP | ui::BLOCK_NO_WIN_CLIP);
-  block_theme_style_set(block, ui::BLOCK_THEME_STYLE_POPUP);
-
-  ui::Layout &layout = ui::block_layout(block,
-                                        ui::LayoutDirection::Vertical,
-                                        ui::LayoutType::Panel,
-                                        0,
-                                        0,
-                                        dialog_width,
-                                        0,
-                                        0,
-                                        style);
-
-/* Blender logo. */
-#ifndef WITH_HEADLESS
-  constexpr bool show_color = false;
-  const float size = 0.2f * dialog_width;
-
-  ImBuf *ibuf = ui::svg_icon_bitmap(ICON_BLENDER_LOGO_LARGE, size, show_color);
-
-  if (ibuf) {
-    bTheme *btheme = ui::theme::theme_get();
-    const uchar *color = btheme->tui.wcol_menu_back.text_sel;
-
-    /* The top margin. */
-    layout.row(false).separator(0.2f);
-
-    /* The logo image. */
-    layout.row(false).alignment_set(ui::LayoutAlign::Left);
-    uiDefButImage(block, ibuf, 0, U.widget_unit, ibuf->x, ibuf->y, show_color ? nullptr : color);
-
-    /* Padding below the logo. */
-    layout.row(false).separator(2.7f);
-  }
-#endif /* !WITH_HEADLESS */
-
-  ui::Layout &col = layout.column(true);
-
-  uiItemL_ex(&col, IFACE_("Blender"), ICON_NONE, true, false);
-
-  MenuType *mt = WM_menutype_find("WM_MT_splash_about", true);
-  if (mt) {
-    ui::menutype_draw(C, mt, &col);
-  }
-
-  block_bounds_set_centered(block, 22 * UI_SCALE_FAC);
-
-  return block;
-}
-
-static wmOperatorStatus wm_splash_about_invoke(bContext *C,
-                                               wmOperator * /*op*/,
-                                               const wmEvent * /*event*/)
-{
-  ui::popup_block_invoke(C, wm_block_about_create, nullptr, nullptr);
-
-  return OPERATOR_FINISHED;
-}
-
-void WM_OT_splash_about(wmOperatorType *ot)
-{
-  ot->name = "About Blender";
-  ot->idname = "WM_OT_splash_about";
-  ot->description = "Open a window with information about Blender";
-
-  ot->invoke = wm_splash_about_invoke;
-  ot->poll = WM_operator_winactive;
-}
-
-/** \} */
-
-}  // namespace blender
-||||||| /tmp/tmpermat8p_/old
-
-/* -------------------------------------------------------------------- */
-/** \name Splash Screen: About
- * \{ */
-
-static uiBlock *wm_block_about_create(bContext *C, ARegion *region, void * /*arg*/)
-{
-  const uiStyle *style = UI_style_get_dpi();
-  const int dialog_width = style->widget.points * 42 * UI_SCALE_FAC;
-
-  uiBlock *block = UI_block_begin(C, region, "about", blender::ui::EmbossType::Emboss);
-
-  UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
-
-  uiLayout &layout = blender::ui::block_layout(block,
-                                               blender::ui::LayoutDirection::Vertical,
-                                               blender::ui::LayoutType::Panel,
-                                               0,
-                                               0,
-                                               dialog_width,
-                                               0,
-                                               0,
-                                               style);
-
-/* Blender logo. */
-#ifndef WITH_HEADLESS
-  constexpr bool show_color = false;
-  const float size = 0.2f * dialog_width;
-
-  ImBuf *ibuf = UI_svg_icon_bitmap(ICON_BLENDER_LOGO_LARGE, size, show_color);
-
-  if (ibuf) {
-    bTheme *btheme = UI_GetTheme();
-    const uchar *color = btheme->tui.wcol_menu_back.text_sel;
-
-    /* The top margin. */
-    uiLayout *row = &layout.row(false);
-    row->separator(0.2f);
-
-    /* The logo image. */
-    row = &layout.row(false);
-    row->alignment_set(blender::ui::LayoutAlign::Left);
-    uiDefButImage(block, ibuf, 0, U.widget_unit, ibuf->x, ibuf->y, show_color ? nullptr : color);
-
-    /* Padding below the logo. */
-    row = &layout.row(false);
-    row->separator(2.7f);
-  }
-#endif /* !WITH_HEADLESS */
-
-  uiLayout *col = &layout.column(true);
-
-  uiItemL_ex(col, IFACE_("Blender"), ICON_NONE, true, false);
-
-  MenuType *mt = WM_menutype_find("WM_MT_splash_about", true);
-  if (mt) {
-    UI_menutype_draw(C, mt, col);
-  }
-
-  UI_block_bounds_set_centered(block, 22 * UI_SCALE_FAC);
-
-  return block;
-}
-
-static wmOperatorStatus wm_splash_about_invoke(bContext *C,
-                                               wmOperator * /*op*/,
-                                               const wmEvent * /*event*/)
-{
-  UI_popup_block_invoke(C, wm_block_about_create, nullptr, nullptr);
-
-  return OPERATOR_FINISHED;
-}
-
-void WM_OT_splash_about(wmOperatorType *ot)
-{
-  ot->name = "About Blender";
-  ot->idname = "WM_OT_splash_about";
-  ot->description = "Open a window with information about Blender";
-
-  ot->invoke = wm_splash_about_invoke;
-  ot->poll = WM_operator_winactive;
-}
-
-/** \} */
-=======
->>>>>>> /tmp/tmpermat8p_/modified

@@ -38,17 +38,10 @@
 /* For the currently not ported to Cocoa keyboard layout functions (64bit & 10.6 compatible) */
 #include <Carbon/Carbon.h>
 #include <sys/time.h>
-<<<<<<< /tmp/tmpw0vedcug/new
-||||||| /tmp/tmpw0vedcug/old
-#include <sys/types.h>
-
-#include <mach/mach_time.h>
-=======
 #include <sys/types.h>
 
 #include <dispatch/dispatch.h>
 #include <mach/mach_time.h>
->>>>>>> /tmp/tmpw0vedcug/modified
 
 /* --------------------------------------------------------------------
  * Keymaps, mouse converters.

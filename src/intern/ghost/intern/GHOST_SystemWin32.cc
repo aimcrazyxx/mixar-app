@@ -326,40 +326,6 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpu_
 #ifdef WITH_OPENGL_BACKEND
     case GHOST_kDrawingContextTypeOpenGL: {
 
-<<<<<<< /tmp/tmpth0ss6bb/new
-||||||| /tmp/tmpth0ss6bb/old
-      /* OpenGL needs a dummy window to create a context on windows. */
-      HWND wnd = CreateWindowA("STATIC",
-                               "BlenderGLEW",
-                               WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-                               0,
-                               0,
-                               64,
-                               64,
-                               nullptr,
-                               nullptr,
-                               GetModuleHandle(nullptr),
-                               nullptr);
-
-      HDC mHDC = GetDC(wnd);
-      HDC prev_hdc = wglGetCurrentDC();
-=======
-      /* OpenGL needs a dummy window to create a context on windows. */
-      HWND wnd = CreateWindowA("STATIC",
-                               "MixarGLEW",
-                               WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-                               0,
-                               0,
-                               64,
-                               64,
-                               nullptr,
-                               nullptr,
-                               GetModuleHandle(nullptr),
-                               nullptr);
-
-      HDC mHDC = GetDC(wnd);
-      HDC prev_hdc = wglGetCurrentDC();
->>>>>>> /tmp/tmpth0ss6bb/modified
       HGLRC prev_context = wglGetCurrentContext();
       HDC prev_hdc = wglGetCurrentDC();
 

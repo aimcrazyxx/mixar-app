@@ -137,14 +137,9 @@ add_definitions(
   -D_SCL_SECURE_NO_DEPRECATE
   -D_CONSOLE
   -D_LIB
-<<<<<<< /tmp/tmpz81a5o9s/new
   -D_USE_MATH_DEFINES
   -DWIN32_LEAN_AND_MEAN
   -DNOMINMAX
-||||||| /tmp/tmpz81a5o9s/old
-=======
-  -D_USE_MATH_DEFINES
->>>>>>> /tmp/tmpz81a5o9s/modified
 )
 
 # MSVC11 needs _ALLOW_KEYWORD_MACROS to build
@@ -1018,16 +1013,8 @@ if(WINDOWS_PYTHON_DEBUG)
   set_target_properties(blender_python_system_scripts PROPERTIES FOLDER "scripts")
   set_target_properties(blender_python_user_scripts PROPERTIES FOLDER "scripts")
   # Set the default debugging options for the project, only write this file once so the user
-<<<<<<< /tmp/tmpz81a5o9s/new
   # is free to override them at their own peril.
-  set(USER_PROPS_FILE "${CMAKE_CURRENT_BINARY_DIR}/source/creator/blender.Cpp.user.props")
-||||||| /tmp/tmpz81a5o9s/old
-  # is free to override them at their own perril.
-  set(USER_PROPS_FILE "${CMAKE_CURRENT_BINARY_DIR}/source/creator/blender.Cpp.user.props")
-=======
-  # is free to override them at their own perril.
   set(USER_PROPS_FILE "${CMAKE_CURRENT_BINARY_DIR}/source/creator/mixar.Cpp.user.props")
->>>>>>> /tmp/tmpz81a5o9s/modified
   if(NOT EXISTS ${USER_PROPS_FILE})
     # Layout below is messy, because otherwise the generated file will look messy.
     file(WRITE ${USER_PROPS_FILE} "<?xml version=\"1.0\" encoding=\"utf-8\"?>

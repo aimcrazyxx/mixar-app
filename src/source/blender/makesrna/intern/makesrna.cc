@@ -48,17 +48,13 @@
 
 #include "CLG_log.h"
 
-<<<<<<< /tmp/tmpmx8o50ve/new
 namespace blender {
 
-||||||| /tmp/tmpmx8o50ve/old
-=======
 /* Mixar: forward decl for the Window.global_areas RNA extension.
  * Defined in rna_wm_mixar.cc — not declared in rna_internal.hh
  * because that header is upstream and Mixar avoids overlaying it. */
 void RNA_def_wm_mixar(BlenderRNA *brna);
 
->>>>>>> /tmp/tmpmx8o50ve/modified
 static CLG_LogRef LOG = {"makesrna"};
 
 /**

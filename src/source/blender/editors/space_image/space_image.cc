@@ -443,17 +443,9 @@ static void image_listener(const wmSpaceTypeListenerParams *params)
           /* \note With a geometry nodes modifier, the UVs on `ob` can change in response to
            * any change on `wmn->reference`. If we could track the upstream dependencies,
            * unnecessary redraws could be reduced. Until then, just redraw. See #98594. */
-<<<<<<< /tmp/tmpjk7na23m/new
-          if (ob && (ob->mode & OB_MODE_EDIT) && sima->mode == SI_MODE_UV) {
-            if (sima->lock && ((sima->flag & SI_DRAWSHADOW) || (sima->flag & SI_DRAW_STRETCH))) {
-||||||| /tmp/tmpjk7na23m/old
-          if (ob && (ob->mode & OB_MODE_EDIT) && sima->mode == SI_MODE_UV) {
-            if (sima->lock && (sima->flag & SI_DRAWSHADOW)) {
-=======
           /* MIXAR: Added SI_MODE_MIXAR_UV check */
           if (ob && (ob->mode & OB_MODE_EDIT) && ELEM(sima->mode, SI_MODE_UV, SI_MODE_MIXAR_UV)) {
-            if (sima->lock && (sima->flag & SI_DRAWSHADOW)) {
->>>>>>> /tmp/tmpjk7na23m/modified
+            if (sima->lock && ((sima->flag & SI_DRAWSHADOW) || (sima->flag & SI_DRAW_STRETCH))) {
               ED_area_tag_refresh(area);
               ED_area_tag_redraw(area);
             }

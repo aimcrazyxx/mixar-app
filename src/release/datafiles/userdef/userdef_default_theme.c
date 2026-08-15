@@ -393,18 +393,10 @@ const bTheme U_theme_default = {
     .header = RGBA(0x010000ff),
     .header_text = RGBA(0xeeeeeeff),
     .header_text_hi = RGBA(0xffffffff),
-<<<<<<< /tmp/tmpjv3h3wsi/new
-    .grid = RGBA(0x54545480),
+    .grid = RGBA(0x66666614),
     .grid_major = RGBA(0x545454ff),
     .grid_axis_brightness = 0.46f,
-    .wire = RGBA(0x000000ff),
-||||||| /tmp/tmpjv3h3wsi/old
-    .grid = RGBA(0x54545480),
-    .wire = RGBA(0x000000ff),
-=======
-    .grid = RGBA(0x66666614),
     .wire = RGBA(0x5c9a3aff),
->>>>>>> /tmp/tmpjv3h3wsi/modified
     .wire_edit = RGBA(0x000000ff),
     .select = RGBA(0xff99aeff),
     .lamp = RGBA(0x2d4a2aff),
@@ -525,18 +517,10 @@ const bTheme U_theme_default = {
     .header_text = RGBA(0xeeeeeeff),
     .header_text_hi = RGBA(0xffffffff),
     .shade1 = RGBA(0xc0c0c000),
-<<<<<<< /tmp/tmpjv3h3wsi/new
-    .grid = RGBA(0x161616ff),
+    .grid = RGBA(0x1c2228ff),
     .anim_interpolation_linear = RGBA(0x94e575cc),
     .anim_interpolation_constant = RGBA(0xe59c7bcc),
     .anim_interpolation_other = RGBA(0x5dbabeb3),
-||||||| /tmp/tmpjv3h3wsi/old
-    .grid = RGBA(0x161616ff),
-    .ds_ipoline = RGBA(0x94e575cc),
-=======
-    .grid = RGBA(0x1c2228ff),
-    .ds_ipoline = RGBA(0x94e575cc),
->>>>>>> /tmp/tmpjv3h3wsi/modified
     .keyborder = RGBA(0x000000ff),
     .keyborder_select = RGBA(0x000000ff),
     .vertex_size = 3,

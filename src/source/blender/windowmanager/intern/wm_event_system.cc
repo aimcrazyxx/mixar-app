@@ -4432,13 +4432,8 @@ void wm_event_do_handlers(bContext *C)
 
             if ((action & WM_HANDLER_BREAK) == 0) {
               wm_region_mouse_co(C, event); /* Only invalidates `event->mval` in this case. */
-<<<<<<< /tmp/tmpw43kp6qk/new
               action |= wm_handlers_do(
                   C, event, static_cast<ListBaseT<wmEventHandler> *>(&area->handlers));
-||||||| /tmp/tmpw43kp6qk/old
-              action |= wm_handlers_do(C, event, &area->handlers);
-=======
-              action |= wm_handlers_do(C, event, &area->handlers);
 
               /* Mixar: a handler may close `win` itself, invalidating `win`,
                * `area` and `event` (see #wm_window_is_alive). */
@@ -4447,7 +4442,6 @@ void wm_event_do_handlers(bContext *C)
                 GPU_render_end();
                 return;
               }
->>>>>>> /tmp/tmpw43kp6qk/modified
             }
             CTX_wm_area_set(C, nullptr);
 

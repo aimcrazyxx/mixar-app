@@ -131,19 +131,10 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
   h_DC_ = ::GetDC(h_wnd_);
 
   if (!setDrawingContextType(type)) {
-<<<<<<< /tmp/tmpet7ff_2h/new
     if (type == GHOST_kDrawingContextTypeOpenGL) {
-      const char *title = "Blender - Unsupported Graphics Card Configuration";
+      const char *title = "Mixar - Unsupported Graphics Card Configuration";
       const char *text = "";
-||||||| /tmp/tmpet7ff_2h/old
-    const char *title = "Blender - Unsupported Graphics Card Configuration";
-    const char *text = "";
-=======
-    const char *title = "Mixar - Unsupported Graphics Card Configuration";
-    const char *text = "";
->>>>>>> /tmp/tmpet7ff_2h/modified
 #if defined(WIN32)
-<<<<<<< /tmp/tmpet7ff_2h/new
       if (strncmp(blender::BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0 &&
           strstr(blender::BLI_getenv("PROCESSOR_IDENTIFIER"), "Qualcomm") != NULL)
       {
@@ -152,34 +143,9 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
             "Qualcomm devices require the \"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" "
             "from the Microsoft Store.\n\n"
             "Devices using processors older than a Qualcomm Snapdragon 8cx Gen3 are incompatible, "
-            "but may be able to run an emulated x64 copy of Blender, such as a 3.x LTS release.";
+            "but may be able to run an emulated x64 copy of Mixar, such as a 3.x LTS release.";
       }
       else
-||||||| /tmp/tmpet7ff_2h/old
-    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0 &&
-        strstr(BLI_getenv("PROCESSOR_IDENTIFIER"), "Qualcomm") != NULL)
-    {
-      text =
-          "A driver with support for OpenGL 4.3 or higher is required.\n\n"
-          "Qualcomm devices require the \"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" "
-          "from the Microsoft Store.\n\n"
-          "Devices using processors older than a Qualcomm Snapdragon 8cx Gen3 are incompatible, "
-          "but may be able to run an emulated x64 copy of Blender, such as a 3.x LTS release.";
-    }
-    else
-=======
-    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0 &&
-        strstr(BLI_getenv("PROCESSOR_IDENTIFIER"), "Qualcomm") != NULL)
-    {
-      text =
-          "A driver with support for OpenGL 4.3 or higher is required.\n\n"
-          "Qualcomm devices require the \"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" "
-          "from the Microsoft Store.\n\n"
-          "Devices using processors older than a Qualcomm Snapdragon 8cx Gen3 are incompatible, "
-          "but may be able to run an emulated x64 copy of Mixar, such as a 3.x LTS release.";
-    }
-    else
->>>>>>> /tmp/tmpet7ff_2h/modified
 #endif
       {
         text =

@@ -2598,25 +2598,12 @@ static void do_version_bokeh_blur_pixel_size(bNodeTree &node_tree, bNode &node)
 static bool window_has_sequence_editor_open(const wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
-<<<<<<< /tmp/tmpdusm94sr/new
   if (!screen) {
     return false;
   }
   for (ScrArea &area : screen->areabase) {
     for (SpaceLink &sl : area.spacedata) {
       if (sl.spacetype == SPACE_SEQ) {
-||||||| /tmp/tmpdusm94sr/old
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-      if (sl->spacetype == SPACE_SEQ) {
-=======
-  if (!screen) {
-    return false;
-  }
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-      if (sl->spacetype == SPACE_SEQ) {
->>>>>>> /tmp/tmpdusm94sr/modified
         return true;
       }
     }
@@ -2808,24 +2795,12 @@ void do_versions_after_linking_500(FileData *fd, Main *bmain)
         node_tree->tree_interface.add_socket(
             DATA_("Image"), "", "NodeSocketColor", NODE_INTERFACE_SOCKET_OUTPUT, nullptr);
 
-<<<<<<< /tmp/tmpdusm94sr/new
         bNode *active_group_output = nullptr;
         for (bNode &node : node_tree->nodes.items_reversed_mutable()) {
           if (node.type_legacy == CMP_NODE_COMPOSITE_DEPRECATED) {
             active_group_output = do_version_composite_node_in_scene_tree(*node_tree, node);
-||||||| /tmp/tmpdusm94sr/old
-        LISTBASE_FOREACH_BACKWARD_MUTABLE (bNode *, node, &node_tree->nodes) {
-          if (node->type_legacy == CMP_NODE_COMPOSITE_DEPRECATED) {
-            do_version_composite_node_in_scene_tree(*node_tree, *node);
-=======
-        bNode *active_group_output = nullptr;
-        LISTBASE_FOREACH_BACKWARD_MUTABLE (bNode *, node, &node_tree->nodes) {
-          if (node->type_legacy == CMP_NODE_COMPOSITE_DEPRECATED) {
-            active_group_output = do_version_composite_node_in_scene_tree(*node_tree, *node);
->>>>>>> /tmp/tmpdusm94sr/modified
           }
         }
-<<<<<<< /tmp/tmpdusm94sr/new
         if (active_group_output) {
           for (bNode &node : node_tree->nodes) {
             if (node.type_legacy == NODE_GROUP_OUTPUT) {
@@ -2835,18 +2810,6 @@ void do_versions_after_linking_500(FileData *fd, Main *bmain)
 
           active_group_output->flag |= NODE_DO_OUTPUT;
         }
-||||||| /tmp/tmpdusm94sr/old
-=======
-        if (active_group_output) {
-          LISTBASE_FOREACH (bNode *, node, &node_tree->nodes) {
-            if (node->type_legacy == NODE_GROUP_OUTPUT) {
-              node->flag &= ~NODE_DO_OUTPUT;
-            }
-          }
-
-          active_group_output->flag |= NODE_DO_OUTPUT;
-        }
->>>>>>> /tmp/tmpdusm94sr/modified
       }
     }
     FOREACH_NODETREE_BEGIN (bmain, node_tree, id) {

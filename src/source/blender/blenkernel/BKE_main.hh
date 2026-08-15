@@ -882,18 +882,12 @@ class MainAllIDsIterator {
   ((main)->versionfile < (ver) || \
    ((main)->versionfile == (ver) && (main)->subversionfile <= (subver)))
 
-<<<<<<< /tmp/tmpbmafc06o/new
-/**
- * \note in case `versionfile` is 0, this check is invalid, always return false then. This happens
-||||||| /tmp/tmpbmafc06o/old
-/* NOTE: in case versionfile is 0, this check is invalid, always return false then. This happens
-=======
 #define MAIN_MIXAR_VERSION_FILE_ATLEAST(main, ver, subver) \
   ((main)->mixar_versionfile > (ver) || \
    ((main)->mixar_versionfile == (ver) && (main)->mixar_subversionfile >= (subver)))
 
-/* NOTE: in case versionfile is 0, this check is invalid, always return false then. This happens
->>>>>>> /tmp/tmpbmafc06o/modified
+/**
+ * \note in case `versionfile` is 0, this check is invalid, always return false then. This happens
  * typically when a library is missing, by definition its data (placeholder IDs) does not need
  * versioning anyway then.
  */

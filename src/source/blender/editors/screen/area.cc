@@ -64,15 +64,11 @@
 
 #include "screen_intern.hh"
 
-<<<<<<< /tmp/tmp8cuyi_8o/new
 namespace blender {
 
-||||||| /tmp/tmp8cuyi_8o/old
-=======
 /* Mixar custom tab drawing for MIXIE space. */
 void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);
 
->>>>>>> /tmp/tmp8cuyi_8o/modified
 /* general area and region code */
 
 static void region_draw_gradient(const ARegion *region)
@@ -3751,22 +3747,14 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
   ui::view2d_view_restore(C);
 
   /* Set in layout. */
-<<<<<<< /tmp/tmp8cuyi_8o/new
   if (has_category_tabs && region->runtime->category) {
-    ui::panel_category_tabs_draw_all(C, region, region->runtime->category);
-||||||| /tmp/tmp8cuyi_8o/old
-  if (region->runtime->category) {
-    UI_panel_category_draw_all(region, region->runtime->category);
-=======
-  if (region->runtime->category) {
     ScrArea *area = CTX_wm_area(C);
     if (area && area->spacetype == SPACE_MIXIE) {
       UI_panel_category_draw_all_mixar(region, region->runtime->category);
     }
     else {
-      UI_panel_category_draw_all(region, region->runtime->category);
+      ui::panel_category_tabs_draw_all(C, region, region->runtime->category);
     }
->>>>>>> /tmp/tmp8cuyi_8o/modified
   }
 
   /* scrollers */

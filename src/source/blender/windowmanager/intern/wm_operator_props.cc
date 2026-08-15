@@ -145,13 +145,7 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
   prop = RNA_def_boolean(ot->srna,
                          "filter_backup",
                          (filter & FILE_TYPE_BLENDER_BACKUP) != 0,
-<<<<<<< /tmp/tmppirv1bob/new
-                         "Filter backup .blend files",
-||||||| /tmp/tmppirv1bob/old
-                         "Filter .blend files",
-=======
-                         "Filter .mixar files",
->>>>>>> /tmp/tmppirv1bob/modified
+                         "Filter backup .mixar files",
                          "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_boolean(

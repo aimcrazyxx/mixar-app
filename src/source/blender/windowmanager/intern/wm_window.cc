@@ -633,18 +633,10 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
   for (win_other = static_cast<wmWindow *>(wm->windows.first); win_other;
        win_other = win_other->next)
   {
-<<<<<<< /tmp/tmpt9af2oyv/new
-    if (win_other != win && win_other->parent == nullptr && !WM_window_is_temp_screen(win_other)) {
-      return false;
-||||||| /tmp/tmpt9af2oyv/old
-    if (win_other != win && win_other->parent == nullptr && !WM_window_is_temp_screen(win_other)) {
-      break;
-=======
     if (win_other != win && win_other->parent == nullptr && !WM_window_is_temp_screen(win_other) &&
         !wm_window_contains_agent_bubble_space(win_other))
     {
-      break;
->>>>>>> /tmp/tmpt9af2oyv/modified
+      return false;
     }
   }
   /* This window is the last. */
@@ -770,12 +762,6 @@ static std::string wm_window_title_text(
     bScreen *screen = WM_window_get_active_screen(win);
     const bool is_single = screen && BLI_listbase_is_single(&screen->areabase);
     ScrArea *area = (screen) ? static_cast<ScrArea *>(screen->areabase.first) : nullptr;
-<<<<<<< /tmp/tmpt9af2oyv/new
-||||||| /tmp/tmpt9af2oyv/old
-    const char *name = "Blender";
-=======
-    const char *name = "Mixar";
->>>>>>> /tmp/tmpt9af2oyv/modified
     if (is_single && area && area->spacetype != SPACE_EMPTY) {
       return IFACE_(ED_area_name(area).c_str());
     }
@@ -1302,7 +1288,6 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
       win->cursor = WM_CURSOR_DEFAULT;
     }
 
-<<<<<<< /tmp/tmpt9af2oyv/new
     /* As the window has not yet been created: #GHOST_IWindow::setPath cannot be called yet.
      * Use this callback to store the file-path path which is used later in this function
      * after the window has been created. */
@@ -1313,11 +1298,6 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
                                   std::nullopt;
     std::string win_title = wm_window_title_text(wm, win, window_filepath_fn);
     wm_window_ghostwindow_add(wm, win_title.c_str(), win, is_dialog);
-||||||| /tmp/tmpt9af2oyv/old
-    wm_window_ghostwindow_add(wm, "Blender", win, is_dialog);
-=======
-    wm_window_ghostwindow_add(wm, "Mixar", win, is_dialog);
->>>>>>> /tmp/tmpt9af2oyv/modified
   }
 
   if (win->runtime->ghostwin != nullptr) {

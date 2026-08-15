@@ -1768,17 +1768,13 @@ void ED_spacetype_view3d()
   art->regionid = RGN_TYPE_XR;
   BLI_addhead(&st->regiontypes, art);
 
-<<<<<<< /tmp/tmp5qizhbbk/new
   WM_menutype_add(MEM_new<MenuType>(__func__, ed::geometry::node_group_operator_assets_menu()));
-||||||| /tmp/tmp5qizhbbk/old
-=======
   /* regions: agent scene strip (Mixar) */
   view3d_agent_strip_region_register(st.get());
 
   /* regions: Director camera-beat timeline (Mixar) */
   view3d_director_timeline_region_register(st.get());
 
->>>>>>> /tmp/tmp5qizhbbk/modified
   WM_menutype_add(
       MEM_new<MenuType>(__func__, ed::geometry::node_group_operator_assets_menu_unassigned()));
 

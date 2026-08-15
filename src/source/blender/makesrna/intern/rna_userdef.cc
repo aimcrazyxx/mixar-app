@@ -1676,11 +1676,6 @@ static void rna_experimental_no_data_block_packing_update(bContext *C, PointerRN
   rna_userdef_asset_libraries_refresh(C, ptr);
 }
 
-<<<<<<< /tmp/tmpyoubi87n/new
-}  // namespace blender
-
-||||||| /tmp/tmpyoubi87n/old
-=======
 static float rna_ThemeAgentBubble_bg_alpha_get(PointerRNA *ptr)
 {
   ThemeSpace *ts = (ThemeSpace *)ptr->data;
@@ -1693,7 +1688,8 @@ static void rna_ThemeAgentBubble_bg_alpha_set(PointerRNA *ptr, float value)
   ts->back[3] = (unsigned char)(value * 255.0f + 0.5f);
 }
 
->>>>>>> /tmp/tmpyoubi87n/modified
+}  // namespace blender
+
 #else
 
 namespace blender {

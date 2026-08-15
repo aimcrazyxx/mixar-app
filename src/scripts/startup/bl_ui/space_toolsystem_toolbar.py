@@ -2985,11 +2985,6 @@ class _defs_image_uv_sculpt:
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
             uv_sculpt = context.scene.tool_settings.uv_sculpt
-<<<<<<< /tmp/tmpvofhyexj/new
-            radius = uv_sculpt.size / 2
-||||||| /tmp/tmpvofhyexj/old
-            radius = uv_sculpt.size
-=======
             # `uv_sculpt.size` is the brush DIAMETER in pixels (PROP_PIXEL_DIAMETER);
             # the operator uses `size / 2` as the working radius
             # (sculpt_uv.cc:505). Match it here so the cursor reflects the
@@ -2998,7 +2993,6 @@ class _defs_image_uv_sculpt:
             # and all UVs end up clustered near `p≈1` where every
             # falloff preset returns ~1.0 and behaves identically.
             radius = uv_sculpt.size / 2
->>>>>>> /tmp/tmpvofhyexj/modified
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
         return dict(
@@ -3030,14 +3024,8 @@ class _defs_image_uv_sculpt:
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
             uv_sculpt = context.scene.tool_settings.uv_sculpt
-<<<<<<< /tmp/tmpvofhyexj/new
-            radius = uv_sculpt.size / 2
-||||||| /tmp/tmpvofhyexj/old
-            radius = uv_sculpt.size
-=======
             # See note on `sculpt.uv_sculpt_grab.draw_cursor` above.
             radius = uv_sculpt.size / 2
->>>>>>> /tmp/tmpvofhyexj/modified
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
         return dict(
@@ -3066,14 +3054,8 @@ class _defs_image_uv_sculpt:
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
             uv_sculpt = context.scene.tool_settings.uv_sculpt
-<<<<<<< /tmp/tmpvofhyexj/new
-            radius = uv_sculpt.size / 2
-||||||| /tmp/tmpvofhyexj/old
-            radius = uv_sculpt.size
-=======
             # See note on `sculpt.uv_sculpt_grab.draw_cursor` above.
             radius = uv_sculpt.size / 2
->>>>>>> /tmp/tmpvofhyexj/modified
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
         return dict(

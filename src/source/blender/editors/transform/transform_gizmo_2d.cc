@@ -244,15 +244,9 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
   if (area->spacetype == SPACE_IMAGE) {
     const SpaceImage *sima = static_cast<const SpaceImage *>(area->spacedata.first);
     switch (sima->mode) {
-<<<<<<< /tmp/tmp48k_7nzc/new
-      case SI_MODE_UV: {
-        const Main *bmain = CTX_data_main(C);
-||||||| /tmp/tmp48k_7nzc/old
-      case SI_MODE_UV: {
-=======
       case SI_MODE_UV:
       case SI_MODE_MIXAR_UV: {
->>>>>>> /tmp/tmp48k_7nzc/modified
+        const Main *bmain = CTX_data_main(C);
         Scene *scene = CTX_data_scene(C);
         ViewLayer *view_layer = CTX_data_view_layer(C);
         Vector<Object *> objects =

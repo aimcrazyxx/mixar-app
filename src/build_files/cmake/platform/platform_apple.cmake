@@ -390,7 +390,6 @@ add_bundled_libraries(ceres/lib)
 set(ZSTD_ROOT_DIR ${LIBDIR}/zstd)
 find_package(Zstd REQUIRED)
 
-<<<<<<< /tmp/tmp97ud19xn/new
 if(WITH_DRACO)
   find_package(draco REQUIRED CONFIG)
 endif()
@@ -406,8 +405,6 @@ if(WITH_TRACY)
   find_package(Tracy REQUIRED CONFIG)
 endif()
 
-||||||| /tmp/tmp97ud19xn/old
-=======
 # Some CMake find modules re-run dependency discovery and restore SDK
 # /usr/include paths after the initial package lookup. Normalize again once
 # all Apple dependency discovery has completed.
@@ -416,7 +413,6 @@ remove_macos_sdk_usr_include_dirs(BZIP2_INCLUDE_DIRS)
 remove_macos_sdk_usr_include_dirs(BZIP2_INCLUDE_DIR)
 remove_macos_sdk_usr_include_dirs(PNG_INCLUDE_DIRS)
 
->>>>>>> /tmp/tmp97ud19xn/modified
 if(EXISTS ${LIBDIR})
   without_system_libs_end()
 endif()

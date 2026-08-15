@@ -2613,15 +2613,9 @@ bool WM_autosave_write(wmWindowManager *wm, Main *bmain, ReportList *reports)
    * went through the live open path — the state behind the reported
    * crash-on-save of recovered autosave files. */
   BlendFileWriteParams params{};
-<<<<<<< /tmp/tmps6tg1s6n/new
-  const bool success = BLO_write_file(bmain, filepath, fileflags, &params, reports);
-||||||| /tmp/tmps6tg1s6n/old
-  BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
-=======
   std::vector<wmWindow *> agent_bubble_windows = wm_agent_bubble_windows_unlink_for_write(wm);
-  BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
+  const bool success = BLO_write_file(bmain, filepath, fileflags, &params, reports);
   wm_agent_bubble_windows_relink_after_write(wm, agent_bubble_windows);
->>>>>>> /tmp/tmps6tg1s6n/modified
 
   /* Restart auto-save timer. */
   wm_autosave_timer_end(wm);
@@ -4488,7 +4482,6 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
       "Save Copy",
       "Save a copy of the actual working state but does not make saved file active");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-<<<<<<< /tmp/tmps6tg1s6n/new
 
   prop = RNA_def_boolean(
       ot->srna,
@@ -4497,8 +4490,6 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
       "Show Save Modified Images Dialog",
       "Show a popup dialog to save modified images before saving the blend file");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-||||||| /tmp/tmps6tg1s6n/old
-=======
 
   static const EnumPropertyItem save_file_extension_items[] = {
       {0, "MIXAR", 0, "Mixar Files", "Save as .mixar file"},
@@ -4513,7 +4504,6 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
                       "File Extension",
                       "File extension filter");
   RNA_def_property_flag(prop, PROP_HIDDEN);
->>>>>>> /tmp/tmps6tg1s6n/modified
 }
 
 static wmOperatorStatus wm_save_mainfile_invoke(bContext *C,
@@ -5014,19 +5004,9 @@ static void file_overwrite_detailed_info_show(ui::Layout &parent_layout, Main *b
       layout.separator(1.4f);
     }
 
-<<<<<<< /tmp/tmps6tg1s6n/new
-    layout.label(RPT_("This file is managed by the Blender asset system. It can only be"),
+    layout.label(RPT_("This file is managed by the Mixar asset system. It can only be"),
                  ICON_NONE);
     layout.label(RPT_("saved as a new, regular file."), ICON_NONE);
-||||||| /tmp/tmps6tg1s6n/old
-    layout->label(RPT_("This file is managed by the Blender asset system. It can only be"),
-                  ICON_NONE);
-    layout->label(RPT_("saved as a new, regular file."), ICON_NONE);
-=======
-    layout->label(RPT_("This file is managed by the Mixar asset system. It can only be"),
-                  ICON_NONE);
-    layout->label(RPT_("saved as a new, regular file."), ICON_NONE);
->>>>>>> /tmp/tmps6tg1s6n/modified
   }
 
   if (bmain->colorspace.is_missing_opencolorio_config) {
@@ -5237,14 +5217,8 @@ static void wm_mixar_floating_docks_restore_after_modal();
 static void wm_block_file_close_cancel(bContext *C, void *arg_block, void * /*arg_data*/)
 {
   wmWindow *win = CTX_wm_window(C);
-<<<<<<< /tmp/tmps6tg1s6n/new
   popup_block_close(C, win, static_cast<ui::Block *>(arg_block));
-||||||| /tmp/tmps6tg1s6n/old
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
-=======
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
   wm_mixar_floating_docks_restore_after_modal();
->>>>>>> /tmp/tmps6tg1s6n/modified
 }
 
 static void wm_block_file_close_discard(bContext *C, void *arg_block, void *arg_data)
@@ -5256,14 +5230,8 @@ static void wm_block_file_close_discard(bContext *C, void *arg_block, void *arg_
    * the popup might be closed by the callback, which will lead
    * to a crash. */
   wmWindow *win = CTX_wm_window(C);
-<<<<<<< /tmp/tmps6tg1s6n/new
   popup_block_close(C, win, static_cast<ui::Block *>(arg_block));
-||||||| /tmp/tmps6tg1s6n/old
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
-=======
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
   wm_mixar_floating_docks_restore_after_modal();
->>>>>>> /tmp/tmps6tg1s6n/modified
 
   callback->exec(C, callback->user_data);
   WM_generic_callback_free(callback);
@@ -5278,14 +5246,8 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   bool execute_callback = true;
 
   wmWindow *win = CTX_wm_window(C);
-<<<<<<< /tmp/tmps6tg1s6n/new
   popup_block_close(C, win, static_cast<ui::Block *>(arg_block));
-||||||| /tmp/tmps6tg1s6n/old
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
-=======
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
   wm_mixar_floating_docks_restore_after_modal();
->>>>>>> /tmp/tmps6tg1s6n/modified
 
   int modified_images_count = ED_image_save_all_modified_info(CTX_data_main(C), nullptr);
   if (modified_images_count > 0 && save_images_when_file_is_closed) {

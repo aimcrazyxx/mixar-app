@@ -839,33 +839,27 @@ static StructRNA *rna_Space_refine(PointerRNA *ptr)
     case SPACE_CLIP:
       return RNA_SpaceClipEditor;
     case SPACE_SPREADSHEET:
-<<<<<<< /tmp/tmpjhnsq1fm/new
       return RNA_SpaceSpreadsheet;
-||||||| /tmp/tmpjhnsq1fm/old
-      return &RNA_SpaceSpreadsheet;
-=======
-      return &RNA_SpaceSpreadsheet;
     case SPACE_MIXIE:
-      return &RNA_SpaceMixie;
+      return RNA_SpaceMixie;
     case SPACE_MIXIE_CHAT:
-      return &RNA_SpaceMixieChat;
+      return RNA_SpaceMixieChat;
     case SPACE_AGENT_BUBBLE:
-      return &RNA_SpaceAgentBubble;
+      return RNA_SpaceAgentBubble;
     case SPACE_MIXAR_LAYERS:
-      return &RNA_SpaceMixarLayers;
+      return RNA_SpaceMixarLayers;
     case SPACE_MIXAR_PROPERTIES:
-      return &RNA_SpaceMixarProperties;
+      return RNA_SpaceMixarProperties;
     case SPACE_MIXAR_ASSETS:
-      return &RNA_SpaceMixarAssets;
+      return RNA_SpaceMixarAssets;
     /* SPACE_MIXAR_UV_PROPERTIES removed */
     case SPACE_BAKING:
-      return &RNA_SpaceBaking;
+      return RNA_SpaceBaking;
     case SPACE_TEXTURE_SETS:
-      return &RNA_SpaceTextureSets;
+      return RNA_SpaceTextureSets;
 
     case SPACE_TOPBAR:
-      return &RNA_SpaceTopBar;
->>>>>>> /tmp/tmpjhnsq1fm/modified
+      return RNA_SpaceTopBar;
 
       /* Currently no type info. */
     case SPACE_SCRIPT:
@@ -4073,18 +4067,14 @@ static const EnumPropertyItem *rna_FileAssetSelectParams_import_method_itemf(
   return items;
 }
 
-<<<<<<< /tmp/tmpjhnsq1fm/new
-}  // namespace blender
-
-||||||| /tmp/tmpjhnsq1fm/old
-=======
 static void rna_SpaceMixie_mode_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   ScrArea *area = rna_area_from_space(ptr);
   ED_area_tag_redraw(area);
 }
 
->>>>>>> /tmp/tmpjhnsq1fm/modified
+}  // namespace blender
+
 #else
 
 namespace blender {

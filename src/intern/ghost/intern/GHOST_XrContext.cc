@@ -102,21 +102,13 @@ void GHOST_XrContext::createOpenXRInstance(
 {
   XrInstanceCreateInfo create_info = {XR_TYPE_INSTANCE_CREATE_INFO};
 
-<<<<<<< /tmp/tmpgyda_i4t/new
-  blender::STRNCPY(create_info.applicationInfo.applicationName, "Blender");
+  blender::STRNCPY(create_info.applicationInfo.applicationName, "Mixar");
 
   /* Explicitly target OpenXR API version 1.0. Note that the API_VERSION_1_0 macro is only
    * available in 1.1+ SDKs. For 1.0 SDKs, target the current SDK version. */
 #ifdef XR_API_VERSION_1_0
   create_info.applicationInfo.apiVersion = XR_API_VERSION_1_0;
 #else
-||||||| /tmp/tmpgyda_i4t/old
-  std::string("Blender").copy(create_info.applicationInfo.applicationName,
-                              XR_MAX_APPLICATION_NAME_SIZE);
-=======
-  std::string("Mixar").copy(create_info.applicationInfo.applicationName,
-                              XR_MAX_APPLICATION_NAME_SIZE);
->>>>>>> /tmp/tmpgyda_i4t/modified
   create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 #endif
 

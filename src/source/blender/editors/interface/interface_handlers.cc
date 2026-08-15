@@ -3468,16 +3468,7 @@ static void ui_textedit_move_vertical(uiBut *but,
  *
  * \note `but->block->aspect` is used here, so drawing button style is getting scaled too.
  */
-<<<<<<< /tmp/tmpdb2g3731/new
 static void textedit_set_cursor_pos(Button *but, const ARegion *region, const float2 xy)
-||||||| /tmp/tmpdb2g3731/old
-static void ui_textedit_set_cursor_pos(uiBut *but, const ARegion *region, const float x)
-=======
-static void ui_textedit_set_cursor_pos(uiBut *but,
-                                       const ARegion *region,
-                                       const float x,
-                                       const float y)
->>>>>>> /tmp/tmpdb2g3731/modified
 {
   if (but->type == ButtonType::TextBox) {
     textbox_textedit_set_cursor_pos(static_cast<ButtonTextBox *>(but), region, xy);
@@ -3609,24 +3600,9 @@ static void ui_textedit_set_cursor_pos(uiBut *but,
   button_text_password_hide(password_str, but, true);
 }
 
-<<<<<<< /tmp/tmpdb2g3731/new
 static void textedit_set_cursor_select(Button *but, HandleButtonData *data, const float2 xy)
-||||||| /tmp/tmpdb2g3731/old
-static void ui_textedit_set_cursor_select(uiBut *but, uiHandleButtonData *data, const float x)
-=======
-static void ui_textedit_set_cursor_select(uiBut *but,
-                                          uiHandleButtonData *data,
-                                          const float x,
-                                          const float y)
->>>>>>> /tmp/tmpdb2g3731/modified
 {
-<<<<<<< /tmp/tmpdb2g3731/new
   textedit_set_cursor_pos(but, data->region, xy);
-||||||| /tmp/tmpdb2g3731/old
-  ui_textedit_set_cursor_pos(but, data->region, x);
-=======
-  ui_textedit_set_cursor_pos(but, data->region, x, y);
->>>>>>> /tmp/tmpdb2g3731/modified
 
   but->selsta = but->pos;
   but->selend = data->text_edit.sel_pos_init;
@@ -3845,24 +3821,9 @@ static bool textedit_copypaste(Button *but, TextEdit &text_edit, const int mode)
   /* paste */
   if (mode == UI_TEXTEDIT_PASTE) {
     int buf_len;
-<<<<<<< /tmp/tmpdb2g3731/new
     char *pbuf = but->type != ButtonType::TextBox ?
                      WM_clipboard_text_get_firstline(false, but_is_utf8(but), &buf_len) :
                      WM_clipboard_text_get(false, but_is_utf8(but), &buf_len);
-||||||| /tmp/tmpdb2g3731/old
-    char *pbuf = WM_clipboard_text_get_firstline(false, UI_but_is_utf8(but), &buf_len);
-=======
-    char *pbuf;
-
-    if (ui_but_is_multiline_text(but)) {
-      /* Multi-line: get full clipboard contents (preserving newlines) */
-      pbuf = WM_clipboard_text_get(false, UI_but_is_utf8(but), &buf_len);
-    }
-    else {
-      /* Single-line: extract only the first line */
-      pbuf = WM_clipboard_text_get_firstline(false, UI_but_is_utf8(but), &buf_len);
-    }
->>>>>>> /tmp/tmpdb2g3731/modified
 
     if (pbuf) {
       textedit_insert_buf(but, text_edit, pbuf, buf_len);
@@ -4642,7 +4603,6 @@ static int do_but_textedit(
        * (selects all text, no cursor pos) */
       if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK)) {
         if (is_press_in_button) {
-<<<<<<< /tmp/tmpdb2g3731/new
           /* Extend text selection when holding shift. */
           if (event->modifier & KM_SHIFT) {
             text_edit.sel_pos_init = but->pos == but->selsta ? but->selend : but->selsta;
@@ -4653,15 +4613,6 @@ static int do_but_textedit(
             but->selsta = but->selend = but->pos;
             text_edit.sel_pos_init = but->pos;
           }
-||||||| /tmp/tmpdb2g3731/old
-          ui_textedit_set_cursor_pos(but, data->region, event->xy[0]);
-          but->selsta = but->selend = but->pos;
-          text_edit.sel_pos_init = but->pos;
-=======
-          ui_textedit_set_cursor_pos(but, data->region, event->xy[0], event->xy[1]);
-          but->selsta = but->selend = but->pos;
-          text_edit.sel_pos_init = but->pos;
->>>>>>> /tmp/tmpdb2g3731/modified
 
           button_activate_state(C, but, BUTTON_STATE_TEXT_SELECTING);
           retval = WM_UI_HANDLER_BREAK;
@@ -5245,7 +5196,6 @@ static int do_but_textedit_select(
       rctf rect;
       block_to_window_rctf(data->region, block, &rect, &but->rect);
 
-<<<<<<< /tmp/tmpdb2g3731/new
       rect.ymax -= textbox_vertical_padding() / block->aspect;
       rect.ymin += textbox_vertical_padding() / block->aspect;
 
@@ -5269,11 +5219,6 @@ static int do_but_textedit_select(
     }
     case MOUSEMOVE: {
       textedit_set_cursor_select(but, data, float2(event->xy));
-||||||| /tmp/tmpdb2g3731/old
-      ui_textedit_set_cursor_select(but, data, event->xy[0]);
-=======
-      ui_textedit_set_cursor_select(but, data, event->xy[0], event->xy[1]);
->>>>>>> /tmp/tmpdb2g3731/modified
       retval = WM_UI_HANDLER_BREAK;
       break;
     }

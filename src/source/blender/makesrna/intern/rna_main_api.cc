@@ -91,16 +91,10 @@
 #  include "DNA_world_types.h"
 
 #  include "ED_node.hh"
-<<<<<<< /tmp/tmpdru9x7c7/new
+#  include "ED_render.hh"
 #  include "ED_scene.hh"
 
 #  include "NOD_defaults.hh"
-||||||| /tmp/tmpdru9x7c7/old
-#  include "ED_screen.hh"
-=======
-#  include "ED_render.hh"
-#  include "ED_screen.hh"
->>>>>>> /tmp/tmpdru9x7c7/modified
 
 #  include "BLT_translation.hh"
 
@@ -135,7 +129,6 @@ static void rna_Main_ID_remove(Main *bmain,
                 id->name + 2);
     return;
   }
-<<<<<<< /tmp/tmpdru9x7c7/new
 
   /* Volume light probes being baked cannot be removed. */
   if (GS(id->name) == ID_OB) {
@@ -153,14 +146,11 @@ static void rna_Main_ID_remove(Main *bmain,
     }
   }
 
-||||||| /tmp/tmpdru9x7c7/old
-=======
   /* Mixar: icon-preview render jobs read the live ID on the wmJob thread (images are not
    * duplicated for the job, see `duplicate_ids()` in render_preview.cc), so freeing the ID
    * here would be a use-after-free race. Upstream editor operators call
    * ED_preview_kill_jobs() before deleting; this Python path must do the same. */
   ED_preview_kill_jobs_for_id(static_cast<wmWindowManager *>(bmain->wm.first), id);
->>>>>>> /tmp/tmpdru9x7c7/modified
   if (do_unlink) {
     BKE_id_delete(bmain, id);
     id_ptr->invalidate();

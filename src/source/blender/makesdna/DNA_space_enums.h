@@ -766,14 +766,8 @@ enum eSpaceImage_Mode : char {
   SI_MODE_PAINT = 1,
   SI_MODE_MASK = 2,
   SI_MODE_UV = 3,
-<<<<<<< /tmp/tmp6z7kzd3i/new
-};
-||||||| /tmp/tmp6z7kzd3i/old
-} eSpaceImage_Mode;
-=======
   SI_MODE_MIXAR_UV = 4,
-} eSpaceImage_Mode;
->>>>>>> /tmp/tmp6z7kzd3i/modified
+};
 
 /** #SpaceImage.flag */
 enum eSpaceImage_Flag : int {
@@ -1228,12 +1222,6 @@ enum eSpace_Type : char {
 
 #define IMG_SIZE_FALLBACK 256
 
-<<<<<<< /tmp/tmp6z7kzd3i/new
 /** \} */
 
 }  // namespace blender
-||||||| /tmp/tmp6z7kzd3i/old
-/** \} */
-=======
-/** \} */
->>>>>>> /tmp/tmp6z7kzd3i/modified

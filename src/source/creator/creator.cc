@@ -339,11 +339,8 @@ int main(int argc,
 #endif
 )
 {
-<<<<<<< /tmp/tmpq039x1ud/new
   using namespace blender;
 
-||||||| /tmp/tmpq039x1ud/old
-=======
 #if !defined(__APPLE__) && !defined(_WIN32)
   /* Initialize CURL once at program startup for authentication system. */
   init_auth_system();
@@ -351,7 +348,6 @@ int main(int argc,
   atexit(cleanup_auth_system);
 #endif
 
->>>>>>> /tmp/tmpq039x1ud/modified
   bContext *C;
 #ifndef WITH_PYTHON_MODULE
   bArgs *ba;

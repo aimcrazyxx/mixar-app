@@ -244,12 +244,8 @@ extern bool view3d_camera_border_hack_test;
 
 /* view3d_navigate_smoothview.cc */
 void view3d_smooth_free(RegionView3D *rv3d);
-<<<<<<< /tmp/tmpl43ixa6b/new
-
-}  // namespace blender
-||||||| /tmp/tmpl43ixa6b/old
-=======
 
 /* view3d_toast_click.cc */
 void view3d_toast_click_register(ARegion *region);
->>>>>>> /tmp/tmpl43ixa6b/modified
+
+}  // namespace blender

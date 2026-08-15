@@ -1303,11 +1303,6 @@ struct SpreadsheetRowFilter {
 };
 
 /** \} */
-<<<<<<< /tmp/tmpso2u_fh6/new
-
-}  // namespace blender
-||||||| /tmp/tmpso2u_fh6/old
-=======
 
 /* -------------------------------------------------------------------- */
 /** \name Mixie Space
@@ -1468,4 +1463,5 @@ typedef struct SpaceTextureSets {
 } SpaceTextureSets;
 
 /** \} */
->>>>>>> /tmp/tmpso2u_fh6/modified
+
+}  // namespace blender
