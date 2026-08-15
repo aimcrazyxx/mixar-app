@@ -16,18 +16,14 @@ on:
     paths:
       - "installer/**"
       - "scripts/packaging/**"
-      - "src/scripts/mixar/config/**"
       - "src/scripts/mixar/modules/byok/**"
-      - "tests/test_mixar_endpoints.py"
       - "tests/test_byok_base_url.py"
       - ".github/workflows/validate-packaging.yml"
   pull_request:
     paths:
       - "installer/**"
       - "scripts/packaging/**"
-      - "src/scripts/mixar/config/**"
       - "src/scripts/mixar/modules/byok/**"
-      - "tests/test_mixar_endpoints.py"
       - "tests/test_byok_base_url.py"
       - ".github/workflows/validate-packaging.yml"
   workflow_dispatch:
@@ -95,21 +91,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # Only the two files this fork owns gate the job. Both run in a bare
-      # interpreter: config/http.py imports requests lazily inside the session
-      # factory, test_byok_base_url.py installs its own bpy/requests stubs, and
-      # the repo's root conftest.py stubs bpy for the rest. Running the whole
-      # tests/ tree here would instead import ~40 files that need the Blender
-      # runtime dependencies, and pytest would exit 2 on collection errors
-      # before ever reaching the code this workflow is meant to protect.
-      - name: Test the endpoint and BYOK modules
+      # Only the module this fork owns gates the job. It runs in a bare
+      # interpreter: the test installs its own bpy and requests stubs and keeps
+      # its settings file inside a tmp directory. Running the whole tests/ tree
+      # here would instead import ~40 files that need the Blender runtime
+      # dependencies, and pytest would exit 2 on collection errors before ever
+      # reaching the code this workflow is meant to protect.
+      - name: Test the BYOK provider module
         run: |
           python3 -m pip install --disable-pip-version-check pytest
-          test -f tests/test_mixar_endpoints.py || { echo "::error::tests/test_mixar_endpoints.py is missing"; exit 1; }
           test -f tests/test_byok_base_url.py || { echo "::error::tests/test_byok_base_url.py is missing"; exit 1; }
-          python3 -m pytest -q -p no:cacheprovider \
-            tests/test_mixar_endpoints.py \
-            tests/test_byok_base_url.py
+          python3 -m pytest -q -p no:cacheprovider tests/test_byok_base_url.py
 
       # Informational: says whether this fork broke anything else, without
       # letting a missing runtime dependency mask a packaging regression.

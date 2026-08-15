@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Tests for the BYOK custom base URL normalizer.
+"""Tests for the BYOK custom base URL: normalizer, store and precedence.
 
 The module under test lives inside the Blender add-on tree, so it is loaded by
 path with lightweight stand-ins for ``bpy`` and ``requests``. If the file or its
 imports are unavailable in a bare interpreter the module skips instead of
 failing, so this file never turns a green suite red on a machine without a
 built bundle.
+
+Every store test points ``MIXAR_USER_CONFIG_DIR`` at a tmp directory, so the
+suite never reads or writes the developer's real settings.
 """
 
 from __future__ import annotations
@@ -77,6 +80,14 @@ def _load_module():
 base_url = _load_module()
 
 
+@pytest.fixture
+def isolated_store(monkeypatch, tmp_path):
+    """Point the store at a tmp directory and clear the env override."""
+    monkeypatch.setenv(base_url.ENV_CONFIG_DIR, str(tmp_path))
+    monkeypatch.delenv(base_url.ENV_VAR, raising=False)
+    return tmp_path
+
+
 @pytest.mark.parametrize(
     "raw, expected",
     [
@@ -137,9 +148,68 @@ def test_absurdly_long_url_is_rejected():
         base_url.normalize(too_long)
 
 
-def test_env_var_locks_the_field(monkeypatch):
+def test_env_var_locks_the_field(monkeypatch, tmp_path):
+    monkeypatch.setenv(base_url.ENV_CONFIG_DIR, str(tmp_path))
     monkeypatch.delenv(base_url.ENV_VAR, raising=False)
     assert not base_url.is_locked_by_env()
 
     monkeypatch.setenv(base_url.ENV_VAR, "https://env.example.com")
     assert base_url.is_locked_by_env()
+
+
+def test_stored_value_round_trips(isolated_store):
+    assert base_url.get_stored() == ""
+    assert base_url.get_base_url() == ""
+
+    saved = base_url.set_stored("gateway.example.com/openai/v1/")
+    assert saved == "https://gateway.example.com/openai/v1"
+    assert base_url.get_stored() == saved
+    assert base_url.resolve() == (saved, "user")
+
+    # Blank clears it and the app goes back to the backend's own choice.
+    assert base_url.set_stored("") == ""
+    assert base_url.get_stored() == ""
+    assert base_url.get_base_url() == ""
+
+
+def test_store_lives_in_its_own_file_only(isolated_store):
+    """The app's own config/mixar.json is never touched by this fork."""
+    base_url.set_stored("https://api.example.com")
+
+    written = sorted(path.name for path in isolated_store.iterdir())
+    assert written == [base_url.STORE_FILENAME]
+    assert Path(base_url.store_path()) == isolated_store / base_url.STORE_FILENAME
+
+
+def test_unusable_stored_value_is_ignored(isolated_store):
+    (isolated_store / base_url.STORE_FILENAME).write_text(
+        '{"byok_base_url": "ftp://nope.example.com"}', encoding="utf-8"
+    )
+    assert base_url.get_stored() == ""
+    assert base_url.get_base_url() == ""
+
+
+def test_corrupt_store_is_ignored(isolated_store):
+    (isolated_store / base_url.STORE_FILENAME).write_text("{not json", encoding="utf-8")
+    assert base_url.get_stored() == ""
+    # ... and a later save repairs the file instead of raising.
+    assert base_url.set_stored("https://api.example.com") == "https://api.example.com"
+    assert base_url.get_stored() == "https://api.example.com"
+
+
+def test_env_var_beats_the_stored_value(isolated_store, monkeypatch):
+    base_url.set_stored("https://saved.example.com")
+    monkeypatch.setenv(base_url.ENV_VAR, "https://env.example.com")
+
+    assert base_url.resolve() == ("https://env.example.com", "env")
+    assert base_url.is_locked_by_env()
+
+
+def test_describe_mentions_the_source(isolated_store, monkeypatch):
+    assert "backend" in base_url.describe().lower()
+
+    base_url.set_stored("https://saved.example.com")
+    assert "saved" in base_url.describe().lower()
+
+    monkeypatch.setenv(base_url.ENV_VAR, "https://env.example.com")
+    assert base_url.ENV_VAR in base_url.describe()

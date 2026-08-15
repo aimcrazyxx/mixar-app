@@ -12,21 +12,33 @@ impossible to aim the agent at an OpenAI-compatible endpoint of your own.
 
 This module supplies the missing piece without touching any upstream file:
 
-* ``normalize`` — validation shared by the UI, the store and the probe
-* ``resolve`` — precedence: ``MIXAR_BYOK_BASE_URL`` env var > stored user
+* ``normalize`` - validation shared by the UI, the store and the probe
+* ``resolve`` - precedence: ``MIXAR_BYOK_BASE_URL`` env var > stored user
   value > empty (i.e. unchanged upstream behaviour)
-* ``set_stored`` / ``get_stored`` — persistence in the writable user config
-  layer, so the value survives app updates and never writes inside the bundle
-* ``install_patches`` — wraps ``AgentService.save_credentials_all`` so the PUT
+* ``set_stored`` / ``get_stored`` - persistence in this module's own JSON file
+* ``install_patches`` - wraps ``AgentService.save_credentials_all`` so the PUT
   payload carries ``base_url`` **only** when the user set one; with no custom
   value the request is byte-identical to upstream
-* ``probe`` — threaded reachability check for the dialog's Test button
+* ``probe`` - threaded reachability check for the dialog's Test button
+
+Scope: the *provider* endpoint, nothing else. The Mixar backend itself is
+whatever the build shipped (``https://api.mixar.app``) and this fork
+deliberately does not override it.
+
+Why a store of its own instead of ``mixar.config.add_config``: that helper
+rewrites ``config/mixar.json`` *inside* the installed application directory,
+which needs administrator rights under Program Files, is wiped by every
+update and invalidates the macOS code signature. The value is kept next to
+Blender's other user config instead, and written atomically so a crash
+mid-save cannot truncate it.
 
 Nothing here imports ``bpy`` at module scope, so it can be unit-tested outside
 Blender.
 """
 
+import json
 import os
+import sys
 import threading
 from typing import Callable, Optional, Tuple
 
@@ -34,17 +46,20 @@ from mixar.config.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Env var wins over the stored value — handy for CI and for one-off runs.
+# Env var wins over the stored value - handy for CI and for one-off runs.
 ENV_VAR = "MIXAR_BYOK_BASE_URL"
-# Key inside the user config layer (config/store.py).
+# Key inside this module's JSON store.
 CONFIG_KEY = "byok_base_url"
+# Overrides where that store lives (tests, portable installs).
+ENV_CONFIG_DIR = "MIXAR_USER_CONFIG_DIR"
+STORE_FILENAME = "byok.json"
 # Opt-in for plain http:// on a public host.
 ENV_ALLOW_INSECURE = "MIXAR_ALLOW_INSECURE_ENDPOINTS"
 
 MAX_LENGTH = 512
 PROBE_TIMEOUT = 6.0
 # Tried in order; the first one that answers below 500 proves reachability.
-# A 401/403 counts as reachable — it means something is listening and talking
+# A 401/403 counts as reachable - it means something is listening and talking
 # HTTP, which is all the Test button claims to verify.
 PROBE_PATHS = ("/models", "/v1/models", "/")
 
@@ -54,6 +69,8 @@ _SOURCE_DEFAULT = "default"
 
 _LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal")
 _LOCAL_SUFFIXES = (".local", ".localhost", ".internal", ".test", ".lan")
+
+_STORE_LOCK = threading.RLock()
 
 
 class BaseUrlError(ValueError):
@@ -83,7 +100,7 @@ def _is_local_host(host: str) -> bool:
 def normalize(raw: Optional[str]) -> str:
     """Return a canonical base URL, or ``""`` for empty input.
 
-    Unlike the app's backend-URL normalizer this **keeps the path**, because
+    Unlike a backend-URL normalizer this **keeps the path**, because
     OpenAI-compatible gateways are routinely mounted on one
     (``https://gw.example.com/openai/v1``). Only the trailing slash is dropped
     so callers can concatenate ``/chat/completions`` safely.
@@ -117,7 +134,7 @@ def normalize(raw: Optional[str]) -> str:
     if parsed.scheme == "http" and not _is_local_host(parsed.netloc):
         if (os.environ.get(ENV_ALLOW_INSECURE) or "").strip() not in ("1", "true", "yes", "on"):
             raise BaseUrlError(
-                "Refusing plain http:// to a public host — use https://, or set "
+                "Refusing plain http:// to a public host - use https://, or set "
                 "{0}=1 if you really mean it.".format(ENV_ALLOW_INSECURE)
             )
 
@@ -126,19 +143,76 @@ def normalize(raw: Optional[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Persistence (writable user layer — never inside the app bundle)
+# Persistence (own file, in the writable user config directory)
 # ---------------------------------------------------------------------------
+
+def user_config_dir() -> str:
+    """Directory holding this module's settings file.
+
+    ``MIXAR_USER_CONFIG_DIR`` wins, then Blender's own user config directory,
+    then the platform default. Never a path inside the application bundle.
+    """
+    override = (os.environ.get(ENV_CONFIG_DIR) or "").strip()
+    if override:
+        return os.path.expanduser(override)
+
+    try:
+        import bpy
+
+        blender_config = bpy.utils.user_resource("CONFIG")
+        if blender_config:
+            return os.path.join(blender_config, "mixar")
+    except Exception as exc:  # noqa: BLE001 - outside Blender (tests, tooling)
+        logger.debug("Using a platform config directory instead of Blender's: %s", exc)
+
+    if sys.platform.startswith("win"):
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    elif sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    return os.path.join(base, "mixar")
+
+
+def store_path() -> str:
+    """Full path of the settings file."""
+    return os.path.join(user_config_dir(), STORE_FILENAME)
+
+
+def _read_store() -> dict:
+    """Parsed store, or ``{}``. Unreadable or corrupt content is ignored."""
+    path = store_path()
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as exc:
+        logger.warning("Ignoring unreadable BYOK settings at %s: %s", path, exc)
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _write_store(data: dict) -> None:
+    """Atomic write: a crash mid-save can never leave a truncated file.
+
+    Raises:
+        OSError: the caller turns this into a user-facing message.
+    """
+    path = store_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    temp_path = path + ".tmp"
+    with open(temp_path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, sort_keys=True)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp_path, path)
+
 
 def get_stored() -> str:
     """Stored value, or ``""``. An unusable stored value is logged and ignored."""
-    try:
-        from mixar.config import get_config
-
-        config = get_config() or {}
-        value = config.get(CONFIG_KEY) or ""
-    except Exception as exc:  # noqa: BLE001 — config must never break the dialog
-        logger.debug("BYOK base URL: could not read config: %s", exc)
-        return ""
+    with _STORE_LOCK:
+        value = _read_store().get(CONFIG_KEY) or ""
     if not isinstance(value, str):
         return ""
     try:
@@ -154,16 +228,23 @@ def set_stored(raw: Optional[str]) -> str:
     Returns the normalized value that was stored.
 
     Raises:
-        BaseUrlError: invalid input (nothing is written).
+        BaseUrlError: invalid input, or the file could not be written. Nothing
+            is written in either case.
     """
     normalized = normalize(raw)
-    try:
-        from mixar.config import add_config
-
-        add_config(CONFIG_KEY, normalized)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Could not persist BYOK base URL: %s", exc)
-        raise BaseUrlError("Could not save the URL to your config file.") from exc
+    with _STORE_LOCK:
+        data = _read_store()
+        if normalized:
+            data[CONFIG_KEY] = normalized
+        else:
+            data.pop(CONFIG_KEY, None)
+        try:
+            _write_store(data)
+        except OSError as exc:
+            logger.error("Could not persist BYOK base URL: %s", exc)
+            raise BaseUrlError(
+                "Could not save the URL to {0}.".format(store_path())
+            ) from exc
     logger.info("BYOK base URL set to %s", normalized or "<default>")
     return normalized
 
@@ -188,7 +269,7 @@ def get_base_url() -> str:
 
 
 def is_locked_by_env() -> bool:
-    """True when the env var is what is in effect — the dialog can't override it."""
+    """True when the env var is what is in effect - the dialog can't override it."""
     return resolve()[1] == _SOURCE_ENV
 
 
@@ -210,7 +291,7 @@ def _schedule_on_main(callback: Callable[..., None], *args) -> None:
     """Run ``callback(*args)`` on Blender's main thread (zero-delay timer)."""
     try:
         import bpy
-    except Exception:  # noqa: BLE001 — outside Blender (tests)
+    except Exception:  # noqa: BLE001 - outside Blender (tests)
         callback(*args)
         return
 
@@ -233,11 +314,11 @@ def _probe_sync(base: str) -> Tuple[bool, str]:
         target = base + path
         try:
             response = requests.get(target, timeout=PROBE_TIMEOUT)
-        except Exception as exc:  # noqa: BLE001 — any transport failure
+        except Exception as exc:  # noqa: BLE001 - any transport failure
             last = str(exc) or exc.__class__.__name__
             continue
         if response.status_code < 500:
-            return True, "Reachable — HTTP {0} from {1}".format(response.status_code, path)
+            return True, "Reachable - HTTP {0} from {1}".format(response.status_code, path)
         last = "HTTP {0} from {1}".format(response.status_code, path)
     return False, last or "No response"
 
@@ -273,7 +354,7 @@ def install_patches() -> None:
 
     Idempotent. With no custom value configured the payload is exactly what
     upstream sends, so a hosted-backend save cannot regress. A backend that
-    doesn't know the field will reject or ignore it — see docs.
+    doesn't know the field will reject or ignore it - see docs.
     """
     global _ORIGINAL_SAVE_ALL
     if _ORIGINAL_SAVE_ALL is not None:
