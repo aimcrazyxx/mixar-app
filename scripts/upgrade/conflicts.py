@@ -159,7 +159,16 @@ def cmd_report(args):
 
 
 def render(hunk, decision):
-    """Turn one decision into the text that replaces a hunk."""
+    """Turn one decision into the text that replaces a hunk.
+
+    A decision is a side name, explicit ``{"text": ...}``, or a list of any of
+    those concatenated in order. The list form exists because 5.2 frequently
+    closes or opens ``namespace blender`` on the upstream side of a hunk whose
+    Mixar side is an addition, so the two have to be emitted in a specific
+    order that ``both`` cannot express.
+    """
+    if isinstance(decision, list):
+        return "".join(render(hunk, item) for item in decision)
     if isinstance(decision, dict):
         if "text" in decision:
             text = decision["text"]
@@ -181,7 +190,7 @@ def render(hunk, decision):
 
 
 def is_single_decision(spec):
-    if isinstance(spec, str):
+    if isinstance(spec, (str, list)):
         return True
     return isinstance(spec, dict) and ("text" in spec or "side" in spec)
 

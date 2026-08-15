@@ -1,42 +1,141 @@
 {
-  "$schema-note": "Maps a repo-relative path to a decision. A decision is 'upstream', 'mixar', 'ancestor', 'both', 'drop', or {\"text\": \"...\"}. Use a bare decision to apply it to every hunk in the file, or an object keyed by hunk index for per-hunk control. Hunk indices come from docs/migration/conflicts-remaining.md.",
+  "$schema-note": "Maps a repo-relative path to a decision. A decision is 'upstream', 'mixar', 'ancestor', 'both', 'drop', {\"text\": \"...\"}, or a list of those concatenated in order. Use a bare decision to apply it to every hunk in the file, or an object keyed by hunk index. Indices come from docs/migration/conflicts-remaining.md and are renumbered every run, so regenerate the report before adding more.",
 
-  "src/source/blender/makesdna/DNA_fileglobal_types.h": {
-    "0": {
-      "text": "  char subvstr[4] = \"\";\n\n  short subversion = 0;\n  short minversion = 0, minsubversion = 0;\n\n  /* Mixar file version fields, repurposing the original 6-byte _pad.\n   * SDNA handles the field rename: old files (which had char _pad[6]) read as 0,\n   * new files store actual Mixar version values.\n   * 3 shorts = 6 bytes = same size as the original _pad[6]. */\n  short mixar_version = 0;      /* MIXAR_FILE_VERSION when saved; 0 for pre-versioning files */\n  short mixar_subversion = 0;   /* MIXAR_FILE_SUBVERSION when saved */\n  short mixar_min_version = 0;  /* Minimum Mixar version that can read this file */\n\n  struct bScreen *curscreen = nullptr;\n  struct Scene *curscene = nullptr;\n  struct ViewLayer *cur_view_layer = nullptr;\n  void *_pad1 = nullptr;\n\n  int fileflags = 0;\n  int globalf = 0;\n"
-    }
+  "src/CMakeLists.txt": {
+    "0": { "text": "# Mixar internal features\noption(WITH_BLENDER \"Build Mixar (disable to build only Cycles stand-alone).\" ON)\n" },
+    "1": { "text": "Enable building as a Python module which runs without a user interface, \\\nlike running regular Mixar in background mode (only enable for development), \\\n" },
+    "2": { "text": "option(WITH_AUDASPACE \"Build with Audaspace (base Mixar audio library)\" ON)\noption(WITH_SYSTEM_AUDASPACE \"Build with external Audaspace library installed on the system\" OFF)\n" },
+    "3": { "text": "to make Mixar more portable across distributions\"\n" },
+    "4": { "text": "option(WITH_PYTHON_INSTALL \"Copy system Python into the Mixar install directory\" ON)\n" },
+    "5": { "text": "Copy the official Blender Authors copyright.txt into the Mixar install directory\"\n" },
+    "6": { "text": "  option(WITH_PYTHON_INSTALL_NUMPY \"Copy system NumPy into the Mixar install directory\" ON)\n" },
+    "7": { "text": "Copy system requests into the Mixar install directory\"\n" },
+    "8": { "text": "  option(WITH_PYTHON_INSTALL_ZSTANDARD \"Copy Zstandard into the Mixar install directory\" ON)\n" }
   },
 
-  "src/source/blender/blenkernel/BKE_appdir.hh": {
-    "0": {
-      "text": "\n#define MIXAR_USERPREF_FILE \"mixar_userpref.blend\"\n\n}  // namespace blender\n"
-    }
+  "src/build_files/cmake/platform/platform_apple.cmake": "both",
+
+  "src/build_files/cmake/platform/platform_win32.cmake": {
+    "0": "upstream",
+    "1": { "text": "  # is free to override them at their own peril.\n  set(USER_PROPS_FILE \"${CMAKE_CURRENT_BINARY_DIR}/source/creator/mixar.Cpp.user.props\")\n" }
   },
 
-  "src/source/blender/makesdna/DNA_theme_types.h": {
-    "0": {
-      "text": "  (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->space_agent_bubble) + 1))\n\n#ifdef __cplusplus\n}  // namespace blender\n#endif\n"
-    }
+  "src/intern/ghost/intern/GHOST_SystemCocoa.mm": "mixar",
+
+  "src/intern/ghost/intern/GHOST_SystemWin32.cc": "upstream",
+
+  "src/intern/ghost/intern/GHOST_WindowWin32.cc": {
+    "0": { "text": "    if (type == GHOST_kDrawingContextTypeOpenGL) {\n      const char *title = \"Mixar - Unsupported Graphics Card Configuration\";\n      const char *text = \"\";\n" },
+    "1": { "text": "      if (strncmp(blender::BLI_getenv(\"PROCESSOR_IDENTIFIER\"), \"ARM\", 3) == 0 &&\n          strstr(blender::BLI_getenv(\"PROCESSOR_IDENTIFIER\"), \"Qualcomm\") != NULL)\n      {\n        text =\n            \"A driver with support for OpenGL 4.3 or higher is required.\\n\\n\"\n            \"Qualcomm devices require the \\\"OpenCL\u2122, OpenGL\u00ae, and Vulkan\u00ae Compatibility Pack\\\" \"\n            \"from the Microsoft Store.\\n\\n\"\n            \"Devices using processors older than a Qualcomm Snapdragon 8cx Gen3 are incompatible, \"\n            \"but may be able to run an emulated x64 copy of Mixar, such as a 3.x LTS release.\";\n      }\n      else\n" }
   },
 
-  "src/source/blender/blenlib/intern/winstuff.cc": {
-    "0": { "text": "    registry_error(root, \"Unable to register Mixar file type\");\n" },
-    "1": { "text": "      registry_error(root, \"Unable to register Mixar file type\");\n" },
-    "2": { "text": "      registry_error(root, \"Unable to register Mixar file type\");\n" },
-    "3": { "text": "    registry_error(root, \"Unable to register Mixar file type\");\n" }
+  "src/intern/ghost/intern/GHOST_XrContext.cc": {
+    "0": { "text": "  blender::STRNCPY(create_info.applicationInfo.applicationName, \"Mixar\");\n\n  /* Explicitly target OpenXR API version 1.0. Note that the API_VERSION_1_0 macro is only\n   * available in 1.1+ SDKs. For 1.0 SDKs, target the current SDK version. */\n#ifdef XR_API_VERSION_1_0\n  create_info.applicationInfo.apiVersion = XR_API_VERSION_1_0;\n#else\n" }
   },
 
-  "src/source/blender/draw/engines/overlay/overlay_grid.hh": "upstream",
-
-  "src/tests/python/CMakeLists.txt": {
-    "0": {
-      "text": "  script_pyapi_bpy_app\n  --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_bpy_app.py\n)\n\nif(WITH_GPU_BACKEND_TESTS)\n  if(WITH_OPENGL_BACKEND)\n    add_blender_test(\n      script_pyapi_gpu_opengl\n      --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_gpu.py\n      --gpu-backend opengl\n    )\n  endif()\n\n  if(WITH_METAL_BACKEND)\n    add_blender_test(\n      script_pyapi_gpu_metal\n      --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_gpu.py\n      --gpu-backend metal\n    )\n  endif()\n\n  if(WITH_VULKAN_BACKEND)\n    add_blender_test(\n      script_pyapi_gpu_vulkan\n      --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_gpu.py\n      --gpu-backend vulkan\n    )\n  endif()\nendif()\n\nadd_blender_test(\n"
-    }
+  "src/release/datafiles/userdef/userdef_default_theme.c": {
+    "0": { "text": "    .grid = RGBA(0x66666614),\n    .grid_major = RGBA(0x545454ff),\n    .grid_axis_brightness = 0.46f,\n    .wire = RGBA(0x5c9a3aff),\n" },
+    "1": { "text": "    .grid = RGBA(0x1c2228ff),\n    .anim_interpolation_linear = RGBA(0x94e575cc),\n    .anim_interpolation_constant = RGBA(0xe59c7bcc),\n    .anim_interpolation_other = RGBA(0x5dbabeb3),\n" }
   },
 
-  "src/build_files/windows/configure_msbuild.cmd": {
-    "0": {
-      "text": "REM SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited\nREM\nREM SPDX-License-Identifier: GPL-2.0-or-later\n\nset BUILD_GENERATOR_POST=\nset BUILD_PLATFORM_SELECT=\nset MSBUILD_PLATFORM=x64\n\nif \"%BUILD_WITH_SCCACHE%\"==\"1\" (\n\t\techo sccache is only supported with ninja as the build system. \n\t\texit /b 1 \n)\n\nif \"%WITH_CLANG%\"==\"1\" (\n\tset CLANG_CMAKE_ARGS=-T\"ClangCl\"\n\n\tREM Create the build directory, so that we can create the Directory.build.props file\n\tif NOT EXIST %BUILD_DIR%\\nul (\n\t\tmkdir %BUILD_DIR%\n\t)\n\n\tREM This is required as per https://learn.microsoft.com/en-us/cpp/build/clang-support-msbuild?view=msvc-170#custom_llvm_location\n\tREM Which allows any copy of LLVM to be used, not just the one that ships with VS\n\techo ^<Project^> >> %BUILD_DIR%\\Directory.build.props\n\techo   ^<PropertyGroup^> >> %BUILD_DIR%\\Directory.build.props\n\techo     ^<LLVMInstallDir^>%LLVM_DIR%^</LLVMInstallDir^> >> %BUILD_DIR%\\Directory.build.props\n\techo     ^<LLVMToolsVersion^>%CLANG_VERSION%^</LLVMToolsVersion^> >> %BUILD_DIR%\\Directory.build.props\n\techo   ^</PropertyGroup^> >> %BUILD_DIR%\\Directory.build.props\n\techo ^</Project^> >> %BUILD_DIR%\\Directory.build.props\n)\n\nif \"%WITH_ASAN%\"==\"1\" (\n\t\tset ASAN_CMAKE_ARGS=-DWITH_COMPILER_ASAN=On\n)\n\nif \"%WITH_PYDEBUG%\"==\"1\" (\n\tset PYDEBUG_CMAKE_ARGS=-DWINDOWS_PYTHON_DEBUG=On\n)\n\nif \"%BUILD_ARCH%\"==\"arm64\" (\n\tset MSBUILD_PLATFORM=arm64\n\tset BUILD_PLATFORM_SELECT=-A ARM64\n)\n\nset BUILD_CMAKE_ARGS=%BUILD_CMAKE_ARGS% -G \"Visual Studio %BUILD_VS_VER% %BUILD_VS_YEAR%%BUILD_GENERATOR_POST%\" %BUILD_PLATFORM_SELECT% %TESTS_CMAKE_ARGS% %CLANG_CMAKE_ARGS% %ASAN_CMAKE_ARGS% %PYDEBUG_CMAKE_ARGS%\n\nif NOT EXIST %BUILD_DIR%\\nul (\n\tmkdir %BUILD_DIR%\n)\n\nif \"%MUST_CLEAN%\"==\"1\" (\n\techo Cleaning %BUILD_DIR%\n\tmsbuild ^\n\t\t%BUILD_DIR%\\Mixar.%VS_SLN_EXT% ^\n\t\t/target:clean ^\n\t\t/property:Configuration=%BUILD_TYPE% ^\n\t\t/verbosity:minimal ^\n\t\t/p:platform=%MSBUILD_PLATFORM%\n)\n\nif NOT EXIST %BUILD_DIR%\\Mixar.%VS_SLN_EXT% set MUST_CONFIGURE=1\nif \"%NOBUILD%\"==\"1\" set MUST_CONFIGURE=1\n\nif \"%MUST_CONFIGURE%\"==\"1\" (\n\n\tif NOT \"%verbose%\" == \"\" (\n\t\techo \"%CMAKE% %BUILD_CMAKE_ARGS% -H%BLENDER_DIR% -B%BUILD_DIR%\"\n\t)\n\n\tcmake ^\n\t\t%BUILD_CMAKE_ARGS% ^\n\t\t-H%BLENDER_DIR% ^\n\t\t-B%BUILD_DIR% \n\t\n\tif errorlevel 1 (\n\t\techo \"Configuration Failed\"\n\t\texit /b 1\n\t)\n)\necho echo off > %BUILD_DIR%\\rebuild.cmd\necho if \"%%VSCMD_VER%%\" == \"\" ^( >> %BUILD_DIR%\\rebuild.cmd\necho   call \"%VCVARS%\" %BUILD_ARCH% >> %BUILD_DIR%\\rebuild.cmd\necho ^) >> %BUILD_DIR%\\rebuild.cmd\necho \"%CMAKE%\" . >> %BUILD_DIR%\\rebuild.cmd\necho echo %%TIME%% ^> buildtime.txt >> %BUILD_DIR%\\rebuild.cmd\necho msbuild ^\n\t%BUILD_DIR%\\INSTALL.vcxproj ^\n\t/property:Configuration=%BUILD_TYPE% ^\n\t/maxcpucount:2 ^\n\t/verbosity:minimal ^\n\t/p:platform=%MSBUILD_PLATFORM% ^\n\t/flp:Summary;Verbosity=minimal;LogFile=%BUILD_DIR%\\Build.log >> %BUILD_DIR%\\rebuild.cmd\n"
-    }
-  }
+  "src/scripts/startup/bl_ui/space_toolsystem_toolbar.py": "mixar",
+
+  "src/source/blender/blenkernel/BKE_main.hh": {
+    "0": { "text": "#define MAIN_MIXAR_VERSION_FILE_ATLEAST(main, ver, subver) \\\n  ((main)->mixar_versionfile > (ver) || \\\n   ((main)->mixar_versionfile == (ver) && (main)->mixar_subversionfile >= (subver)))\n\n/**\n * \\note in case `versionfile` is 0, this check is invalid, always return false then. This happens\n" }
+  },
+
+  "src/source/blender/blenloader/intern/versioning_500.cc": "upstream",
+
+  "src/source/blender/blenloader/intern/writefile.cc": "upstream",
+
+  "src/source/blender/editors/interface/interface_handlers.cc": {
+    "1": "upstream",
+    "2": "upstream",
+    "3": "upstream",
+    "4": "upstream",
+    "8": "upstream",
+    "11": "upstream"
+  },
+
+  "src/source/blender/editors/screen/area.cc": {
+    "0": "both",
+    "2": { "text": "  if (has_category_tabs && region->runtime->category) {\n    ScrArea *area = CTX_wm_area(C);\n    if (area && area->spacetype == SPACE_MIXIE) {\n      UI_panel_category_draw_all_mixar(region, region->runtime->category);\n    }\n    else {\n      ui::panel_category_tabs_draw_all(C, region, region->runtime->category);\n    }\n" }
+  },
+
+  "src/source/blender/editors/space_image/space_image.cc": {
+    "0": { "text": "          /* MIXAR: Added SI_MODE_MIXAR_UV check */\n          if (ob && (ob->mode & OB_MODE_EDIT) && ELEM(sima->mode, SI_MODE_UV, SI_MODE_MIXAR_UV)) {\n            if (sima->lock && ((sima->flag & SI_DRAWSHADOW) || (sima->flag & SI_DRAW_STRETCH))) {\n" }
+  },
+
+  "src/source/blender/editors/space_view3d/space_view3d.cc": "both",
+
+  "src/source/blender/editors/space_view3d/view3d_intern.hh": ["mixar", "upstream"],
+
+  "src/source/blender/editors/transform/transform_gizmo_2d.cc": {
+    "0": { "text": "      case SI_MODE_UV:\n      case SI_MODE_MIXAR_UV: {\n        const Main *bmain = CTX_data_main(C);\n" }
+  },
+
+  "src/source/blender/makesdna/DNA_space_enums.h": {
+    "0": { "text": "  SI_MODE_MIXAR_UV = 4,\n};\n" },
+    "2": "upstream"
+  },
+
+  "src/source/blender/makesdna/DNA_space_types.h": ["mixar", "upstream"],
+
+  "src/source/blender/makesrna/intern/makesrna.cc": "both",
+
+  "src/source/blender/makesrna/intern/rna_main_api.cc": {
+    "0": { "text": "#  include \"ED_render.hh\"\n#  include \"ED_scene.hh\"\n\n#  include \"NOD_defaults.hh\"\n" },
+    "1": "both"
+  },
+
+  "src/source/blender/makesrna/intern/rna_space.cc": {
+    "0": { "text": "      return RNA_SpaceSpreadsheet;\n    case SPACE_MIXIE:\n      return RNA_SpaceMixie;\n    case SPACE_MIXIE_CHAT:\n      return RNA_SpaceMixieChat;\n    case SPACE_AGENT_BUBBLE:\n      return RNA_SpaceAgentBubble;\n    case SPACE_MIXAR_LAYERS:\n      return RNA_SpaceMixarLayers;\n    case SPACE_MIXAR_PROPERTIES:\n      return RNA_SpaceMixarProperties;\n    case SPACE_MIXAR_ASSETS:\n      return RNA_SpaceMixarAssets;\n    /* SPACE_MIXAR_UV_PROPERTIES removed */\n    case SPACE_BAKING:\n      return RNA_SpaceBaking;\n    case SPACE_TEXTURE_SETS:\n      return RNA_SpaceTextureSets;\n\n    case SPACE_TOPBAR:\n      return RNA_SpaceTopBar;\n" },
+    "1": ["mixar", "upstream"]
+  },
+
+  "src/source/blender/makesrna/intern/rna_ui_api.cc": {
+    "0": { "text": "/* Mixar custom section widget. */\n#  include \"../../editors/interface/interface_mixar_section.hh\"\n\nnamespace blender {\n\nusing ui::Layout;\n" }
+  },
+
+  "src/source/blender/makesrna/intern/rna_userdef.cc": ["mixar", "upstream"],
+
+  "src/source/blender/windowmanager/intern/wm_event_system.cc": {
+    "0": { "text": "              action |= wm_handlers_do(\n                  C, event, static_cast<ListBaseT<wmEventHandler> *>(&area->handlers));\n\n              /* Mixar: a handler may close `win` itself, invalidating `win`,\n               * `area` and `event` (see #wm_window_is_alive). */\n              if (!wm_window_is_alive(wm, win)) {\n                wm_event_free_and_remove_from_queue_if_valid(event);\n                GPU_render_end();\n                return;\n              }\n" }
+  },
+
+  "src/source/blender/windowmanager/intern/wm_files.cc": {
+    "3": { "text": "  std::vector<wmWindow *> agent_bubble_windows = wm_agent_bubble_windows_unlink_for_write(wm);\n  const bool success = BLO_write_file(bmain, filepath, fileflags, &params, reports);\n  wm_agent_bubble_windows_relink_after_write(wm, agent_bubble_windows);\n" },
+    "4": "both",
+    "5": { "text": "    layout.label(RPT_(\"This file is managed by the Mixar asset system. It can only be\"),\n                 ICON_NONE);\n    layout.label(RPT_(\"saved as a new, regular file.\"), ICON_NONE);\n" },
+    "6": { "text": "  popup_block_close(C, win, static_cast<ui::Block *>(arg_block));\n  wm_mixar_floating_docks_restore_after_modal();\n" },
+    "7": { "text": "  popup_block_close(C, win, static_cast<ui::Block *>(arg_block));\n  wm_mixar_floating_docks_restore_after_modal();\n" },
+    "8": { "text": "  popup_block_close(C, win, static_cast<ui::Block *>(arg_block));\n  wm_mixar_floating_docks_restore_after_modal();\n" }
+  },
+
+  "src/source/blender/windowmanager/intern/wm_operator_props.cc": {
+    "0": { "text": "                         \"Filter backup .mixar files\",\n" }
+  },
+
+  "src/source/blender/windowmanager/intern/wm_splash_screen.cc": {
+    "0": "both",
+    "2": { "text": "  popup_block_close(C, win, block);\n  wm_mixar_floating_docks_restore_after_modal();\n" },
+    "3": "mixar",
+    "4": { "text": "  wm_mixar_floating_docks_suppress_for_modal();\n  ui::popup_block_invoke(\n      C, wm_block_splash_create, nullptr, wm_mixar_floating_docks_restore_after_modal_free);\n" },
+    "5": "mixar"
+  },
+
+  "src/source/blender/windowmanager/intern/wm_window.cc": {
+    "1": { "text": "    if (win_other != win && win_other->parent == nullptr && !WM_window_is_temp_screen(win_other) &&\n        !wm_window_contains_agent_bubble_space(win_other))\n    {\n      return false;\n" },
+    "2": "upstream",
+    "3": "upstream"
+  },
+
+  "src/source/creator/CMakeLists.txt": {
+    "0": { "text": "      set(TARGETDIR_VER \"share/mixar/${BLENDER_VERSION}\")\n      set(TARGETDIR_TEXT \"share/doc/mixar\")\n      if(CMAKE_INSTALL_LIBDIR)\n        set(TARGETDIR_VER_LIBS \"${CMAKE_INSTALL_LIBDIR}/mixar/${BLENDER_VERSION}\")\n      else()\n        set(TARGETDIR_VER_LIBS \"lib/mixar/${BLENDER_VERSION}\")\n      endif()\n" },
+    "1": { "text": "        ${CMAKE_SOURCE_DIR}/release/bin/mixar-launcher\n" },
+    "2": { "text": "setup_platform_linker_flags(mixar)\nsetup_platform_linker_libs(mixar)\nsetup_platform_linker_symbol_hiding(mixar)\n" },
+    "3": { "text": "      install(DIRECTORY ${LIBDIR}/usd/plugin/usd/ DESTINATION \"mixar.shared/usd\")\n" }
+  },
+
+  "src/source/creator/creator.cc": "both"
 }
