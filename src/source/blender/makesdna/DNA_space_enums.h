@@ -1184,17 +1184,6 @@ enum eSpace_Type : char {
   SPACE_CLIP = 20,
   SPACE_TOPBAR = 21,
   SPACE_STATUSBAR = 22,
-<<<<<<< /tmp/tmp6z7kzd3i/new
-  SPACE_SPREADSHEET = 23
-
-#define SPACE_TYPE_NUM (SPACE_SPREADSHEET + 1)
-};
-||||||| /tmp/tmp6z7kzd3i/old
-  SPACE_SPREADSHEET = 23
-
-#define SPACE_TYPE_NUM (SPACE_SPREADSHEET + 1)
-} eSpace_Type;
-=======
   SPACE_SPREADSHEET = 23,
 
   /* Mixar custom space types: start at 100 to avoid collisions with upstream Blender.
@@ -1214,8 +1203,7 @@ enum eSpace_Type : char {
    * SPACE_EMPTY when loading old files. */
 
   #define SPACE_TYPE_NUM (SPACE_AGENT_BUBBLE + 1)
-} eSpace_Type;
->>>>>>> /tmp/tmp6z7kzd3i/modified
+};
 
 /* use for function args */
 #define SPACE_TYPE_ANY -1

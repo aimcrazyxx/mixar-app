@@ -471,16 +471,7 @@ static void wm_file_read_setup_wm_use_new(bContext *C,
   wm_window_clear_drawable(old_wm);
 
   bool has_match = false;
-<<<<<<< /tmp/tmps6tg1s6n/new
   for (wmWindow &win : wm->windows) {
-    for (wmWindow &old_win : old_wm->windows) {
-      if (old_win.winid == win.winid) {
-||||||| /tmp/tmps6tg1s6n/old
-  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    LISTBASE_FOREACH (wmWindow *, old_win, &old_wm->windows) {
-      if (old_win->winid == win->winid) {
-=======
-  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     /* Mixar: never hand a live GHOST window to a deserialized Agent Bubble
      * window. Bubble windows should not exist in files at all (they are
      * runtime overlay UI), but files written before the autosave fix carry
@@ -488,21 +479,20 @@ static void wm_file_read_setup_wm_use_new(bContext *C,
      * session. Matching one would transfer a main window's OS window onto a
      * bubble wmWindow that #wm_file_read_strip_agent_bubble_windows is about
      * to close. */
-    if (wm_window_contains_agent_bubble_space(win)) {
+    if (wm_window_contains_agent_bubble_space(&win)) {
       continue;
     }
-    LISTBASE_FOREACH (wmWindow *, old_win, &old_wm->windows) {
+    for (wmWindow &old_win : old_wm->windows) {
       /* Mixar: the symmetric case — a live bubble/pill of the outgoing
        * session must not donate its chromeless 400x350 OS window to a
        * regular window of the incoming file on a `winid` collision.
        * Unmatched old windows are freed together with their GHOST windows
        * by wm_close_and_free() below, which also resets the bubble's
        * cached native pointers via #ED_agent_bubble_window_freed. */
-      if (wm_window_contains_agent_bubble_space(old_win)) {
+      if (wm_window_contains_agent_bubble_space(&old_win)) {
         continue;
       }
-      if (old_win->winid == win->winid) {
->>>>>>> /tmp/tmps6tg1s6n/modified
+      if (old_win.winid == win.winid) {
         has_match = true;
 
         wm_file_read_setup_wm_substitute_old_window(old_wm, wm, &old_win, &win);
@@ -785,84 +775,11 @@ static int wm_read_exotic(const char *filepath)
   if (!file) {
     return BKE_READ_EXOTIC_FAIL_FORMAT;
   }
-<<<<<<< /tmp/tmps6tg1s6n/new
   BLI_SCOPED_DEFER([&]() { file->close(file); });
   const BlenderHeaderVariant header_variant = BLO_readfile_blender_header_decode(file);
   if (std::holds_alternative<BlenderHeader>(header_variant)) {
-||||||| /tmp/tmps6tg1s6n/old
-  rawfile->seek(rawfile, 0, SEEK_SET);
-
-  /* Check for uncompressed `.blend`. */
-  if (STREQLEN(header, "BLENDER", 7)) {
-    rawfile->close(rawfile);
-=======
-  rawfile->seek(rawfile, 0, SEEK_SET);
-
-  /* Check for uncompressed `.blend`. */
-    /* check for uncompressed .blend or .mixar */
-  if (STREQLEN(header, "BLENDER", 7) || STREQLEN(header, "MIXAR", 5)) {
-    rawfile->close(rawfile);
->>>>>>> /tmp/tmps6tg1s6n/modified
     return BKE_READ_EXOTIC_OK_BLEND;
   }
-<<<<<<< /tmp/tmps6tg1s6n/new
-||||||| /tmp/tmps6tg1s6n/old
-
-  /* Check for compressed `.blend`. */
-  FileReader *compressed_file = nullptr;
-  if (BLI_file_magic_is_gzip(header)) {
-    /* In earlier versions of Blender (before 3.0), compressed files used `Gzip` instead of `Zstd`.
-     * While these files will no longer be written, there still needs to be reading support. */
-    compressed_file = BLI_filereader_new_gzip(rawfile);
-  }
-  else if (BLI_file_magic_is_zstd(header)) {
-    compressed_file = BLI_filereader_new_zstd(rawfile);
-  }
-
-  /* If a compression signature matches,
-   * try decompressing the start and check if it's a `.blend`. */
-  if (compressed_file != nullptr) {
-    size_t len = compressed_file->read(compressed_file, header, sizeof(header));
-    compressed_file->close(compressed_file);
-    if (len == sizeof(header) && STREQLEN(header, "BLENDER", 7)) {
-      return BKE_READ_EXOTIC_OK_BLEND;
-    }
-  }
-  else {
-    rawfile->close(rawfile);
-  }
-
-  /* Add check for future file formats here. */
-
-=======
-
-  /* Check for compressed `.blend`. */
-  FileReader *compressed_file = nullptr;
-  if (BLI_file_magic_is_gzip(header)) {
-    /* In earlier versions of Blender (before 3.0), compressed files used `Gzip` instead of `Zstd`.
-     * While these files will no longer be written, there still needs to be reading support. */
-    compressed_file = BLI_filereader_new_gzip(rawfile);
-  }
-  else if (BLI_file_magic_is_zstd(header)) {
-    compressed_file = BLI_filereader_new_zstd(rawfile);
-  }
-
-  /* If a compression signature matches,
-   * try decompressing the start and check if it's a `.blend`. */
-  if (compressed_file != nullptr) {
-    size_t len = compressed_file->read(compressed_file, header, sizeof(header));
-    compressed_file->close(compressed_file);
-    if (len == sizeof(header) && (STREQLEN(header, "BLENDER", 7) || STREQLEN(header, "MIXAR", 5))) {
-      return BKE_READ_EXOTIC_OK_BLEND;
-    }
-  }
-  else {
-    rawfile->close(rawfile);
-  }
-
-  /* Add check for future file formats here. */
-
->>>>>>> /tmp/tmps6tg1s6n/modified
   return BKE_READ_EXOTIC_FAIL_FORMAT;
 }
 
@@ -5522,25 +5439,15 @@ static ui::Block *block_create__close_file_dialog(bContext *C, ARegion *region, 
 
 void wm_close_file_dialog(bContext *C, wmGenericCallback *post_action)
 {
-<<<<<<< /tmp/tmps6tg1s6n/new
   if (!ui::popup_block_name_exists(CTX_wm_screen(C), close_file_dialog_name)) {
     save_images_when_file_is_closed = true;
 
-    ui::popup_block_invoke(
-        C, block_create__close_file_dialog, post_action, popup_block_wm_generic_callback_free);
-||||||| /tmp/tmps6tg1s6n/old
-  if (!UI_popup_block_name_exists(CTX_wm_screen(C), close_file_dialog_name)) {
-    UI_popup_block_invoke(
-        C, block_create__close_file_dialog, post_action, free_post_file_close_action);
-=======
-  if (!UI_popup_block_name_exists(CTX_wm_screen(C), close_file_dialog_name)) {
     wm_mixar_floating_docks_suppress_for_modal();
-    UI_popup_block_invoke(
+    ui::popup_block_invoke(
         C,
         block_create__close_file_dialog,
         post_action,
         free_post_file_close_action_restore_floating_docks);
->>>>>>> /tmp/tmps6tg1s6n/modified
   }
   else {
     WM_generic_callback_free(post_action);

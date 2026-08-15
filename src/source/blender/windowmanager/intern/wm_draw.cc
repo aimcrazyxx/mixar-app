@@ -1694,11 +1694,6 @@ void wm_draw_update(bContext *C)
     }
 #endif
 
-<<<<<<< /tmp/tmphdvd4sbd/new
-    CTX_wm_window_set(C, &win);
-||||||| /tmp/tmphdvd4sbd/old
-    CTX_wm_window_set(C, win);
-=======
 #if defined(WIN32) || defined(__APPLE__)
     /* Mixar: never draw or present a window that is natively hidden.
      *
@@ -1715,13 +1710,12 @@ void wm_draw_update(bContext *C)
      * The bubble restore paths force a refresh + redraw tag after re-showing
      * the window, so skipping updates while hidden never leaves stale
      * content on screen. */
-    if (win->ghostwin != nullptr && !Mixar_WindowIsVisible(win->ghostwin)) {
+    if (win.ghostwin != nullptr && !Mixar_WindowIsVisible(win.ghostwin)) {
       continue;
     }
 #endif
 
-    CTX_wm_window_set(C, win);
->>>>>>> /tmp/tmphdvd4sbd/modified
+    CTX_wm_window_set(C, &win);
 
     if (wm_draw_update_test_window(bmain, C, &win)) {
       PRF_frame_mark_start("Window Drawing"_ustr);

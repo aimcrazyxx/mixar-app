@@ -62,11 +62,6 @@ extern "C" void Mixar_FloatingDocksRestoreAfterModal();
 /** \name Splash Screen
  * \{ */
 
-<<<<<<< /tmp/tmpermat8p_/new
-static void wm_block_splash_close(bContext *C, ui::Block *block)
-||||||| /tmp/tmpermat8p_/old
-static void wm_block_splash_close(bContext *C, void *arg_block, void * /*arg*/)
-=======
 static void wm_mixar_floating_docks_suppress_for_modal()
 {
 #if defined(__APPLE__) || defined(_WIN32)
@@ -86,8 +81,7 @@ static void wm_mixar_floating_docks_restore_after_modal_free(void * /*arg*/)
   wm_mixar_floating_docks_restore_after_modal();
 }
 
-static void wm_block_splash_close(bContext *C, void *arg_block, void * /*arg*/)
->>>>>>> /tmp/tmpermat8p_/modified
+static void wm_block_splash_close(bContext *C, ui::Block *block)
 {
   wmWindow *win = CTX_wm_window(C);
   popup_block_close(C, win, block);

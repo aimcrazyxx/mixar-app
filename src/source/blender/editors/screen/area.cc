@@ -1565,7 +1565,6 @@ bool ED_region_is_overlap(const int spacetype, const int regiontype)
         bTheme *theme = ui::theme::theme_get();
         return theme->space_view3d.header[3] != 255;
       }
-<<<<<<< /tmp/tmp8cuyi_8o/new
       return ELEM(regiontype,
                   RGN_TYPE_TOOLS,
                   RGN_TYPE_UI,
@@ -1573,7 +1572,10 @@ bool ED_region_is_overlap(const int spacetype, const int regiontype)
                   RGN_TYPE_FOOTER,
                   RGN_TYPE_TOOL_HEADER,
                   RGN_TYPE_ASSET_SHELF,
-                  RGN_TYPE_ASSET_SHELF_HEADER);
+                  RGN_TYPE_ASSET_SHELF_HEADER,
+                  /* Mixar: agent scene strip draws a transparent background so
+                   * its tiles float over the viewport. */
+                  RGN_TYPE_EXECUTE);
 
     case SPACE_IMAGE:
       return ELEM(regiontype,
@@ -1584,69 +1586,9 @@ bool ED_region_is_overlap(const int spacetype, const int regiontype)
                   RGN_TYPE_TOOL_HEADER,
                   RGN_TYPE_ASSET_SHELF,
                   RGN_TYPE_ASSET_SHELF_HEADER);
-||||||| /tmp/tmp8cuyi_8o/old
-      if (ELEM(regiontype,
-               RGN_TYPE_TOOLS,
-               RGN_TYPE_UI,
-               RGN_TYPE_TOOL_PROPS,
-               RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER,
-               RGN_TYPE_ASSET_SHELF,
-               RGN_TYPE_ASSET_SHELF_HEADER))
-      {
-        return true;
-      }
-    }
-    else if (spacetype == SPACE_IMAGE) {
-      if (ELEM(regiontype,
-               RGN_TYPE_TOOLS,
-               RGN_TYPE_UI,
-               RGN_TYPE_TOOL_PROPS,
-               RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER,
-               RGN_TYPE_ASSET_SHELF,
-               RGN_TYPE_ASSET_SHELF_HEADER))
-      {
-        return true;
-      }
-    }
-  }
-=======
-      if (ELEM(regiontype,
-               RGN_TYPE_TOOLS,
-               RGN_TYPE_UI,
-               RGN_TYPE_TOOL_PROPS,
-               RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER,
-               RGN_TYPE_ASSET_SHELF,
-               RGN_TYPE_ASSET_SHELF_HEADER,
-               /* Mixar: agent scene strip draws a transparent background so
-                * its tiles float over the viewport. */
-               RGN_TYPE_EXECUTE))
-      {
-        return true;
-      }
-    }
-    else if (spacetype == SPACE_IMAGE) {
-      if (ELEM(regiontype,
-               RGN_TYPE_TOOLS,
-               RGN_TYPE_UI,
-               RGN_TYPE_TOOL_PROPS,
-               RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER,
-               RGN_TYPE_ASSET_SHELF,
-               RGN_TYPE_ASSET_SHELF_HEADER))
-      {
-        return true;
-      }
-    }
-    else if (spacetype == SPACE_MIXIE) {
-      if (ELEM(regiontype, RGN_TYPE_TOOLS, RGN_TYPE_UI)) {
-        return true;
-      }
-    }
-  }
->>>>>>> /tmp/tmp8cuyi_8o/modified
+
+    case SPACE_MIXIE:
+      return ELEM(regiontype, RGN_TYPE_TOOLS, RGN_TYPE_UI);
 
     default:
       /* Most editors do not support any region overlap. It is fine if newly-added space types also

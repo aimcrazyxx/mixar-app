@@ -3462,13 +3462,8 @@ void ED_operatormacros_file()
 }
 
 /** \} */
-<<<<<<< /tmp/tmpb1m4q6ev/new
 
-}  // namespace blender
-||||||| /tmp/tmpb1m4q6ev/old
-=======
-
- static wmOperatorStatus file_open_blend_exec(bContext *C, wmOperator *op)
+static wmOperatorStatus file_open_blend_exec(bContext *C, wmOperator *op)
 {
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
@@ -3512,9 +3507,4 @@ void FILE_OT_open_blend(wmOperatorType *ot)
                                 FILE_SORT_DEFAULT);
 }
 
-void ED_operatortypes_file(void)
-{
-  WM_operatortype_append(FILE_OT_open_blend);
-  // ... existing registrations ...
-}
->>>>>>> /tmp/tmpb1m4q6ev/modified
+}  // namespace blender

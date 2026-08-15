@@ -1476,11 +1476,6 @@ static void template_ID_tabs(const bContext *C,
   const uiStyle *style = style_get_dpi();
 
   for (ID *id : BKE_id_ordered_list(template_id.idlb)) {
-<<<<<<< /tmp/tmp28h2wshf/new
-    const int name_width = fontstyle_string_width(&style->widget, id->name + 2);
-||||||| /tmp/tmp28h2wshf/old
-    const int name_width = UI_fontstyle_string_width(&style->widget, id->name + 2);
-=======
     /* Mixar: hide the dedicated Zen Mode workspace AND the legacy
      * "Basic Mode" / "AI Mode" workspaces from the topbar tab strip.
      *
@@ -1511,8 +1506,7 @@ static void template_ID_tabs(const bContext *C,
       continue;
     }
 
-    const int name_width = UI_fontstyle_string_width(&style->widget, id->name + 2);
->>>>>>> /tmp/tmp28h2wshf/modified
+    const int name_width = fontstyle_string_width(&style->widget, id->name + 2);
     const int but_width = name_width + UI_UNIT_X;
 
     ButtonTab *tab = static_cast<ButtonTab *>(uiDefButR_prop(block,
