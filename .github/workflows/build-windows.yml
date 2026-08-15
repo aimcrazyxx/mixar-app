@@ -299,16 +299,12 @@ jobs:
           #       branch = blender-v5.2-release
           #
           # `update = none` makes a plain `git submodule update --init` walk
-          # straight past them, leaving an empty lib/windows_x64 behind. cmake
-          # then accepts LIBDIR as valid and only fails much later, on a missing
-          # Python.h and a screenful of absent dependency targets.
-          #
-          # Passing --checkout is supposed to override that setting. It did not
-          # take, so stop fighting git's submodule semantics and use Blender's
-          # own updater, which is the supported path:
+          # straight past them, and passing --checkout does not override it in
+          # practice. make_update.py is the supported way in:
           # initialize_precompiled_libraries() writes
           # submodule.<path>.update=checkout into .git/config, and only then
-          # submodules_lib_update() updates the submodule.
+          # submodules_lib_update() updates the submodule. This works - it
+          # fetched 6.5 GB of libraries on the previous run.
           #
           # Calling the script directly also avoids the interactive "download
           # libraries? (y/n)" prompt - that comes from make.bat, not from here.
@@ -316,14 +312,13 @@ jobs:
           # detached tag checkout, and --no-lfs-fallback skips adding a second
           # remote to refetch LFS objects we are about to pull anyway.
           $ErrorActionPreference = "Continue"
-          $probe = "lib\windows_x64\python\311\include\Python.h"
           New-Item -ItemType Directory -Force -Path ..\logs | Out-Null
 
           python build_files\utils\make_update.py --no-blender --no-lfs-fallback 2>&1 |
             Tee-Object -FilePath ..\logs\libs.log
           Write-Host "make_update.py exited with $LASTEXITCODE"
 
-          if (-not (Test-Path $probe)) {
+          if (-not (Test-Path lib\windows_x64\python)) {
             Write-Host "::warning::libraries still missing after make_update.py, forcing the submodule by hand"
             # The same two operations make_update.py performs, without the wrapper.
             git config submodule."lib/windows_x64".update checkout
@@ -340,7 +335,28 @@ jobs:
             git -C lib\windows_x64 lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
           }
 
-          if (-not (Test-Path $probe)) {
+          # Do not hardcode the Python version here. build_files/cmake/platform/
+          # platform_win32.cmake decides it from the lib folder itself:
+          #
+          #   set(_PYTHON_VERSION "3.13")
+          #   if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
+          #     set(_PYTHON_VERSION "3.11")
+          #
+          # The previous probe was pinned to 311 because that number appeared in
+          # an earlier cmake error - but that was this fallback firing on an
+          # empty lib folder, not the version Blender wants. 5.2 ships
+          # python/313, so the probe failed on a complete library set. Accept
+          # whichever version is really there, in cmake's own order.
+          $pythonHeader = $null
+          foreach ($version in @("313", "311")) {
+            $candidate = "lib\windows_x64\python\$version\include\Python.h"
+            if (Test-Path $candidate) {
+              $pythonHeader = $candidate
+              break
+            }
+          }
+
+          if (-not $pythonHeader) {
             # Everything here also goes into libs.log, so the diagnosis travels
             # with the failure report instead of dying in an Actions log that no
             # API token can read.
@@ -354,22 +370,31 @@ jobs:
                 $diag.Add("(command failed: $_)")
               }
             }
-            $diag.Add("=== probe missing: $probe ===")
+            $diag.Add("=== no python/{313,311}/include/Python.h under lib\windows_x64 ===")
             Add-Diag "git submodule status" { git submodule status }
             Add-Diag "submodule config in .git/config" { git config --get-regexp '^submodule\.' }
             Add-Diag "submodule paths in .gitmodules" { git config -f .gitmodules --get-regexp '^submodule\..*\.(path|url|update)$' }
-            Add-Diag "lib tree, two levels" { Get-ChildItem lib -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName } }
+            Add-Diag "lib tree, three levels" { Get-ChildItem lib -Recurse -Depth 3 -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName } }
             Add-Diag "git lfs env" { git lfs env }
             $diag | ForEach-Object { Write-Host $_ }
             $diag | Add-Content -Path ..\logs\libs.log
-            throw "precompiled libraries missing: $probe"
+            throw "precompiled libraries missing: no python/{313,311}/include/Python.h under lib\windows_x64"
           }
 
-          $size = (Get-Item $probe).Length
+          $size = (Get-Item $pythonHeader).Length
           if ($size -lt 1kb) {
-            throw "precompiled libraries are git-lfs pointers, not real files ($probe is $size bytes)"
+            throw "precompiled libraries are git-lfs pointers, not real files ($pythonHeader is $size bytes)"
           }
-          Write-Host "libraries present ($probe is $size bytes)"
+          Write-Host "libraries present ($pythonHeader is $size bytes)"
+
+          # A warning, not a failure: cmake names the exact missing target far
+          # more precisely than a folder check can, and these were the ones that
+          # showed up as absent ALIAS targets when lib/ was empty.
+          $required = @("fmt", "opencolorio", "openexr", "OpenImageIO", "osl")
+          $missing = $required | Where-Object { -not (Test-Path "lib\windows_x64\$_") }
+          if ($missing) {
+            Write-Host "::warning::library folders not found: $($missing -join ', ')"
+          }
           Get-ChildItem lib\windows_x64 | Select-Object Name | Format-Table -AutoSize
 
       - name: Measure what the libraries cost

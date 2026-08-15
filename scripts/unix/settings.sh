@@ -55,7 +55,11 @@ export MIXAR_BUNDLE_COPYRIGHT="${MIXAR_BUNDLE_COPYRIGHT:-© 2025 Mixar}"
 # Keep this in sync with the pinned upstream/ submodule revision.
 # Use scripts/upgrade/set_blender_version.sh to change both at once.
 export BLENDER_VERSION="${BLENDER_VERSION:-5.2}"
-export PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
+# Blender 5.2 ships Python 3.13 in lib/<platform>/python/313. This said 3.11
+# until now, left over from the 4.x libraries. cmake does not read this value -
+# the platform_*.cmake files derive the real version from the lib folder - so it
+# only affects our own scripts.
+export PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
 export REQUIRED_CMAKE_VERSION="${REQUIRED_CMAKE_VERSION:-3.16}"
 
 # Directory Structure

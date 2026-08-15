@@ -54,7 +54,11 @@ REM Build settings (constants)
 REM Keep BLENDER_VERSION in sync with the pinned upstream\ submodule revision.
 REM Use scripts/upgrade/set_blender_version.sh to change both at once.
 if not defined BLENDER_VERSION set "BLENDER_VERSION=5.2"
-if not defined PYTHON_VERSION set "PYTHON_VERSION=3.11"
+REM Blender 5.2 ships Python 3.13 in lib/windows_x64/python/313. This said 3.11
+REM until now, left over from the 4.x libraries. cmake does not read this value
+REM - build_files/cmake/platform/platform_win32.cmake derives the real version
+REM from the lib folder - so it only affects our own scripts.
+if not defined PYTHON_VERSION set "PYTHON_VERSION=3.13"
 if not defined REQUIRED_CMAKE_VERSION set "REQUIRED_CMAKE_VERSION=3.16"
 
 REM Windows-specific build settings
