@@ -376,3 +376,6 @@ try:
     _install_properties_and_patches()
 except Exception as exc:  # noqa: BLE001
     logger.debug("Deferred custom provider install: %s", exc)
+
+# Install transient authenticated OpenAI-compatible /models discovery.
+from . import byok_custom_models_ops as _byok_custom_models_ops  # noqa: E402,F401
