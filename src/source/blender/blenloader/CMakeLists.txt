@@ -51,7 +51,7 @@ set(SRC
   BLO_userdef_default.h
   BLO_writefile.hh
   intern/readfile.hh
-  versioning_common.hh
+  intern/versioning_common.hh
   versioning_mixar_200.hh
 )
 
