@@ -1,0 +1,214 @@
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+name: Migrate Blender upstream
+
+# Rebases the vendored src/ overlay from one Blender release onto another.
+#
+# src/ is not a patch set: it holds whole copies of Blender files, and
+# scripts/windows/overlay.bat copies them over upstream/ with no /XO, so the
+# overlay always wins. That means the Blender revision the fork really builds is
+# the one src/ was forked from, regardless of which tag BLENDER_REF pins. Mixing
+# the two produces a tree that cannot configure.
+#
+# This job is pure Python text processing, so it runs on Linux in minutes and
+# needs neither a compiler nor the precompiled library set.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Blender tag the src/ overlay is based on today
+        required: true
+        default: v5.0.0
+      target_ref:
+        description: Blender tag to move the overlay onto
+        required: true
+        default: v5.2.0
+      push_branch:
+        description: Branch to publish the migrated overlay to
+        required: true
+        default: migration/blender-5.2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: migrate-blender-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Overlay ${{ inputs.base_ref }} to ${{ inputs.target_ref }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      BASE_REF: ${{ inputs.base_ref }}
+      TARGET_REF: ${{ inputs.target_ref }}
+      PUSH_BRANCH: ${{ inputs.push_branch }}
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Check out upstream at the base revision
+        run: |
+          set -euo pipefail
+          mkdir -p logs patches
+          git submodule sync --recursive
+          git submodule update --init --force --depth 1 upstream
+          git -C upstream fetch --tags --depth 1 origin "$BASE_REF"
+          git -C upstream checkout --force --detach FETCH_HEAD
+          # apply_patch.py reads the merge ancestor with `git show <base>:<path>`
+          # after upstream moves to the target, so the base commit has to stay
+          # reachable in this shallow clone.
+          git -C upstream update-ref refs/mixar/base HEAD
+          echo "BASE_SHA=$(git -C upstream rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Prove the overlay really is based on the base revision
+        run: |
+          set -euo pipefail
+          version_of() {
+            local raw
+            raw=$(grep -E '^#define BLENDER_VERSION[[:space:]]+[0-9]+' "$1" | awk '{print $3}')
+            echo "$((raw / 100)).$((raw % 100))"
+          }
+          overlay=$(version_of src/source/blender/blenkernel/BKE_blender_version.h)
+          base=$(version_of upstream/source/blender/blenkernel/BKE_blender_version.h)
+          echo "overlay reports Blender $overlay, base_ref reports Blender $base"
+          if [ "$overlay" != "$base" ]; then
+            echo "::error::src/ is Blender $overlay but $BASE_REF is Blender $base."
+            echo "::error::base_ref must be the revision src/ was forked from, otherwise the 3-way merge has the wrong ancestor and every hunk conflicts."
+            exit 1
+          fi
+
+      - name: Record the overlay against the base revision
+        run: |
+          set -euo pipefail
+          python scripts/upgrade/generate_diff.py \
+            --output patches/overlay.patch \
+            --custom-files-output patches/custom_files.json 2>&1 \
+            | tee logs/generate_diff.log
+
+      - name: Check out upstream at the target revision
+        run: |
+          set -euo pipefail
+          git -C upstream fetch --tags --depth 1 origin "$TARGET_REF"
+          git -C upstream checkout --force --detach FETCH_HEAD
+          echo "TARGET_SHA=$(git -C upstream rev-parse HEAD)" >> "$GITHUB_ENV"
+          git -C upstream cat-file -e "$BASE_SHA^{commit}"
+          echo "base commit is still present, so the 3-way ancestor is available"
+
+      - name: Replay the overlay onto the target revision
+        run: |
+          set -uo pipefail
+          code=0
+          python scripts/upgrade/apply_patch.py patches/overlay.patch \
+            --custom-files patches/custom_files.json \
+            --report logs/conflicts_report.json 2>&1 \
+            | tee logs/apply_patch.log || code=$?
+          echo "APPLY_CODE=${code}" >> "$GITHUB_ENV"
+          echo "apply_patch.py exited ${code}"
+
+      - name: Collect the files left with conflict markers
+        if: always()
+        run: |
+          set -uo pipefail
+          grep -rlI '^<<<<<<< ' src/ | sort > logs/conflicted_files.txt
+          count=$(wc -l < logs/conflicted_files.txt | tr -d ' ')
+          echo "CONFLICT_COUNT=${count}" >> "$GITHUB_ENV"
+          echo "${count} file(s) still carry conflict markers"
+
+      - name: Write the migration report into the tree
+        if: always()
+        run: |
+          set -uo pipefail
+          mkdir -p docs/migration
+          report="docs/migration/overlay-${TARGET_REF}.md"
+          {
+            echo '<!--'
+            echo 'SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited'
+            echo 'SPDX-License-Identifier: GPL-2.0-or-later'
+            echo '-->'
+            echo
+            echo "# Overlay migration: ${BASE_REF} to ${TARGET_REF}"
+            echo
+            echo "Produced by .github/workflows/migrate-blender.yml, run ${GITHUB_RUN_ID}."
+            echo
+            echo '| field | value |'
+            echo '| --- | --- |'
+            echo "| base revision | ${BASE_SHA:-unknown} (${BASE_REF}) |"
+            echo "| target revision | ${TARGET_SHA:-not reached} (${TARGET_REF}) |"
+            echo "| apply_patch.py exit code | ${APPLY_CODE:-not reached} |"
+            echo "| files with conflict markers | ${CONFLICT_COUNT:-not reached} |"
+            echo
+            echo '## Inventory'
+            echo
+            echo '```'
+            grep -E 'Upstream-modified files|Custom Mixar files|Removed from upstream' logs/generate_diff.log || echo 'summary not captured'
+            echo '```'
+            echo
+            echo 'Upstream-modified files were rebased with a 3-way merge. Custom Mixar'
+            echo 'files have no upstream counterpart and were carried over untouched.'
+            echo
+            echo '## Files still carrying conflict markers'
+            echo
+            if [ -s logs/conflicted_files.txt ]; then
+              sed 's/^/- /' logs/conflicted_files.txt
+            else
+              echo 'None. Every vendored file merged cleanly.'
+            fi
+            echo
+            echo 'Markers are diff3 style: the new upstream text first, then the old'
+            echo 'upstream ancestor after |||||||, then the Mixar version after =======.'
+            echo
+            echo '## Follow-up before this branch can build'
+            echo
+            echo "1. Resolve every file listed above."
+            echo "2. Flip the pins: BLENDER_REF and BLENDER_VERSION in .github/workflows/build-windows.yml, and BLENDER_VERSION plus PYTHON_VERSION in scripts/windows/settings.bat and scripts/unix/settings.sh."
+            echo "3. Blender 5.2 ships embedded Python 3.13, so PYTHON_VERSION becomes 3.13. Confirm against the lib/windows_x64/python folder name."
+            echo "4. Merge into ci/build-windows to trigger the Windows build."
+          } > "$report"
+          echo "REPORT_PATH=${report}" >> "$GITHUB_ENV"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the migrated overlay
+        if: always()
+        run: |
+          set -euo pipefail
+          git checkout -B "$PUSH_BRANCH"
+          # Only the overlay and the report. The upstream gitlink, the backup
+          # tree apply_patch.py leaves behind, and the logs stay out of the commit.
+          git add -A src/
+          git add "$REPORT_PATH"
+          if git diff --cached --quiet; then
+            echo '::warning::the overlay did not change, nothing to publish'
+            exit 0
+          fi
+          git commit -m "build: rebase the src/ overlay from ${BASE_REF} onto ${TARGET_REF}" \
+            -m "Generated by the migrate-blender workflow, run ${GITHUB_RUN_ID}. ${CONFLICT_COUNT:-unknown} file(s) still carry conflict markers; see ${REPORT_PATH}."
+          git push --force origin "HEAD:refs/heads/${PUSH_BRANCH}"
+          echo "published to ${PUSH_BRANCH}"
+
+      - name: Upload the patch, the report and the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overlay-migration-${{ github.run_id }}
+          path: |
+            patches/
+            logs/
+          if-no-files-found: warn
