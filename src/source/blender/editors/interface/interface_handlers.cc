@@ -129,22 +129,12 @@ static CLG_LogRef LOG = {"ui.handler"};
  * \{ */
 
 /**
-<<<<<<< /tmp/tmpdb2g3731/new
-||||||| /tmp/tmpdb2g3731/old
- * The buffer side used for password strings, where the password is stored internally,
- * but not displayed.
- */
-#define UI_MAX_PASSWORD_STR 128
-
-/**
-=======
  * The buffer side used for password strings, where the password is stored internally,
  * but not displayed.
  */
 #define UI_MAX_PASSWORD_STR 256
 
 /**
->>>>>>> /tmp/tmpdb2g3731/modified
  * This is a lower limit on the soft minimum of the range.
  * Usually the derived lower limit from the visible precision is higher,
  * so this number is the backup minimum.
@@ -3909,101 +3899,6 @@ const wmIMEData *button_ime_data_get(Button *but)
 }
 #endif /* WITH_INPUT_IME */
 
-<<<<<<< /tmp/tmpdb2g3731/new
-std::optional<StringRef> button_edit_unit_hint_get(const Button &but)
-{
-  const HandleButtonData *data = but.semi_modal_state ? but.semi_modal_state : but.active;
-  if (data == nullptr || data->text_edit_unit_hint.empty()) {
-    return std::nullopt;
-  }
-  return data->text_edit_unit_hint;
-}
-
-/* Currently there are property subtypes that are not considered "units", so handle them
- * separately here. */
-static std::optional<StringRef> button_edit_unit_hint_get_from_prop_subtype(
-    const PropertySubType subtype)
-{
-  switch (subtype) {
-    case PROP_PIXEL:
-      return "px";
-    case PROP_PERCENTAGE:
-      return "%";
-    default:
-      return {};
-  }
-  return {};
-}
-
-static void button_edit_unit_hint_refresh(bContext *C, Button *but, HandleButtonData *data)
-{
-  /* Unit completion (hint) is only done for buttons with a unit or with a property such as
-   * percentage or pixel for e.g. For everything else, we reset the completion to an empty string.
-   */
-  const PropertySubType subtype = but->rnaprop ? RNA_property_subtype(but->rnaprop) : PROP_NONE;
-  const std::optional<StringRef> subtype_hint = button_edit_unit_hint_get_from_prop_subtype(
-      subtype);
-  if (!button_is_unit(but) && !subtype_hint.has_value()) {
-    data->text_edit_unit_hint.clear();
-    return;
-  }
-
-  /* Set the completion text (hint) to the unit that is used by this value. */
-  std::string name_short;
-  const int unit_type = RNA_SUBTYPE_UNIT_VALUE(button_unit_type_get(but));
-  if (unit_type != PROP_NONE) {
-    /* If the string contains the unit already, don't add it as a hint. */
-    if (BKE_unit_string_contains_unit(data->text_edit.edit_string, unit_type)) {
-      data->text_edit_unit_hint.clear();
-      return;
-    }
-
-    /* If the expression we're entering is not valid, don't show the hint. */
-    if (!BPY_string_compile_check(data->text_edit.edit_string)) {
-      data->text_edit_unit_hint.clear();
-      return;
-    }
-
-    const void *usys;
-    int len;
-    UnitSettings &unit_settings = CTX_data_scene(C)->unit;
-    BKE_unit_system_get(unit_settings.system, unit_type, &usys, &len);
-    const int unit_index = BKE_preffered_unit_of_type_or_base_get(unit_settings, unit_type);
-    name_short = BKE_unit_display_name_short_get(usys, unit_index);
-    BLI_assert(!name_short.empty());
-  }
-  else if (subtype_hint) {
-    /* Special handling for some subtypes. */
-    name_short = *subtype_hint;
-    /* If the string contains the unit already, don't add it as a hint.
-     * Note: This is a simple sub-string check and may fail at times. */
-    const StringRefNull str(data->text_edit.edit_string);
-    BLI_assert(!name_short.empty());
-    if (str.find(name_short) != StringRef::not_found) {
-      data->text_edit_unit_hint.clear();
-      return;
-    }
-
-    /* If the expression we're entering is not valid, don't show the hint. */
-    if (!BPY_string_compile_check(data->text_edit.edit_string)) {
-      data->text_edit_unit_hint.clear();
-      return;
-    }
-  }
-
-  if (name_short.empty()) {
-    data->text_edit_unit_hint.clear();
-    return;
-  }
-
-  /* Add a space before the short unit name. */
-  data->text_edit_unit_hint = " " + name_short;
-}
-
-static void textedit_begin(bContext *C, Button *but, HandleButtonData *data)
-||||||| /tmp/tmpdb2g3731/old
-static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
-=======
 /* -------------------------------------------------------------------- */
 /** \name Mixar: '@' Mention Autocomplete Bridge
  *
@@ -4037,7 +3932,7 @@ int mixie_chat_mention_row_hit(Scene *scene, const ARegion *region, const int xy
 #define MIXIE_MENTION_INSERT_SIZE 320
 
 /** The scene that owns `but` when it is the Mixie chat composer, else null. */
-static Scene *ui_but_mixie_mention_scene(const uiBut *but)
+static Scene *ui_but_mixie_mention_scene(const Button *but)
 {
   if (!but || !but->rnaprop || !but->rnapoin.owner_id) {
     return nullptr;
@@ -4054,15 +3949,15 @@ static Scene *ui_but_mixie_mention_scene(const uiBut *but)
 /**
  * Accept the active mention suggestion: select the whole "@token" around the
  * cursor and type the replacement over it (reuses the UTF8/maxlen-safe
- * selection-overwrite path of #ui_textedit_insert_buf). The caller's normal
+ * selection-overwrite path of #textedit_insert_buf). The caller's normal
  * TEXTEDIT_UPDATE apply then re-runs detection, which finds no token after
  * the inserted trailing space and closes the dropdown.
  *
  * \return true when the text changed.
  */
 static bool ui_textedit_mention_accept(bContext *C,
-                                       uiBut *but,
-                                       uiTextEdit &text_edit,
+                                       Button *but,
+                                       TextEdit &text_edit,
                                        Scene *scene)
 {
   char insert_buf[MIXIE_MENTION_INSERT_SIZE];
@@ -4085,13 +3980,12 @@ static bool ui_textedit_mention_accept(bContext *C,
 
   but->selsta = short(tok_start);
   but->selend = short(tok_end);
-  return ui_textedit_insert_buf(but, text_edit, insert_buf, insert_len);
+  return textedit_insert_buf(but, text_edit, insert_buf, insert_len);
 }
 
 /** \} */
 
-static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
->>>>>>> /tmp/tmpdb2g3731/modified
+static void textedit_begin(bContext *C, Button *but, HandleButtonData *data)
 {
   TextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
@@ -4255,19 +4149,13 @@ static void textedit_end(bContext *C, Button *but, HandleButtonData *data)
   ED_workspace_status_text(C, nullptr);
 
   if (but) {
-<<<<<<< /tmp/tmpdb2g3731/new
-    if (but_is_utf8(but)) {
-||||||| /tmp/tmpdb2g3731/old
-    if (UI_but_is_utf8(but)) {
-=======
     /* Mixar: leaving the chat composer closes the @-mention dropdown and
      * clears the published query (covers Esc, click-outside, Enter-submit
      * and focus loss). */
     if (Scene *mention_scene = ui_but_mixie_mention_scene(but)) {
       mixie_chat_mention_publish(C, mention_scene, "");
     }
-    if (UI_but_is_utf8(but)) {
->>>>>>> /tmp/tmpdb2g3731/modified
+    if (but_is_utf8(but)) {
       const int strip = BLI_str_utf8_invalid_strip(but->editstr, strlen(but->editstr));
       /* Strip non-UTF8 characters unless buttons support this.
        * This should never happen as all text input should be valid UTF8,
@@ -4547,13 +4435,6 @@ static int do_but_textedit(
       }
       break;
     case LEFTMOUSE: {
-<<<<<<< /tmp/tmpdb2g3731/new
-      /* Allow clicks on extra icons while editing. */
-      if (do_but_extra_operator_icon(C, but, data, event)) {
-||||||| /tmp/tmpdb2g3731/old
-      /* Allow clicks on extra icons while editing. */
-      if (ui_do_but_extra_operator_icon(C, but, data, event)) {
-=======
       /* Mixar: a click on a @-mention suggestion row accepts it in a single
        * click while editing continues (mirrors the searchbox behaviour —
        * without this, the press would only exit text editing and the row
@@ -4575,8 +4456,7 @@ static int do_but_textedit(
       /* Allow clicks on extra icons while editing (skip for multiline text —
        * the VALUE_CLEAR 'x' icon is auto-added by TEXTEDIT_UPDATE but not
        * wanted for multiline prompt inputs). */
-      if (!ui_but_is_multiline_text(but) && ui_do_but_extra_operator_icon(C, but, data, event)) {
->>>>>>> /tmp/tmpdb2g3731/modified
+      if (!ui_but_is_multiline_text(but) && do_but_extra_operator_icon(C, but, data, event)) {
         break;
       }
 
@@ -4688,11 +4568,6 @@ static int do_but_textedit(
 #endif
         {
           if (event->type == EVT_VKEY) {
-<<<<<<< /tmp/tmpdb2g3731/new
-            changed = textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
-||||||| /tmp/tmpdb2g3731/old
-            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
-=======
             const ScrArea *area = CTX_wm_area(C);
             if (area && ELEM(area->spacetype, SPACE_MIXIE_CHAT, SPACE_AGENT_BUBBLE)) {
               /* In Mixie Chat / Agent Bubble, try the Python image-paste
@@ -4708,13 +4583,12 @@ static int do_but_textedit(
                   nullptr,
                   nullptr);
               if (!(op_result & OPERATOR_FINISHED)) {
-                changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
+                changed = textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
               }
             }
             else {
-              changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
+              changed = textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
             }
->>>>>>> /tmp/tmpdb2g3731/modified
           }
           else if (event->type == EVT_CKEY) {
             changed = textedit_copypaste(but, text_edit, UI_TEXTEDIT_COPY);
@@ -4858,21 +4732,6 @@ static int do_but_textedit(
         retval = WM_UI_HANDLER_BREAK;
         break;
       case EVT_PADENTER:
-<<<<<<< /tmp/tmpdb2g3731/new
-      case EVT_RETKEY:
-        if (but->type == ButtonType::TextBox && event->modifier & KM_SHIFT) {
-          char utf8_buf[2] = "\n";
-          textedit_insert_buf(but, text_edit, utf8_buf, 1);
-          but->selsta = but->selend = but->pos;
-          changed = true;
-        }
-        else {
-          button_activate_state(C, but, BUTTON_STATE_EXIT);
-        }
-||||||| /tmp/tmpdb2g3731/old
-      case EVT_RETKEY:
-        button_activate_state(C, but, BUTTON_STATE_EXIT);
-=======
       case EVT_RETKEY: {
         /* Check if we're in space chat context for special Enter key behavior */
         const ScrArea *area = CTX_wm_area(C);
@@ -4901,12 +4760,12 @@ static int do_but_textedit(
            * re-apply the operator's remembered last-used properties (it is a
            * REGISTER operator), re-submitting whichever node the Generate
            * button last ran instead of the node being edited. Read the id
-           * before ui_apply_but/exit while the button's RNA pointer is
+           * before apply_but/exit while the button's RNA pointer is
            * guaranteed live. */
           const std::string node_id = RNA_string_get(&but->rnapoin, "node_id");
           /* The canvas prompt is a single-action field: commit its latest
            * value before invoking the exact operator behind Generate. */
-          ui_apply_but(C, block, but, data, true);
+          apply_but(C, block, but, data, true);
           button_activate_state(C, but, BUTTON_STATE_EXIT);
           if (wmOperatorType *run_ot = WM_operatortype_find("MIXIE_OT_moodboard_run_action_node",
                                                             false))
@@ -4924,7 +4783,7 @@ static int do_but_textedit(
 
         if (ui_but_is_multiline_text(but) && (event->modifier & KM_SHIFT)) {
             /* Shift+Enter in any multiline text button: insert real newline. */
-            ui_textedit_insert_buf(but, data->text_edit, "\n", 1);
+            textedit_insert_buf(but, data->text_edit, "\n", 1);
             changed = true;
             retval = WM_UI_HANDLER_BREAK;
             break;
@@ -4945,7 +4804,7 @@ static int do_but_textedit(
              * line count from the content on the next draw, so the
              * input expands automatically up to max_lines. */
             if (event->modifier & KM_SHIFT) {
-                ui_textedit_insert_buf(but, data->text_edit, "\n", 1);
+                textedit_insert_buf(but, data->text_edit, "\n", 1);
                 changed = true;
                 retval = WM_UI_HANDLER_BREAK;
                 break;
@@ -4961,14 +4820,13 @@ static int do_but_textedit(
               }
             }
             /* Plain Enter in chat context: insert submit marker and trigger submit. */
-            ui_textedit_insert_buf(but, data->text_edit, "\x1F", 1);
-            ui_apply_but(C, block, but, data, true);
+            textedit_insert_buf(but, data->text_edit, "\x1F", 1);
+            apply_but(C, block, but, data, true);
             button_activate_state(C, but, BUTTON_STATE_EXIT);
             retval = WM_UI_HANDLER_BREAK;
             break;
         }
         button_activate_state(C, but, BUTTON_STATE_EXIT);
->>>>>>> /tmp/tmpdb2g3731/modified
         retval = WM_UI_HANDLER_BREAK;
         break;
       }
@@ -12839,26 +12697,16 @@ static int handle_menu_event(bContext *C,
           }
 
           /* strict check, and include the parent rect */
-<<<<<<< /tmp/tmpdb2g3731/new
           if (!menu->dotowards && !saferct && ((U.flag & USER_MENU_CLOSE_LEAVE) || level > 0) &&
               !(menu->mmb_panning || menu->keep_open_timer))
           {
-            if (block->flag & BLOCK_OUT_1) {
-              menu->menuretval = RETURN_OK;
-||||||| /tmp/tmpdb2g3731/old
-          if (!menu->dotowards && !saferct && ((U.flag & USER_MENU_CLOSE_LEAVE) || level > 0)) {
-            if (block->flag & UI_BLOCK_OUT_1) {
-              menu->menuretval = UI_RETURN_OK;
-=======
-          if (!menu->dotowards && !saferct && ((U.flag & USER_MENU_CLOSE_LEAVE) || level > 0)) {
             /* Mixar: skip mouse-leave dismiss for the persistent agent
              * bubble (see matching check in the click branch above). */
             if (block->name == "agent_bubble") {
               /* keep popup alive */
             }
-            else if (block->flag & UI_BLOCK_OUT_1) {
-              menu->menuretval = UI_RETURN_OK;
->>>>>>> /tmp/tmpdb2g3731/modified
+            else if (block->flag & BLOCK_OUT_1) {
+              menu->menuretval = RETURN_OK;
             }
             else {
               menu->menuretval = RETURN_OUT;

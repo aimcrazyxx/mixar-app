@@ -550,11 +550,6 @@ static rctf *stored_window_bounds(eSpace_Type space_type)
   return nullptr;
 }
 
-<<<<<<< /tmp/tmpt9af2oyv/new
-static bool wm_window_is_last_main_window(wmWindowManager *wm, wmWindow *win)
-||||||| /tmp/tmpt9af2oyv/old
-void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
-=======
 static bool wm_window_contains_agent_bubble_space(wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
@@ -624,7 +619,7 @@ static void wm_close_agent_bubble_windows(bContext *C,
 }
 
 void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
->>>>>>> /tmp/tmpt9af2oyv/modified
+static bool wm_window_is_last_main_window(wmWindowManager *wm, wmWindow *win)
 {
   if (win->parent) {
     return false;

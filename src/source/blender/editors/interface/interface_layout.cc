@@ -1497,44 +1497,28 @@ PointerRNA Layout::op(wmOperatorType *ot,
   return ptr;
 }
 
-<<<<<<< /tmp/tmpsmqoetc_/new
+/* Mixar: helper exposed via UI_interface_layout.hh so rna_ui_api.cc
+ * (where uiBlock is opaque) can suppress tooltips on a button it
+ * just emitted via the public PointerRNA-returning op() path. Used
+ * by the new `no_tooltip` kwarg on bpy.types.UILayout.operator(). */
+void UI_layout_disable_last_button_tooltip(ui::Layout *layout)
+{
+  if (!layout) {
+    return;
+  }
+  ui::Block *block = layout->block();
+  if (!block || block->buttons.is_empty()) {
+    return;
+  }
+  but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);
+}
+
 PointerRNA Layout::op_menu_hold(wmOperatorType *ot,
                                 std::optional<StringRef> name,
                                 int icon,
                                 const wm::OpCallContext context,
                                 const eUI_Item_Flag flag,
                                 const char *menu_id)
-||||||| /tmp/tmpsmqoetc_/old
-PointerRNA uiLayout::op_menu_hold(wmOperatorType *ot,
-                                  std::optional<StringRef> name,
-                                  int icon,
-                                  const blender::wm::OpCallContext context,
-                                  const eUI_Item_Flag flag,
-                                  const char *menu_id)
-=======
-/* Mixar: helper exposed via UI_interface_layout.hh so rna_ui_api.cc
- * (where uiBlock is opaque) can suppress tooltips on a button it
- * just emitted via the public PointerRNA-returning op() path. Used
- * by the new `no_tooltip` kwarg on bpy.types.UILayout.operator(). */
-void UI_layout_disable_last_button_tooltip(uiLayout *layout)
-{
-  if (!layout) {
-    return;
-  }
-  uiBlock *block = layout->block();
-  if (!block || block->buttons.is_empty()) {
-    return;
-  }
-  UI_but_drawflag_enable(block->buttons.last().get(), UI_BUT_NO_TOOLTIP);
-}
-
-PointerRNA uiLayout::op_menu_hold(wmOperatorType *ot,
-                                  std::optional<StringRef> name,
-                                  int icon,
-                                  const blender::wm::OpCallContext context,
-                                  const eUI_Item_Flag flag,
-                                  const char *menu_id)
->>>>>>> /tmp/tmpsmqoetc_/modified
 {
   PointerRNA ptr;
   Button *but = uiItemFullO_ptr_ex(this, ot, name, icon, context, flag, &ptr);

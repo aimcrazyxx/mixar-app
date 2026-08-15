@@ -116,7 +116,6 @@ enum class WidgetStyle {
   MenuBack,
 
   /* specials */
-<<<<<<< /tmp/tmpoujyissv/new
   Icon,
   IconLabel,
   PreviewTile,
@@ -129,40 +128,13 @@ enum class WidgetStyle {
   Progress,
   NodeSocket,
   ViewItem,
-||||||| /tmp/tmpoujyissv/old
-  UI_WTYPE_ICON,
-  UI_WTYPE_ICON_LABEL,
-  UI_WTYPE_PREVIEW_TILE,
-  UI_WTYPE_SWATCH,
-  UI_WTYPE_RGB_PICKER,
-  UI_WTYPE_UNITVEC,
-  UI_WTYPE_BOX,
-  UI_WTYPE_SCROLL,
-  UI_WTYPE_LISTITEM,
-  UI_WTYPE_PROGRESS,
-  UI_WTYPE_NODESOCKET,
-  UI_WTYPE_VIEW_ITEM,
-=======
-  UI_WTYPE_ICON,
-  UI_WTYPE_ICON_LABEL,
-  UI_WTYPE_PREVIEW_TILE,
-  UI_WTYPE_SWATCH,
-  UI_WTYPE_RGB_PICKER,
-  UI_WTYPE_UNITVEC,
-  UI_WTYPE_BOX,
-  UI_WTYPE_SCROLL,
-  UI_WTYPE_LISTITEM,
-  UI_WTYPE_PROGRESS,
-  UI_WTYPE_NODESOCKET,
-  UI_WTYPE_VIEW_ITEM,
 
-  /* Mixar custom widgets */
-  UI_WTYPE_MIXAR_SECTION,
-  UI_WTYPE_MIXAR_DROPDOWN,
-  UI_WTYPE_MIXAR_ACTION,
-  UI_WTYPE_MIXAR_TOGGLE,
-  UI_WTYPE_MIXAR_INPUT,
->>>>>>> /tmp/tmpoujyissv/modified
+  /* Mixar custom widget styles */
+  MixarSection,
+  MixarDropdown,
+  MixarAction,
+  MixarToggle,
+  MixarInput,
 };
 
 /**
@@ -2088,7 +2060,6 @@ static void widget_draw_text_ime_underline(const uiFontStyle *fstyle,
 }
 #endif /* WITH_INPUT_IME */
 
-<<<<<<< /tmp/tmpoujyissv/new
 static void widget_draw_textbox(const uiFontStyle *fstyle,
                                 const uiWidgetColors *wcol,
                                 Button *but,
@@ -2445,8 +2416,6 @@ static void widget_draw_vertical_text(const uiFontStyle *fstyle,
   BLF_disable(fstyle->uifont_id, BLF_ROTATION);
 }
 
-||||||| /tmp/tmpoujyissv/old
-=======
 /* -------------------------------------------------------------------- */
 /** \name Multi-Line Text Input Support
  * \{ */
@@ -2456,9 +2425,9 @@ static void widget_draw_vertical_text(const uiFontStyle *fstyle,
  * Scoped to tall text buttons (height > 1.5 * UI_UNIT_Y) that have
  * UI_BUT_TEXTEDIT_UPDATE set - i.e. the chat input field.
  */
-static bool ui_but_is_multiline_text(const uiBut *but)
+static bool ui_but_is_multiline_text(const Button *but)
 {
-  if (but->type != ButType::Text) {
+  if (but->type != ButtonType::Text) {
     return false;
   }
   if (!(but->flag & UI_BUT_TEXTEDIT_UPDATE)) {
@@ -2474,7 +2443,7 @@ static bool ui_but_is_multiline_text(const uiBut *but)
  * The offset resets only when text editing ends (editstr becomes null).
  */
 /* Non-static so interface_handlers.cc can read/write scroll state */
-const uiBut *g_multiline_scroll_but = nullptr;
+const Button *g_multiline_scroll_but = nullptr;
 int g_multiline_scroll_offset = 0;
 static bool g_multiline_was_editing = false;
 static int g_multiline_prev_cursor_pos = -1;
@@ -2482,7 +2451,7 @@ static int g_multiline_prev_cursor_pos = -1;
 /**
  * Get the number of visible lines for a multi-line text button.
  */
-static int ui_multiline_visible_lines(const uiBut *but, int line_height)
+static int ui_multiline_visible_lines(const Button *but, int line_height)
 {
   if (line_height <= 0) {
     return 3;
@@ -2496,104 +2465,80 @@ static int ui_multiline_visible_lines(const uiBut *but, int line_height)
  */
 static void widget_draw_text_multiline(const uiFontStyle *fstyle,
                                        const uiWidgetColors *wcol,
-                                       uiBut *but,
+                                       Button *but,
                                        rcti *rect)
 {
   using namespace blender;
 
-  /* Match standard UI text size — one consistent size across the app
-   * (design system). Was 1.2x, which read oversized in the sidebar prompt. */
   uiFontStyle chat_fstyle = *fstyle;
   chat_fstyle.points = fstyle->points * 1.0f;
-  UI_fontstyle_set(&chat_fstyle);
+  fontstyle_set(&chat_fstyle);
 
   const int fontid = chat_fstyle.uifont_id;
   const char *drawstr = but->editstr ? but->editstr : but->drawstr.c_str();
 
   if (!drawstr || !drawstr[0]) {
     if (but->editstr) {
-      /* Editing an empty string — fall through to draw the cursor.
-       * We still need line height, scroll tracking, and cursor rendering
-       * so the caret is visible immediately on click. */
+      /* Editing an empty string — fall through to draw the cursor. */
     }
     else {
-      /* Not editing: draw placeholder if available, then return */
-      if (ELEM(but->type, ButType::Text, ButType::SearchMenu)) {
-        const char *placeholder = ui_but_placeholder_get(but);
+      if (ELEM(but->type, ButtonType::Text, ButtonType::SearchMenu)) {
+        const char *placeholder = but_placeholder_get(but);
         if (placeholder && placeholder[0]) {
-          uiFontStyleDraw_Params params{};
+          FontStyleDrawParams params{};
           params.align = UI_STYLE_TEXT_LEFT;
           uiFontStyle style = chat_fstyle;
           style.shadow = 0;
           uchar col[4];
           copy_v4_v4_uchar(col, wcol->text);
           col[3] *= 0.33f;
-          /* Draw placeholder top-left aligned */
           rcti placeholder_rect = *rect;
           const float lh = BLF_height(fontid, "Wg", 2);
           const int padding = int(4.0f * U.pixelsize);
           placeholder_rect.ymax = rect->ymax - padding;
           placeholder_rect.ymin = placeholder_rect.ymax - int(lh);
-          UI_fontstyle_draw_ex(&style,
-                               &placeholder_rect,
-                               placeholder,
-                               strlen(placeholder),
-                               col,
-                               &params,
-                               nullptr,
-                               nullptr,
-                               nullptr);
+          fontstyle_draw_ex(&style,
+                            &placeholder_rect,
+                            placeholder,
+                            strlen(placeholder),
+                            col,
+                            &params,
+                            nullptr,
+                            nullptr,
+                            nullptr);
         }
       }
       return;
     }
   }
 
-  /* Calculate line height */
   const float line_height_f = BLF_height(fontid, "Wg", 2) + 2.0f * U.pixelsize;
   const int line_height = max_ii(int(line_height_f), 1);
-
-  /* Get rect width for wrapping */
   const int rect_width = max_ii(BLI_rcti_size_x(rect) - int(4.0f * U.pixelsize), 10);
-
-  /* Inset the top of the drawing rect so text doesn't hug the top edge.
-   * This shifts text, selection highlights, and cursor down uniformly. */
   const int top_inset = int(4.0f * U.pixelsize);
   rect->ymax -= top_inset;
 
-  /* Wrap text into visual lines */
   Vector<StringRef> lines = BLF_string_wrap(
       fontid,
       drawstr,
       rect_width,
       BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit)));
 
-  /* BLF_string_wrap clips mid-string \n via its newline path, but a trailing \n
-   * goes through the "end of string" path with clip_bytes=0, so it stays in the
-   * last line. Strip it here so cursor/width calculations don't treat \n as a
-   * space glyph (BLF maps \n to a space since charcode 0x0A < 32). */
   for (int64_t i = 0; i < lines.size(); i++) {
     if (lines[i].size() > 0 && lines[i][lines[i].size() - 1] == '\n') {
       lines[i] = StringRef(lines[i].data(), lines[i].size() - 1);
     }
   }
-
-  /* If text ends with \n, add a virtual empty line so the cursor can appear on the next line */
   const int drawstr_len = int(strlen(drawstr));
   if (drawstr_len > 0 && drawstr[drawstr_len - 1] == '\n') {
     lines.append(StringRef(drawstr + drawstr_len, int64_t(0)));
   }
-
-  /* Ensure at least one line exists (for empty text during editing, so cursor renders) */
   if (lines.is_empty()) {
     lines.append(StringRef(drawstr, int64_t(0)));
   }
 
   const int num_lines = int(lines.size());
 
-  /* Calculate byte offsets for each line start (relative to drawstr).
-   * Use pointer arithmetic for non-empty lines since BLF_string_wrap clips \n bytes
-   * from the output but the StringRefs still point into the original string. */
   blender::Vector<int> line_byte_offsets;
   line_byte_offsets.reserve(num_lines);
   for (int i = 0; i < num_lines; i++) {
@@ -2601,7 +2546,6 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
       line_byte_offsets.append(int(lines[i].data() - drawstr));
     }
     else if (i > 0) {
-      /* Empty line (from \n\n or trailing \n): previous line end + 1 for the \n */
       line_byte_offsets.append(line_byte_offsets[i - 1] + int(lines[i - 1].size()) + 1);
     }
     else {
@@ -2609,7 +2553,6 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
     }
   }
 
-  /* Find which line contains the cursor */
   int cursor_line = num_lines - 1;
   if (but->editstr && but->pos >= 0) {
     for (int i = 0; i < num_lines; i++) {
@@ -2622,24 +2565,15 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
     }
   }
 
-  /* Calculate scroll offset to keep cursor visible */
   const int visible_lines = ui_multiline_visible_lines(but, line_height);
-
-  /* Track the current button for interface_handlers.cc scroll events */
   g_multiline_scroll_but = but;
-
   const bool is_editing = (but->editstr != nullptr);
-
-  /* Reset scroll offset when editing stops (was editing → not editing) */
   if (!is_editing && g_multiline_was_editing) {
     g_multiline_scroll_offset = 0;
     g_multiline_prev_cursor_pos = -1;
   }
   g_multiline_was_editing = is_editing;
-
   if (is_editing && but->pos >= 0) {
-    /* Only auto-scroll when the cursor actually moves — otherwise manual
-     * scroll (wheel / touchpad) gets overridden every frame. */
     const bool cursor_moved = (but->pos != g_multiline_prev_cursor_pos);
     g_multiline_prev_cursor_pos = but->pos;
     if (cursor_moved) {
@@ -2651,165 +2585,102 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
       }
     }
   }
-  g_multiline_scroll_offset = std::clamp(g_multiline_scroll_offset, 0, max_ii(num_lines - visible_lines, 0));
+  g_multiline_scroll_offset = std::clamp(
+      g_multiline_scroll_offset, 0, max_ii(num_lines - visible_lines, 0));
 
-  /* Draw selection if editing and selection exists */
   if (but->editstr && but->pos >= 0 && (but->selend - but->selsta) != 0) {
     GPU_blend(GPU_BLEND_ALPHA);
-    UI_widgetbase_draw_cache_flush();
+    widgetbase_draw_cache_flush();
     uint pos_attr = GPU_vertformat_attr_add(
         immVertexFormat(), "pos", blender::gpu::VertAttrType::SFLOAT_32_32);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
     immUniformColor4ubv(wcol->item);
-
     const int sel_start = min_ii(but->selsta, but->selend);
     const int sel_end = max_ii(but->selsta, but->selend);
-
     for (int i = g_multiline_scroll_offset;
          i < min_ii(g_multiline_scroll_offset + visible_lines, num_lines);
          i++)
     {
       const int line_start = line_byte_offsets[i];
       const int line_len = int(lines[i].size());
-      const int line_end = line_start + line_len;
-
-      /* Check if selection overlaps this line */
-      if (sel_end <= line_start || sel_start >= line_end) {
-        continue;
-      }
-
-      /* Compute selection bounds within this line */
+      const int line_end_byte = line_start + line_len;
+      if (sel_end <= line_start || sel_start >= line_end_byte) { continue; }
       const int local_sel_start = max_ii(sel_start - line_start, 0);
       const int local_sel_end = min_ii(sel_end - line_start, line_len);
-
-      /* Get pixel positions */
       const float sel_x_start = (local_sel_start > 0) ?
-                                    BLF_width(fontid, drawstr + line_start, local_sel_start) :
-                                    0.0f;
+          BLF_width(fontid, drawstr + line_start, local_sel_start) : 0.0f;
       const float sel_x_end = BLF_width(fontid, drawstr + line_start, local_sel_end);
-
       const int visual_line = i - g_multiline_scroll_offset;
       const float line_top = rect->ymax - visual_line * line_height;
-      const float line_bottom = line_top - line_height;
-
-      immRectf(pos_attr,
-               rect->xmin + sel_x_start,
-               line_bottom + U.pixelsize,
-               std::min(rect->xmin + sel_x_end, float(rect->xmax - 2)),
-               line_top - U.pixelsize);
+      immRectf(pos_attr, rect->xmin + sel_x_start, line_top - line_height + U.pixelsize,
+               std::min(rect->xmin + sel_x_end, float(rect->xmax - 2)), line_top - U.pixelsize);
     }
-
     immUnbindProgram();
     GPU_blend(GPU_BLEND_NONE);
   }
 
-  /* Draw cursor if editing */
   if (but->editstr && but->pos >= 0) {
     const int local_pos = std::min(but->pos - line_byte_offsets[cursor_line],
                                    int(lines[cursor_line].size()));
     const int cursor_x = BLF_str_offset_to_cursor(fontid,
-                                                   drawstr + line_byte_offsets[cursor_line],
-                                                   int(lines[cursor_line].size()),
-                                                   local_pos,
-                                                   max_ii(1, int(U.pixelsize * 2)));
-
+        drawstr + line_byte_offsets[cursor_line], int(lines[cursor_line].size()),
+        local_pos, max_ii(1, int(U.pixelsize * 2)));
     const int visual_cursor_line = cursor_line - g_multiline_scroll_offset;
     if (visual_cursor_line >= 0 && visual_cursor_line < visible_lines) {
       const float cursor_top = rect->ymax - visual_cursor_line * line_height;
-      const float cursor_bottom = cursor_top - line_height;
-
       GPU_blend(GPU_BLEND_ALPHA);
-      UI_widgetbase_draw_cache_flush();
+      widgetbase_draw_cache_flush();
       GPU_blend(GPU_BLEND_NONE);
-
       uint pos_attr = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", blender::gpu::VertAttrType::SFLOAT_32_32);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
       immUniformThemeColor(TH_WIDGET_TEXT_CURSOR);
-
-      immRectf(pos_attr,
-               rect->xmin + cursor_x,
-               cursor_bottom + U.pixelsize,
-               rect->xmin + cursor_x + int(2.0f * U.pixelsize),
-               cursor_top - U.pixelsize);
-
+      immRectf(pos_attr, rect->xmin + cursor_x, cursor_top - line_height + U.pixelsize,
+               rect->xmin + cursor_x + int(2.0f * U.pixelsize), cursor_top - U.pixelsize);
       immUnbindProgram();
     }
   }
 
-  /* Draw text line by line */
   for (int i = g_multiline_scroll_offset;
-       i < min_ii(g_multiline_scroll_offset + visible_lines, num_lines);
-       i++)
+       i < min_ii(g_multiline_scroll_offset + visible_lines, num_lines); i++)
   {
     const int visual_line = i - g_multiline_scroll_offset;
     const float line_top = rect->ymax - visual_line * line_height;
-
     rcti line_rect = *rect;
     line_rect.ymax = int(line_top);
     line_rect.ymin = int(line_top - line_height);
-
     const int line_start = line_byte_offsets[i];
     const int line_len = int(lines[i].size());
-
     if (line_len > 0) {
-      uiFontStyleDraw_Params params{};
+      FontStyleDrawParams params{};
       params.align = UI_STYLE_TEXT_LEFT;
-      UI_fontstyle_draw_ex(&chat_fstyle,
-                           &line_rect,
-                           drawstr + line_start,
-                           line_len,
-                           wcol->text,
-                           &params,
-                           nullptr,
-                           nullptr,
-                           nullptr);
+      fontstyle_draw_ex(&chat_fstyle, &line_rect, drawstr + line_start, line_len,
+                        wcol->text, &params, nullptr, nullptr, nullptr);
     }
   }
 
-  /* Draw scrollbar indicator when content overflows visible area */
   if (num_lines > visible_lines) {
-    const float scrollbar_width = 3.0f * U.pixelsize;
-    const float scrollbar_margin = 2.0f * U.pixelsize;
+    const float sw = 3.0f * U.pixelsize;
+    const float sm = 2.0f * U.pixelsize;
     const float track_height = float(BLI_rcti_size_y(rect));
-    const float track_x = float(rect->xmax) - scrollbar_width - scrollbar_margin;
-
-    /* Track background */
+    const float track_x = float(rect->xmax) - sw - sm;
     GPU_blend(GPU_BLEND_ALPHA);
-    UI_widgetbase_draw_cache_flush();
+    widgetbase_draw_cache_flush();
     uint sb_pos = GPU_vertformat_attr_add(
         immVertexFormat(), "pos", blender::gpu::VertAttrType::SFLOAT_32_32);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-    uchar track_col[4];
-    copy_v4_v4_uchar(track_col, wcol->text);
-    track_col[3] = 25;
+    uchar track_col[4]; copy_v4_v4_uchar(track_col, wcol->text); track_col[3] = 25;
     immUniformColor4ubv(track_col);
-    immRectf(sb_pos,
-             track_x,
-             float(rect->ymin),
-             track_x + scrollbar_width,
-             float(rect->ymax));
-
-    /* Thumb */
+    immRectf(sb_pos, track_x, float(rect->ymin), track_x + sw, float(rect->ymax));
     const float thumb_ratio = float(visible_lines) / float(num_lines);
     const float thumb_height = max_ff(thumb_ratio * track_height, 8.0f * U.pixelsize);
     const float scroll_range = track_height - thumb_height;
     const float max_scroll = float(max_ii(num_lines - visible_lines, 1));
-    const float thumb_offset = (float(g_multiline_scroll_offset) / max_scroll) * scroll_range;
-    const float thumb_top = float(rect->ymax) - thumb_offset;
-    const float thumb_bottom = thumb_top - thumb_height;
-
-    uchar thumb_col[4];
-    copy_v4_v4_uchar(thumb_col, wcol->text);
-    thumb_col[3] = 80;
+    const float thumb_top = float(rect->ymax) -
+        (float(g_multiline_scroll_offset) / max_scroll) * scroll_range;
+    uchar thumb_col[4]; copy_v4_v4_uchar(thumb_col, wcol->text); thumb_col[3] = 80;
     immUniformColor4ubv(thumb_col);
-    immRectf(sb_pos,
-             track_x,
-             thumb_bottom,
-             track_x + scrollbar_width,
-             thumb_top);
-
+    immRectf(sb_pos, track_x, thumb_top - thumb_height, track_x + sw, thumb_top);
     immUnbindProgram();
     GPU_blend(GPU_BLEND_NONE);
   }
@@ -2817,7 +2688,6 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
 
 /** \} */
 
->>>>>>> /tmp/tmpoujyissv/modified
 static void widget_draw_text(const uiFontStyle *fstyle,
                              const uiWidgetColors *wcol,
                              Button *but,
@@ -3418,86 +3288,40 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   /* Textbox wraps content in lines, skip clipping text.  */
   if (but->type == ButtonType::TextBox) {
   }
-<<<<<<< /tmp/tmpoujyissv/new
-  else if (but->text_direction != TextDirection::Default) {
-    /* Do not clip vertical text.  */
-  }
-  else if (but->editstr && but->pos >= 0) {
-    /* clip but->drawstr to fit in available space */
-    text_clip_cursor(fstyle, but, rect);
-||||||| /tmp/tmpoujyissv/old
-
-  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper */
-  widget_draw_extra_icons(wcol, but, rect, alpha);
-
-  /* clip but->drawstr to fit in available space */
-  if (but->editstr && but->pos >= 0) {
-    ui_text_clip_cursor(fstyle, but, rect);
-=======
 
   /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper.
    * For multiline text buttons, skip extra icons (the VALUE_CLEAR 'x' icon
    * is auto-added by TEXTEDIT_UPDATE for search fields, not wanted here). */
   if (!ui_but_is_multiline_text(but)) {
     widget_draw_extra_icons(wcol, but, rect, alpha);
->>>>>>> /tmp/tmpoujyissv/modified
   }
 
   /* Multi-line text buttons handle their own wrapping and drawing */
   if (ui_but_is_multiline_text(but)) {
     but->ofs = 0;
-<<<<<<< /tmp/tmpoujyissv/new
-    but->strwidth = 0;
-  }
-  else if (ELEM(but->type, ButtonType::Num, ButtonType::NumSlider)) {
-    text_clip_right_label(fstyle, but, rect);
-  }
-  else if (but->flag & BUT_HAS_SEP_CHAR) {
-    /* Clip middle, but protect in all case right part containing the shortcut, if any. */
-    text_clip_middle_protect_right(fstyle, but, rect, UI_SEP_CHAR);
-||||||| /tmp/tmpoujyissv/old
-    but->strwidth = 0;
-  }
-  else if (ELEM(but->type, ButType::Num, ButType::NumSlider)) {
-    ui_text_clip_right_label(fstyle, but, rect);
-  }
-  else if (but->flag & UI_BUT_HAS_SEP_CHAR) {
-    /* Clip middle, but protect in all case right part containing the shortcut, if any. */
-    ui_text_clip_middle_protect_right(fstyle, but, rect, UI_SEP_CHAR);
-=======
     widget_draw_text_multiline(fstyle, wcol, but, rect);
->>>>>>> /tmp/tmpoujyissv/modified
   }
   else {
-<<<<<<< /tmp/tmpoujyissv/new
-    text_clip_middle(fstyle, but, rect);
-  }
-||||||| /tmp/tmpoujyissv/old
-    ui_text_clip_middle(fstyle, but, rect);
-  }
-=======
     /* clip but->drawstr to fit in available space */
     if (but->editstr && but->pos >= 0) {
-      ui_text_clip_cursor(fstyle, but, rect);
+      text_clip_cursor(fstyle, but, rect);
     }
     else if (but->drawstr[0] == '\0') {
       /* bypass text clipping on icon buttons */
       but->ofs = 0;
       but->strwidth = 0;
     }
-    else if (ELEM(but->type, ButType::Num, ButType::NumSlider)) {
-      ui_text_clip_right_label(fstyle, but, rect);
+    else if (ELEM(but->type, ButtonType::Num, ButtonType::NumSlider)) {
+      text_clip_right_label(fstyle, but, rect);
     }
-    else if (but->flag & UI_BUT_HAS_SEP_CHAR) {
+    else if (but->flag & BUT_HAS_SEP_CHAR) {
       /* Clip middle, but protect in all case right part containing the shortcut, if any. */
-      ui_text_clip_middle_protect_right(fstyle, but, rect, UI_SEP_CHAR);
+      text_clip_middle_protect_right(fstyle, but, rect, UI_SEP_CHAR);
     }
     else {
-      ui_text_clip_middle(fstyle, but, rect);
+      text_clip_middle(fstyle, but, rect);
     }
->>>>>>> /tmp/tmpoujyissv/modified
 
-<<<<<<< /tmp/tmpoujyissv/new
   /* Always draw text for text-button cursor. */
   if (ELEM(but->text_direction, TextDirection::Down, TextDirection::Up)) {
     widget_draw_vertical_text(fstyle, wcol, but, rect);
@@ -3508,14 +3332,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   else {
     widget_draw_textbox(fstyle, wcol, but, rect);
   }
-||||||| /tmp/tmpoujyissv/old
-  /* Always draw text for text-button cursor. */
-  widget_draw_text(fstyle, wcol, but, rect);
-=======
-    /* Always draw text for text-button cursor. */
-    widget_draw_text(fstyle, wcol, but, rect);
-  }
->>>>>>> /tmp/tmpoujyissv/modified
+}
 
   button_text_password_hide(password_str, but, true);
 
@@ -6328,38 +6145,32 @@ static WidgetType *widget_type(WidgetStyle type)
       wt.wcol_theme = &btheme->tui.wcol_box;
       break;
 
-<<<<<<< /tmp/tmpoujyissv/new
-    case WidgetStyle::RGBPicker:
-||||||| /tmp/tmpoujyissv/old
-    case UI_WTYPE_RGB_PICKER:
-=======
-    case UI_WTYPE_MIXAR_SECTION:
+    case WidgetStyle::MixarSection:
       wt.custom = widget_mixar_section;
       wt.wcol_theme = &btheme->tui.wcol_box;
       break;
 
-    case UI_WTYPE_MIXAR_DROPDOWN:
+    case WidgetStyle::MixarDropdown:
       wt.wcol_theme = &btheme->tui.wcol_menu;
       wt.draw = widget_mixar_dropdown;
       break;
 
-    case UI_WTYPE_MIXAR_ACTION:
+    case WidgetStyle::MixarAction:
       wt.wcol_theme = &btheme->tui.wcol_tool;
       wt.custom = widget_mixar_action_button;
       break;
 
-    case UI_WTYPE_MIXAR_TOGGLE:
+    case WidgetStyle::MixarToggle:
       wt.wcol_theme = &btheme->tui.wcol_option;
       wt.draw = widget_mixar_toggle;
       break;
 
-    case UI_WTYPE_MIXAR_INPUT:
+    case WidgetStyle::MixarInput:
       wt.wcol_theme = &btheme->tui.wcol_text;
       wt.draw = widget_mixar_input;
       break;
 
-    case UI_WTYPE_RGB_PICKER:
->>>>>>> /tmp/tmpoujyissv/modified
+    case WidgetStyle::RGBPicker:
       break;
 
     case WidgetStyle::Unitvec:
@@ -6577,36 +6388,19 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
         draw_separator(&tui->wcol_menu_item, but, rect);
         break;
 
-<<<<<<< /tmp/tmpoujyissv/new
       case ButtonType::But:
       case ButtonType::Decorator:
-||||||| /tmp/tmpoujyissv/old
-      case ButType::But:
-      case ButType::Decorator:
-=======
-      case ButType::But:
-      case ButType::Decorator:
         if (but->flag2 & UI_BUT2_MIXAR_ACTION) {
-          wt = widget_type(UI_WTYPE_MIXAR_ACTION);
+          wt = widget_type(WidgetStyle::MixarAction);
         }
->>>>>>> /tmp/tmpoujyissv/modified
 #ifdef USE_UI_TOOLBAR_HACK
-<<<<<<< /tmp/tmpoujyissv/new
-        if ((but->icon != ICON_NONE) && but_is_tool(but)) {
+        else if ((but->icon != ICON_NONE) && but_is_tool(but)) {
           wt = widget_type(WidgetStyle::ToolbarItem);
-||||||| /tmp/tmpoujyissv/old
-        if ((but->icon != ICON_NONE) && UI_but_is_tool(but)) {
-          wt = widget_type(UI_WTYPE_TOOLBAR_ITEM);
-=======
-        else if ((but->icon != ICON_NONE) && UI_but_is_tool(but)) {
-          wt = widget_type(UI_WTYPE_TOOLBAR_ITEM);
->>>>>>> /tmp/tmpoujyissv/modified
         }
 #endif
         else {
           wt = widget_type(WidgetStyle::Exec);
         }
-<<<<<<< /tmp/tmpoujyissv/new
 #else
         wt = widget_type(WidgetStyle::Exec);
 #endif
@@ -6617,12 +6411,6 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
             but->drawflag |= BUT_NO_TEXT_PADDING;
           }
         }
-||||||| /tmp/tmpoujyissv/old
-#else
-        wt = widget_type(UI_WTYPE_EXEC);
-#endif
-=======
->>>>>>> /tmp/tmpoujyissv/modified
         break;
 
       case ButtonType::Num:
@@ -6641,22 +6429,14 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
         wt = widget_type(WidgetStyle::ListItem);
         break;
 
-<<<<<<< /tmp/tmpoujyissv/new
       case ButtonType::TextBox:
       case ButtonType::Text:
-        wt = widget_type(WidgetStyle::Name);
-||||||| /tmp/tmpoujyissv/old
-      case ButType::Text:
-        wt = widget_type(UI_WTYPE_NAME);
-=======
-      case ButType::Text:
         if (but->flag2 & UI_BUT2_MIXAR_INPUT) {
-          wt = widget_type(UI_WTYPE_MIXAR_INPUT);
+          wt = widget_type(WidgetStyle::MixarInput);
         }
         else {
-          wt = widget_type(UI_WTYPE_NAME);
+          wt = widget_type(WidgetStyle::Name);
         }
->>>>>>> /tmp/tmpoujyissv/modified
         break;
 
       case ButtonType::SearchMenu:
@@ -6673,29 +6453,17 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
         wt = widget_type(WidgetStyle::Toggle);
         break;
 
-<<<<<<< /tmp/tmpoujyissv/new
       case ButtonType::Checkbox:
       case ButtonType::CheckboxN:
-        if (!(but->flag & UI_HAS_ICON)) {
-          wt = widget_type(WidgetStyle::Checkbox);
-||||||| /tmp/tmpoujyissv/old
-      case ButType::Checkbox:
-      case ButType::CheckboxN:
-        if (!(but->flag & UI_HAS_ICON)) {
-          wt = widget_type(UI_WTYPE_CHECKBOX);
-=======
-      case ButType::Checkbox:
-      case ButType::CheckboxN:
         if (but->flag2 & UI_BUT2_MIXAR_TOGGLE) {
-          wt = widget_type(UI_WTYPE_MIXAR_TOGGLE);
+          wt = widget_type(WidgetStyle::MixarToggle);
           if ((but->drawflag & (UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT)) == 0) {
             but->drawflag |= UI_BUT_TEXT_LEFT;
           }
           but->drawflag |= UI_BUT_NO_TEXT_PADDING;
         }
         else if (!(but->flag & UI_HAS_ICON)) {
-          wt = widget_type(UI_WTYPE_CHECKBOX);
->>>>>>> /tmp/tmpoujyissv/modified
+          wt = widget_type(WidgetStyle::Checkbox);
 
           if ((but->drawflag & (BUT_TEXT_LEFT | BUT_TEXT_RIGHT)) == 0) {
             but->drawflag |= BUT_TEXT_LEFT;
@@ -6715,25 +6483,13 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
         }
         break;
 
-<<<<<<< /tmp/tmpoujyissv/new
       case ButtonType::Menu:
       case ButtonType::Block:
       case ButtonType::Popover:
-        if (but->flag & BUT_NODE_LINK) {
-||||||| /tmp/tmpoujyissv/old
-      case ButType::Menu:
-      case ButType::Block:
-      case ButType::Popover:
-        if (but->flag & UI_BUT_NODE_LINK) {
-=======
-      case ButType::Menu:
-      case ButType::Block:
-      case ButType::Popover:
         if (but->flag2 & UI_BUT2_MIXAR_DROPDOWN) {
-          wt = widget_type(UI_WTYPE_MIXAR_DROPDOWN);
+          wt = widget_type(WidgetStyle::MixarDropdown);
         }
-        else if (but->flag & UI_BUT_NODE_LINK) {
->>>>>>> /tmp/tmpoujyissv/modified
+        else if (but->flag & BUT_NODE_LINK) {
           /* new node-link button, not active yet XXX */
           wt = widget_type(WidgetStyle::MenuNodeLink);
         }
@@ -6755,24 +6511,14 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
         wt = widget_type(WidgetStyle::Swatch);
         break;
 
-<<<<<<< /tmp/tmpoujyissv/new
       case ButtonType::Roundbox:
       case ButtonType::ListBox:
-        wt = widget_type(WidgetStyle::Box);
-||||||| /tmp/tmpoujyissv/old
-      case ButType::Roundbox:
-      case ButType::ListBox:
-        wt = widget_type(UI_WTYPE_BOX);
-=======
-      case ButType::Roundbox:
-      case ButType::ListBox:
         if (but->flag2 & UI_BUT2_MIXAR_SECTION) {
-          wt = widget_type(UI_WTYPE_MIXAR_SECTION);
+          wt = widget_type(WidgetStyle::MixarSection);
         }
         else {
-          wt = widget_type(UI_WTYPE_BOX);
+          wt = widget_type(WidgetStyle::Box);
         }
->>>>>>> /tmp/tmpoujyissv/modified
         break;
 
       case ButtonType::PreviewTile:

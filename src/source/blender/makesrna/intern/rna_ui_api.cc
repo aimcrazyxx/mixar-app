@@ -984,17 +984,12 @@ static Layout *rna_uiLayoutBox(Layout *layout)
   return &layout->box();
 }
 
-<<<<<<< /tmp/tmpuxg1j09j/new
-static Layout *rna_uiLayoutSplit(Layout *layout, float factor, bool align)
-||||||| /tmp/tmpuxg1j09j/old
-static uiLayout *rna_uiLayoutSplit(uiLayout *layout, float factor, bool align)
-=======
-static uiLayout *rna_uiLayoutMixarSection(uiLayout *layout)
+static ui::Layout *rna_uiLayoutMixarSection(ui::Layout *layout)
 {
   return UI_layout_mixar_section(layout);
 }
 
-static void rna_uiItemR_mixar_dropdown(uiLayout *layout,
+static void rna_uiItemR_mixar_dropdown(ui::Layout *layout,
                                        PointerRNA *ptr,
                                        const char *propname,
                                        const char *name,
@@ -1003,31 +998,12 @@ static void rna_uiItemR_mixar_dropdown(uiLayout *layout,
                                        int icon,
                                        int icon_value)
 {
-  /* Delegate to the standard prop drawing so sizing/split/decorate all work. */
-  rna_uiItemR(layout,
-              ptr,
-              propname,
-              name,
-              text_ctxt,
-              translate,
-              icon,
-              nullptr,  /* placeholder */
-              false,     /* expand */
-              false,     /* slider */
-              -1,        /* toggle */
-              false,     /* icon_only */
-              false,     /* event */
-              false,     /* full_event */
-              true,      /* emboss */
-              -1,        /* index (RNA_NO_INDEX) */
-              icon_value,
-              false);    /* invert_checkbox */
-
-  /* Mark the just-created Menu button for custom drawing. */
+  rna_uiItemR(layout, ptr, propname, name, text_ctxt, translate, icon,
+              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);
   UI_layout_mixar_mark_last_dropdown(layout);
 }
 
-static PointerRNA rna_uiItemO_mixar_action(uiLayout *layout,
+static PointerRNA rna_uiItemO_mixar_action(ui::Layout *layout,
                                            const char *opname,
                                            const char *name,
                                            const char *text_ctxt,
@@ -1036,24 +1012,13 @@ static PointerRNA rna_uiItemO_mixar_action(uiLayout *layout,
                                            bool depress,
                                            int icon_value)
 {
-  PointerRNA opptr = rna_uiItemO(layout,
-                                 opname,
-                                 name,
-                                 text_ctxt,
-                                 translate,
-                                 icon,
-                                 true,   /* emboss */
-                                 depress,
-                                 icon_value,
-                                 0.0f,   /* search_weight */
-                                 false); /* no_tooltip */
-
-  /* Mark the just-created operator button for accent styling. */
+  PointerRNA opptr = rna_uiItemO(layout, opname, name, text_ctxt, translate, icon,
+                                 true, depress, icon_value, 0.0f, false);
   UI_layout_mixar_mark_last_action(layout);
   return opptr;
 }
 
-static void rna_uiItemR_mixar_toggle(uiLayout *layout,
+static void rna_uiItemR_mixar_toggle(ui::Layout *layout,
                                      PointerRNA *ptr,
                                      const char *propname,
                                      const char *name,
@@ -1062,29 +1027,12 @@ static void rna_uiItemR_mixar_toggle(uiLayout *layout,
                                      int icon,
                                      int icon_value)
 {
-  rna_uiItemR(layout,
-              ptr,
-              propname,
-              name,
-              text_ctxt,
-              translate,
-              icon,
-              nullptr,  /* placeholder */
-              false,     /* expand */
-              false,     /* slider */
-              -1,        /* toggle */
-              false,     /* icon_only */
-              false,     /* event */
-              false,     /* full_event */
-              true,      /* emboss */
-              -1,        /* index (RNA_NO_INDEX) */
-              icon_value,
-              false);    /* invert_checkbox */
-
+  rna_uiItemR(layout, ptr, propname, name, text_ctxt, translate, icon,
+              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);
   UI_layout_mixar_mark_last_toggle(layout);
 }
 
-static void rna_uiItemR_mixar_input(uiLayout *layout,
+static void rna_uiItemR_mixar_input(ui::Layout *layout,
                                     PointerRNA *ptr,
                                     const char *propname,
                                     const char *name,
@@ -1093,30 +1041,12 @@ static void rna_uiItemR_mixar_input(uiLayout *layout,
                                     int icon,
                                     int icon_value)
 {
-  rna_uiItemR(layout,
-              ptr,
-              propname,
-              name,
-              text_ctxt,
-              translate,
-              icon,
-              nullptr,  /* placeholder */
-              false,     /* expand */
-              false,     /* slider */
-              -1,        /* toggle */
-              false,     /* icon_only */
-              false,     /* event */
-              false,     /* full_event */
-              true,      /* emboss */
-              -1,        /* index (RNA_NO_INDEX) */
-              icon_value,
-              false);    /* invert_checkbox */
-
+  rna_uiItemR(layout, ptr, propname, name, text_ctxt, translate, icon,
+              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);
   UI_layout_mixar_mark_last_input(layout);
 }
 
-static uiLayout *rna_uiLayoutSplit(uiLayout *layout, float factor, bool align)
->>>>>>> /tmp/tmpuxg1j09j/modified
+static Layout *rna_uiLayoutSplit(Layout *layout, float factor, bool align)
 {
   return &layout->split(factor, align);
 }
