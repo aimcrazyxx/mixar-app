@@ -99,14 +99,46 @@ if not defined BUILD_CORES (
     echo Using custom BUILD_CORES: %BUILD_CORES%
 )
 
+REM Normalize BUILD_WITH_NINJA before anything branches on it.
+REM
+REM Every script here asks `if defined BUILD_WITH_NINJA`, and `if defined` is
+REM true for the string "0" - so passing BUILD_WITH_NINJA=0 (what CI sends for
+REM use_ninja=false) selected Ninja anyway and the Visual Studio path was
+REM unreachable. Clearing the variable for the falsey spellings makes all of
+REM those existing checks correct without having to touch each script.
+if /i "%BUILD_WITH_NINJA%"=="0" set "BUILD_WITH_NINJA="
+if /i "%BUILD_WITH_NINJA%"=="false" set "BUILD_WITH_NINJA="
+if /i "%BUILD_WITH_NINJA%"=="no" set "BUILD_WITH_NINJA="
+if /i "%BUILD_WITH_NINJA%"=="off" set "BUILD_WITH_NINJA="
+
 REM Windows-specific build settings - Select generator based on BUILD_WITH_NINJA
 if defined BUILD_WITH_NINJA (
     set "CMAKE_GENERATOR_ARGS=-G Ninja"
     set "BUILD_ARGS=--parallel %BUILD_CORES%"
-) else (
-    REM Use Visual Studio generator - multi-config, creates Debug/Release folders
-    set "CMAKE_GENERATOR_ARGS=-G "Visual Studio 17 2022" -A x64"
-    set "BUILD_ARGS=--parallel %BUILD_CORES% --verbose -- /m:%BUILD_CORES%"
+    goto :generator_selected
 )
 
+REM Visual Studio generator - multi-config, creates Debug/Release folders.
+REM The version used to be hardcoded to "Visual Studio 17 2022", which fails
+REM immediately on a machine that only has a newer Visual Studio installed -
+REM including the CI runner, which ships VS2026. Ask vswhere what is actually
+REM there and map its major version to the matching generator name.
+set "VS_GENERATOR=Visual Studio 17 2022"
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if exist "%VSWHERE%" call :detect_vs_generator
+set "CMAKE_GENERATOR_ARGS=-G "%VS_GENERATOR%" -A x64"
+set "BUILD_ARGS=--parallel %BUILD_CORES% --verbose -- /m:%BUILD_CORES%"
+
+:generator_selected
+exit /b 0
+
+REM Kept as a subroutine on purpose: settings.bat is called by scripts that run
+REM with delayed expansion disabled, so a value read inside a parenthesised
+REM block cannot be used within that same block. A subroutine sidesteps it.
+:detect_vs_generator
+for /f "usebackq tokens=1 delims=." %%v in (`"%VSWHERE%" -latest -products * -property catalog_productDisplayVersion 2^>nul`) do (
+    if "%%v"=="18" set "VS_GENERATOR=Visual Studio 18 2026"
+    if "%%v"=="17" set "VS_GENERATOR=Visual Studio 17 2022"
+    if "%%v"=="16" set "VS_GENERATOR=Visual Studio 16 2019"
+)
 exit /b 0
