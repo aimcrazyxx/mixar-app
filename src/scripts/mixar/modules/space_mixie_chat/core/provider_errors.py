@@ -29,6 +29,14 @@ only the wording changes:
 All three are unreadable in a chat row, and all three look like the user's
 scene or prompt is at fault. None of them is.
 
+Precision beats coverage
+------------------------
+A wrong explanation is worse than no explanation, so only wordings that can
+ONLY mean a tool-schema rejection are matched, and a bare HTTP status code
+counts only when the surrounding text looks like an HTTP response.
+"line 401, in _refresh_summary" is a line number in a Blender traceback, not a
+credentials problem. Whatever is not recognized is passed through untouched.
+
 Scope: make the row say what happened in one line and keep the original text
 underneath. This CANNOT fix the declarations - they are not in this
 repository. The client only dispatches ``run_tool(scene, name, params)``, and
@@ -53,36 +61,60 @@ TIMEOUT = "timeout"
 NETWORK = "network"
 UNKNOWN = "unknown"
 
-# (kind, needles) checked in order, first match wins - so the specific schema
-# signatures are recognized before a generic "400 bad request" would be.
+# Checked in this order, first match wins, so the specific schema signatures
+# are recognized before a generic transport failure would be.
+_ORDERED_KINDS = (PROVIDER_SCHEMA, AUTH, QUOTA, TIMEOUT, NETWORK)
+
+# Wordings that can mean only one thing. Deliberately narrow: "missing field"
+# alone, or a bare INVALID_ARGUMENT, also describes errors with nothing to do
+# with tools, and announcing "the tool list is malformed" for one of those
+# would be a confident lie.
 _SIGNATURES = (
     (PROVIDER_SCHEMA, (
         # Gemini / Vertex
-        "function_declarations", "generatecontentrequest", "missing field",
-        "invalid_argument", "invalid json payload",
+        "function_declarations", "items: missing field",
         # OpenAI and OpenAI-compatible gateways
         "invalid schema for function", "array schema missing items",
-        "invalid_function_parameters", "function.parameters",
+        "invalid_function_parameters",
         # Claude, and anything else that validates the tool schema
         "input_schema", "json schema is invalid", "missing items",
         "'items' is required", "items is required",
     )),
     (AUTH, (
-        "unauthorized", "permission_denied", "api key", "api_key",
-        "invalid authentication", "401", "403",
+        "unauthorized", "permission_denied", "permission denied", "api key",
+        "api_key", "invalid authentication", "invalid_api_key",
     )),
     (QUOTA, (
-        "resource_exhausted", "insufficient_quota", "rate limit",
-        "rate_limit", "quota", "too many requests", "429",
-        "not enough credits",
+        "resource_exhausted", "insufficient_quota", "rate limit", "rate_limit",
+        "quota", "too many requests", "not enough credits",
     )),
-    (TIMEOUT, ("deadline exceeded", "timed out", "timeout", "504")),
+    (TIMEOUT, ("deadline exceeded", "timed out", "timeout")),
     (NETWORK, (
         "connection refused", "connection reset", "connection aborted",
         "failed to establish", "getaddrinfo", "name or service not known",
-        "ssl", "temporarily unavailable", "502", "503",
+        "sslerror", "ssl error", "[ssl:", "certificate verify failed",
+        "temporarily unavailable", "service unavailable", "bad gateway",
     )),
 )
+
+# An HTTP status code is decisive, but only next to something that marks it as
+# a status: "HTTP 401", "status_code=429", "ClientError: 503". The separator
+# may not contain a letter, which is what keeps a traceback frame such as
+# 'http/client.py", line 403, in getresponse' from being read as a status.
+_NUMERIC_SIGNATURES = (
+    (AUTH, ("401", "403")),
+    (QUOTA, ("429",)),
+    (TIMEOUT, ("408", "504")),
+    (NETWORK, ("502", "503")),
+)
+
+_CODE_TEMPLATE = "(?:http|status|code|error|response)[^a-z]{0,6}%s(?![0-9])"
+
+_WORD_SIGNATURES = dict(_SIGNATURES)
+_CODE_SIGNATURES = {
+    kind: tuple(re.compile(_CODE_TEMPLATE % code) for code in codes)
+    for kind, codes in _NUMERIC_SIGNATURES
+}
 
 _HEADLINES = {
     PROVIDER_SCHEMA: (
@@ -161,13 +193,22 @@ def _as_text(message) -> str:
 
 
 def classify(message) -> str:
-    """Bucket a raw provider/tool error message into one of the kinds above."""
+    """Bucket a raw provider/tool error message into one of the kinds above.
+
+    For each kind, in _ORDERED_KINDS order, the unmistakable wordings are
+    checked first and the HTTP status codes second. A message that matches
+    nothing stays UNKNOWN, and the caller passes it through verbatim.
+    """
     lowered = _as_text(message).lower()
     if not lowered.strip():
         return UNKNOWN
-    for kind, needles in _SIGNATURES:
-        if any(needle in lowered for needle in needles):
-            return kind
+    for kind in _ORDERED_KINDS:
+        for needle in _WORD_SIGNATURES.get(kind, ()):
+            if needle in lowered:
+                return kind
+        for pattern in _CODE_SIGNATURES.get(kind, ()):
+            if pattern.search(lowered):
+                return kind
     return UNKNOWN
 
 

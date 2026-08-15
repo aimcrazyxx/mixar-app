@@ -51,6 +51,16 @@ CLAUDE_ERROR = (
     "JSON schema is invalid.'}}"
 )
 
+# An ordinary Blender traceback that happens to fail on line 401. Nothing here
+# is a provider problem, and the numbers must not be read as HTTP statuses.
+TRACEBACK_ERROR = (
+    "Traceback (most recent call last):\n"
+    "  File '/mixar/modules/space_mixie_chat/core/steps_format.py', "
+    "line 401, in _refresh_summary\n"
+    "    row = bubble.step_items[0]\n"
+    "IndexError: list index out of range"
+)
+
 
 def _load_modules():
     package = sys.modules.get(PACKAGE)
@@ -180,6 +190,36 @@ def test_credentials_quota_timeout_and_network_are_told_apart():
         assert provider_errors.classify(message) == expected, message
 
 
+def test_an_http_status_still_counts_when_the_words_are_missing():
+    """A status code next to an HTTP marker is enough on its own."""
+    assert provider_errors.classify("HTTP 403 from the gateway") == provider_errors.AUTH
+    assert provider_errors.classify("status_code=429") == provider_errors.QUOTA
+    assert provider_errors.classify("ClientError: 503") == provider_errors.NETWORK
+
+
+def test_a_line_number_is_not_an_http_status():
+    """The bug this test exists for: "line 401" is not a credentials error.
+
+    Bare status codes used to be enough to pick a bucket, so any traceback
+    that failed on line 401 was reported as "Failed - provider credentials"
+    with an explanation telling the user to check an API key.
+    """
+    assert provider_errors.classify(TRACEBACK_ERROR) == provider_errors.UNKNOWN
+    row_label, detail = provider_errors.describe(TRACEBACK_ERROR)
+    assert row_label == "Failed"
+    assert detail == TRACEBACK_ERROR
+    assert "credentials" not in detail
+
+
+def test_a_traceback_through_the_http_stack_is_not_a_status_either():
+    raw = (
+        "Traceback (most recent call last):\n"
+        "  File '/usr/lib/python3.11/http/client.py', line 403, in getresponse\n"
+        "OSError: [Errno 9] Bad file descriptor"
+    )
+    assert provider_errors.classify(raw) == provider_errors.UNKNOWN
+
+
 def test_a_schema_400_is_never_retryable():
     assert not provider_errors.is_retryable(provider_errors.PROVIDER_SCHEMA)
     assert provider_errors.is_retryable(provider_errors.TIMEOUT)
@@ -244,6 +284,33 @@ def test_a_failed_row_reads_the_same_for_an_openai_rejection():
     assert row.status == "FAILED"
     assert row.label == "Failed - backend tool schema"
     assert "placements" in row.detail
+
+
+def test_a_traceback_row_keeps_the_upstream_wording():
+    bubble = _bubble_with_running_step()
+    steps_format.finish_step_on_bubble(
+        bubble, "req-1", {"success": False, "error": TRACEBACK_ERROR}
+    )
+    row = bubble.step_items[0]
+    assert row.status == "FAILED"
+    assert row.label == "Failed"
+    assert row.detail == TRACEBACK_ERROR
+
+
+def test_an_object_shaped_error_does_not_break_the_row():
+    """The backend may send `error` as an object, not a string.
+
+    Upstream slices it with [:500], which raises TypeError on a dict and
+    leaves the row RUNNING forever, so the wrapper coerces it first.
+    """
+    bubble = _bubble_with_running_step()
+    updated = steps_format.finish_step_on_bubble(
+        bubble, "req-1", {"success": False, "error": {"code": 400}}
+    )
+    row = bubble.step_items[0]
+    assert updated is True
+    assert row.status == "FAILED"
+    assert "400" in row.detail
 
 
 def test_a_failure_with_no_message_keeps_the_upstream_label():
