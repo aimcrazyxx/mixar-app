@@ -16,7 +16,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/aimcrazyxx/mixar-app/actions/jobs/95081137639/logs > /tmp/job.log
+          gh run view 31913159324 --repo aimcrazyxx/mixar-app --log-failed > /tmp/job.log
           mkdir -p docs/migration
           { echo '# Failed Blender finalizer job log'; echo; echo '```text'; tail -n 350 /tmp/job.log; echo '```'; } > docs/migration/latest-finalizer-job-log.md
           git config user.name github-actions[bot]
