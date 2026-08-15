@@ -9,7 +9,9 @@
  */
 
 #ifdef WIN32
-
+#  ifdef WIN32_LEAN_AND_MEAN
+#    undef WIN32_LEAN_AND_MEAN
+#  endif
 #  include <conio.h>
 #  include <shlwapi.h>
 #  include <stdio.h>
@@ -28,6 +30,8 @@
 
 #  include "utf_winfunc.hh"
 #  include "utfconv.hh"
+
+namespace blender {
 
 /* FILE_MAXDIR + FILE_MAXFILE */
 
@@ -210,7 +214,13 @@ bool BLI_windows_register_blend_extension(const bool all_users)
   }
 
   if (!register_blender_prog_id(prog_id, blender_path, friendly_name, all_users)) {
+<<<<<<< /tmp/tmprp1oxz4t/new
+    registry_error(root, "Unable to register Blender file type");
+||||||| /tmp/tmprp1oxz4t/old
+    registry_error(root, "Unable to register Blend document type");
+=======
     registry_error(root, "Unable to register Mixar document type");
+>>>>>>> /tmp/tmprp1oxz4t/modified
     return false;
   }
 
@@ -221,7 +231,13 @@ bool BLI_windows_register_blend_extension(const bool all_users)
     lresult = RegSetValueEx(hkey, nullptr, 0, REG_SZ, (BYTE *)prog_id, strlen(prog_id) + 1);
 
     if (lresult != ERROR_SUCCESS) {
+<<<<<<< /tmp/tmprp1oxz4t/new
+      registry_error(root, "Unable to register Blender file type");
+||||||| /tmp/tmprp1oxz4t/old
+      registry_error(root, "Unable to register Blend document type");
+=======
       registry_error(root, "Unable to register Mixar document type");
+>>>>>>> /tmp/tmprp1oxz4t/modified
       RegCloseKey(hkey);
       return false;
     }
@@ -238,7 +254,13 @@ bool BLI_windows_register_blend_extension(const bool all_users)
                              &dwd);
 
     if (lresult != ERROR_SUCCESS) {
+<<<<<<< /tmp/tmprp1oxz4t/new
+      registry_error(root, "Unable to register Blender file type");
+||||||| /tmp/tmprp1oxz4t/old
+      registry_error(root, "Unable to register Blend document type");
+=======
       registry_error(root, "Unable to register Mixar document type");
+>>>>>>> /tmp/tmprp1oxz4t/modified
       RegCloseKey(hkey);
       return false;
     }
@@ -247,7 +269,13 @@ bool BLI_windows_register_blend_extension(const bool all_users)
   }
 
   if (lresult != ERROR_SUCCESS) {
+<<<<<<< /tmp/tmprp1oxz4t/new
+    registry_error(root, "Unable to register Blender file type");
+||||||| /tmp/tmprp1oxz4t/old
+    registry_error(root, "Unable to register Blend document type");
+=======
     registry_error(root, "Unable to register Mixar document type");
+>>>>>>> /tmp/tmprp1oxz4t/modified
     return false;
   }
 
@@ -584,12 +612,15 @@ void BLI_windows_process_set_qos(QoSMode qos_mode, QoSPrecedence qos_precedence)
                              &processPowerThrottlingState,
                              sizeof(PROCESS_POWER_THROTTLING_STATE)))
   {
-    fprintf(
-        stderr, "BLI_windows_set_process_qos: SetProcessInformation failed: %d\n", GetLastError());
+    fprintf(stderr,
+            "BLI_windows_set_process_qos: SetProcessInformation failed: %lx\n",
+            GetLastError());
     return;
   }
   qos_precedence_last = qos_precedence;
 }
+
+}  // namespace blender
 
 #else
 

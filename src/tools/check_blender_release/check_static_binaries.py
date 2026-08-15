@@ -72,7 +72,13 @@ ALLOWED_LIBS = [
     'libxcb.so',
 ]
 
+<<<<<<< /tmp/tmp_m9tz6h_/new
+IGNORE_FILES = ("blender-launcher", )
+||||||| /tmp/tmp_m9tz6h_/old
+IGNORE_FILES = ("blender-launcher", "blender-softwaregl", )
+=======
 IGNORE_FILES = ("mixar-launcher", "mixar-softwaregl", )
+>>>>>>> /tmp/tmp_m9tz6h_/modified
 IGNORE_EXTENSION = (".sh", ".py", )
 
 

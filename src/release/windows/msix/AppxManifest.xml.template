@@ -49,7 +49,16 @@
             </uap2:SupportedVerbs>
           </uap3:FileTypeAssociation>
         </uap3:Extension>
+<<<<<<< /tmp/tmpb62p9rdq/new
+        <uap3:Extension Category="windows.protocol">
+          <uap3:Protocol Name="blender" Parameters="&quot;%1&quot;" />
+        </uap3:Extension>
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="Blender\blender-launcher.exe" EntryPoint="Windows.FullTrustApplication">
+||||||| /tmp/tmpb62p9rdq/old
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="Blender\blender-launcher.exe" EntryPoint="Windows.FullTrustApplication">
+=======
         <uap3:Extension Category="windows.appExecutionAlias" Executable="Mixar\mixar-launcher.exe" EntryPoint="Windows.FullTrustApplication">
+>>>>>>> /tmp/tmpb62p9rdq/modified
           <uap3:AppExecutionAlias>
             <desktop:ExecutionAlias Alias="mixar-launcher.exe" />
           </uap3:AppExecutionAlias>
