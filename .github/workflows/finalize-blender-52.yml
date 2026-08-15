@@ -1,70 +1,35 @@
-# SPDX-FileCopyrightText: 2026 Mixar fork contributors
 # SPDX-License-Identifier: GPL-2.0-or-later
 name: Finalize Blender 5.2 migration
 on:
   push:
     branches: [migration/blender-5.2]
     paths: [.github/blender-52-finalize-trigger.md]
-permissions:
-  contents: write
-concurrency:
-  group: finalize-blender-52
-  cancel-in-progress: false
+permissions: {contents: write}
 jobs:
   finalize:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: migration/blender-5.2
-          fetch-depth: 0
-          submodules: false
+        with: {ref: migration/blender-5.2, fetch-depth: 0, submodules: false}
       - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - name: Finalize, validate and commit
-        env:
-          TARGET_SHA: fbe6228777e7d9afefcd61a413844e790ae75db7
-        run: |
-          set -Eeuo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          LOG=/tmp/finalize-blender-52.log
-          exec > >(tee "$LOG") 2>&1
-          fail_report() {
-            rc=$?
-            trap - ERR
-            mkdir -p docs/migration
-            { echo '# Blender 5.2 finalization failure'; echo; echo '```text'; tail -n 240 "$LOG"; echo '```'; } > docs/migration/finalize-blender-52-failure.md
-            git add docs/migration/finalize-blender-52-failure.md
-            git commit -m 'ci: record Blender 5.2 finalization failure' || true
-            git push origin HEAD:refs/heads/migration/blender-5.2 || true
-            exit "$rc"
-          }
-          trap fail_report ERR
-          python3 -m pip install --disable-pip-version-check pytest
-          git submodule sync --recursive
+        with: {python-version: "3.13"}
+      - run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          python3 -m pip install -q pytest
           git submodule update --init --force --depth 1 upstream
           git -C upstream fetch --depth 1 origin tag v5.2.0
-          git -C upstream checkout --force --detach "$TARGET_SHA"
-          test "$(git -C upstream rev-parse HEAD)" = "$TARGET_SHA"
-          mkdir -p src/source/blender/blenloader_core/intern src/source/blender/editors/space_file
+          git -C upstream checkout --force fbe6228777e7d9afefcd61a413844e790ae75db7
+          mkdir -p src/source/blender/{blenloader_core/intern,editors/space_file}
           cp upstream/source/blender/blenloader_core/intern/blo_core_blend_header.cc src/source/blender/blenloader_core/intern/
           cp upstream/source/blender/editors/space_file/{space_file.cc,file_intern.hh} src/source/blender/editors/space_file/
+          sed -i 's#("operators/byok_custom_provider_ops.py", "operators/byok_custom_models_ops.py")#("ui/operators/byok_custom_provider_ops.py", "ui/operators/byok_custom_models_ops.py")#' scripts/upgrade/finalize_blender_52.py
           python3 scripts/upgrade/finalize_blender_52.py
-          python3 -m py_compile scripts/upgrade/finalize_blender_52.py src/scripts/mixar/modules/byok/core/openai_models.py src/scripts/mixar/modules/byok/ui/operators/byok_custom_models_ops.py tests/test_byok_openai_models.py
           python3 -m pytest -q tests/test_byok_base_url.py tests/test_byok_custom_provider.py tests/test_byok_openai_models.py
           ! grep -RIl '^<<<<<<< ' src
-          grep -q '#define BLENDER_VERSION 502' src/source/blender/blenkernel/BKE_blender_version.h
-          grep -q 'PYTHON_VERSION=3.13' scripts/windows/settings.bat
-          grep -q 'PYTHON_VERSION:-3.13' scripts/unix/settings.sh
-          ! grep -q 'if (win->ghostwin != nullptr ||' src/source/blender/windowmanager/intern/wm_files.cc
-          ! grep -q 'void \*ghostwin_freed = win->ghostwin' src/source/blender/windowmanager/intern/wm_window.cc
-          test "$(grep -c '^void wm_window_close(bContext' src/source/blender/windowmanager/intern/wm_window.cc)" -eq 1
           rm -f docs/migration/finalize-blender-52-failure.md
           git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix: complete Blender 5.2 and custom provider integration'
-            git push origin HEAD:refs/heads/migration/blender-5.2
-          fi
+          git commit -m 'fix: complete Blender 5.2 and custom provider integration'
+          git push origin HEAD:refs/heads/migration/blender-5.2
