@@ -53,6 +53,7 @@ jobs:
         run: |
           python scripts/upgrade/conflicts.py report \
             --src src \
+            --max-lines 400 \
             --output docs/migration/conflicts-remaining.md
 
       - name: Commit the result

@@ -1,141 +1,34 @@
 {
-  "$schema-note": "Maps a repo-relative path to a decision. A decision is 'upstream', 'mixar', 'ancestor', 'both', 'drop', {\"text\": \"...\"}, or a list of those concatenated in order. Use a bare decision to apply it to every hunk in the file, or an object keyed by hunk index. Indices come from docs/migration/conflicts-remaining.md and are renumbered every run, so regenerate the report before adding more.",
+  "$schema-note": "Maps a repo-relative path to a decision. A decision is 'upstream', 'mixar', 'ancestor', 'both', 'drop', {\"text\": \"...\"}, or a list of those concatenated in order. Use a bare decision to apply it to every hunk in the file, or an object keyed by hunk index. Indices come from docs/migration/conflicts-remaining.md and are RENUMBERED after every run, so always regenerate the report before adding entries, and never keep entries for files that are already clean.",
 
-  "src/CMakeLists.txt": {
-    "0": { "text": "# Mixar internal features\noption(WITH_BLENDER \"Build Mixar (disable to build only Cycles stand-alone).\" ON)\n" },
-    "1": { "text": "Enable building as a Python module which runs without a user interface, \\\nlike running regular Mixar in background mode (only enable for development), \\\n" },
-    "2": { "text": "option(WITH_AUDASPACE \"Build with Audaspace (base Mixar audio library)\" ON)\noption(WITH_SYSTEM_AUDASPACE \"Build with external Audaspace library installed on the system\" OFF)\n" },
-    "3": { "text": "to make Mixar more portable across distributions\"\n" },
-    "4": { "text": "option(WITH_PYTHON_INSTALL \"Copy system Python into the Mixar install directory\" ON)\n" },
-    "5": { "text": "Copy the official Blender Authors copyright.txt into the Mixar install directory\"\n" },
-    "6": { "text": "  option(WITH_PYTHON_INSTALL_NUMPY \"Copy system NumPy into the Mixar install directory\" ON)\n" },
-    "7": { "text": "Copy system requests into the Mixar install directory\"\n" },
-    "8": { "text": "  option(WITH_PYTHON_INSTALL_ZSTANDARD \"Copy Zstandard into the Mixar install directory\" ON)\n" }
-  },
-
-  "src/build_files/cmake/platform/platform_apple.cmake": "both",
-
-  "src/build_files/cmake/platform/platform_win32.cmake": {
-    "0": "upstream",
-    "1": { "text": "  # is free to override them at their own peril.\n  set(USER_PROPS_FILE \"${CMAKE_CURRENT_BINARY_DIR}/source/creator/mixar.Cpp.user.props\")\n" }
-  },
-
-  "src/intern/ghost/intern/GHOST_SystemCocoa.mm": "mixar",
-
-  "src/intern/ghost/intern/GHOST_SystemWin32.cc": "upstream",
-
-  "src/intern/ghost/intern/GHOST_WindowWin32.cc": {
-    "0": { "text": "    if (type == GHOST_kDrawingContextTypeOpenGL) {\n      const char *title = \"Mixar - Unsupported Graphics Card Configuration\";\n      const char *text = \"\";\n" },
-    "1": { "text": "      if (strncmp(blender::BLI_getenv(\"PROCESSOR_IDENTIFIER\"), \"ARM\", 3) == 0 &&\n          strstr(blender::BLI_getenv(\"PROCESSOR_IDENTIFIER\"), \"Qualcomm\") != NULL)\n      {\n        text =\n            \"A driver with support for OpenGL 4.3 or higher is required.\\n\\n\"\n            \"Qualcomm devices require the \\\"OpenCL\u2122, OpenGL\u00ae, and Vulkan\u00ae Compatibility Pack\\\" \"\n            \"from the Microsoft Store.\\n\\n\"\n            \"Devices using processors older than a Qualcomm Snapdragon 8cx Gen3 are incompatible, \"\n            \"but may be able to run an emulated x64 copy of Mixar, such as a 3.x LTS release.\";\n      }\n      else\n" }
-  },
-
-  "src/intern/ghost/intern/GHOST_XrContext.cc": {
-    "0": { "text": "  blender::STRNCPY(create_info.applicationInfo.applicationName, \"Mixar\");\n\n  /* Explicitly target OpenXR API version 1.0. Note that the API_VERSION_1_0 macro is only\n   * available in 1.1+ SDKs. For 1.0 SDKs, target the current SDK version. */\n#ifdef XR_API_VERSION_1_0\n  create_info.applicationInfo.apiVersion = XR_API_VERSION_1_0;\n#else\n" }
-  },
-
-  "src/release/datafiles/userdef/userdef_default_theme.c": {
-    "0": { "text": "    .grid = RGBA(0x66666614),\n    .grid_major = RGBA(0x545454ff),\n    .grid_axis_brightness = 0.46f,\n    .wire = RGBA(0x5c9a3aff),\n" },
-    "1": { "text": "    .grid = RGBA(0x1c2228ff),\n    .anim_interpolation_linear = RGBA(0x94e575cc),\n    .anim_interpolation_constant = RGBA(0xe59c7bcc),\n    .anim_interpolation_other = RGBA(0x5dbabeb3),\n" }
-  },
-
-  "src/scripts/startup/bl_ui/space_toolsystem_toolbar.py": "mixar",
-
-  "src/source/blender/blenkernel/BKE_main.hh": {
-    "0": { "text": "#define MAIN_MIXAR_VERSION_FILE_ATLEAST(main, ver, subver) \\\n  ((main)->mixar_versionfile > (ver) || \\\n   ((main)->mixar_versionfile == (ver) && (main)->mixar_subversionfile >= (subver)))\n\n/**\n * \\note in case `versionfile` is 0, this check is invalid, always return false then. This happens\n" }
-  },
-
-  "src/source/blender/blenloader/intern/versioning_500.cc": "upstream",
-
-  "src/source/blender/blenloader/intern/writefile.cc": "upstream",
-
-  "src/source/blender/editors/interface/interface_handlers.cc": {
-    "1": "upstream",
-    "2": "upstream",
-    "3": "upstream",
-    "4": "upstream",
-    "8": "upstream",
-    "11": "upstream"
+  "src/source/blender/makesdna/DNA_space_enums.h": {
+    "0": { "text": "  SPACE_SPREADSHEET = 23,\n\n  /* Mixar custom space types: start at 100 to avoid collisions with upstream Blender.\n   * Do NOT change the order or values \u2014 saved files depend on these via versioning. */\n  SPACE_MIXIE = 100,              /* Mixie space for Mixar */\n  SPACE_MIXAR_LAYERS = 101,       /* Mixar Layers space */\n  SPACE_MIXAR_PROPERTIES = 102,   /* Mixar Properties space */\n  SPACE_MIXAR_ASSETS = 103,       /* Mixar Assets space */\n  /* SPACE_MIXAR_UV_PROPERTIES = 104 \u2014 REMOVED: merged into IMAGE_EDITOR sidebar.\n   * Value reserved for backwards compatibility with versioning. */\n  SPACE_BAKING = 105,             /* Texturing Baking space */\n  SPACE_TEXTURE_SETS = 106,       /* Texture Sets management space */\n  SPACE_MIXIE_CHAT = 107,         /* Mixie Chat space for Mixar */\n  SPACE_AGENT_BUBBLE = 108,       /* Floating Agent Bubble \u2014 small chat overlay editor */\n  /* SPACE_SCENE_GRID = 109 \u2014 REMOVED: replaced by the View3D Agent Scene Strip region.\n   * Value reserved for backwards compatibility; unregistered spaces fall back to\n   * SPACE_EMPTY when loading old files. */\n\n  #define SPACE_TYPE_NUM (SPACE_AGENT_BUBBLE + 1)\n};\n" }
   },
 
   "src/source/blender/editors/screen/area.cc": {
-    "0": "both",
-    "2": { "text": "  if (has_category_tabs && region->runtime->category) {\n    ScrArea *area = CTX_wm_area(C);\n    if (area && area->spacetype == SPACE_MIXIE) {\n      UI_panel_category_draw_all_mixar(region, region->runtime->category);\n    }\n    else {\n      ui::panel_category_tabs_draw_all(C, region, region->runtime->category);\n    }\n" }
+    "0": { "text": "      return ELEM(regiontype,\n                  RGN_TYPE_TOOLS,\n                  RGN_TYPE_UI,\n                  RGN_TYPE_TOOL_PROPS,\n                  RGN_TYPE_FOOTER,\n                  RGN_TYPE_TOOL_HEADER,\n                  RGN_TYPE_ASSET_SHELF,\n                  RGN_TYPE_ASSET_SHELF_HEADER,\n                  /* Mixar: agent scene strip draws a transparent background so\n                   * its tiles float over the viewport. */\n                  RGN_TYPE_EXECUTE);\n\n    case SPACE_IMAGE:\n      return ELEM(regiontype,\n                  RGN_TYPE_TOOLS,\n                  RGN_TYPE_UI,\n                  RGN_TYPE_TOOL_PROPS,\n                  RGN_TYPE_FOOTER,\n                  RGN_TYPE_TOOL_HEADER,\n                  RGN_TYPE_ASSET_SHELF,\n                  RGN_TYPE_ASSET_SHELF_HEADER);\n\n    case SPACE_MIXIE:\n      return ELEM(regiontype, RGN_TYPE_TOOLS, RGN_TYPE_UI);\n" }
   },
 
-  "src/source/blender/editors/space_image/space_image.cc": {
-    "0": { "text": "          /* MIXAR: Added SI_MODE_MIXAR_UV check */\n          if (ob && (ob->mode & OB_MODE_EDIT) && ELEM(sima->mode, SI_MODE_UV, SI_MODE_MIXAR_UV)) {\n            if (sima->lock && ((sima->flag & SI_DRAWSHADOW) || (sima->flag & SI_DRAW_STRETCH))) {\n" }
+  "src/source/blender/editors/interface/templates/interface_template_id.cc": {
+    "0": { "text": "    /* Mixar: hide the dedicated Zen Mode workspace AND the legacy\n     * \"Basic Mode\" / \"AI Mode\" workspaces from the topbar tab strip.\n     *\n     * Zen Mode is an internal layout used by the Zen UI mode \u2014 users\n     * navigate to it via the Zen Mode menu, not by clicking a tab.\n     *\n     * \"Basic Mode\" is the prior name for the Zen Mode workspace\n     * (renamed for UX). \"AI Mode\" is the legacy workspace shipped in\n     * startup.mixar that historically served as the Zen mode surface.\n     * The dual-mode design now uses a dedicated Zen Mode workspace\n     * instead, but we keep the AI Mode workspace around in bpy.data\n     * because it's the seed template the first switch into Zen Mode\n     * duplicates from. Keeping it visible as an Engine-mode tab\n     * caused confusion: users saw a tab that looks identical to Zen\n     * Mode and assumed the two modes were \"linked\". Filtering it\n     * here makes Engine and Zen appear fully independent in the UI\n     * without losing the seed template.\n     *\n     * All three names hard-coded so this is a build-time guarantee\n     * (and so the filter doesn't need to import any Python state).\n     * Mirror in src/scripts/mixar/modules/workflow/constants.py if\n     * these change. */\n    if (template_id.idcode == ID_WS &&\n        (STREQ(id->name + 2, \"Zen Mode\") ||\n         STREQ(id->name + 2, \"Basic Mode\") ||\n         STREQ(id->name + 2, \"AI Mode\")))\n    {\n      continue;\n    }\n\n    const int name_width = fontstyle_string_width(&style->widget, id->name + 2);\n" }
   },
 
-  "src/source/blender/editors/space_view3d/space_view3d.cc": "both",
-
-  "src/source/blender/editors/space_view3d/view3d_intern.hh": ["mixar", "upstream"],
-
-  "src/source/blender/editors/transform/transform_gizmo_2d.cc": {
-    "0": { "text": "      case SI_MODE_UV:\n      case SI_MODE_MIXAR_UV: {\n        const Main *bmain = CTX_data_main(C);\n" }
+  "src/source/blender/editors/space_file/file_ops.cc": {
+    "0": { "text": "\nstatic wmOperatorStatus file_open_blend_exec(bContext *C, wmOperator *op)\n{\n  char filepath[FILE_MAX];\n  RNA_string_get(op->ptr, \"filepath\", filepath);\n\n  if (!BLI_path_extension_check(filepath, \".blend\")) {\n    BKE_report(op->reports, RPT_ERROR, \"Not a .blend file\");\n    return OPERATOR_CANCELLED;\n  }\n\n  return WM_file_read(C, filepath, true, op->reports) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;\n}\n\nstatic wmOperatorStatus file_open_blend_invoke(bContext *C, wmOperator *op, const wmEvent *event)\n{\n  ED_fileselect_ensure_default_filepath(C, op, \".blend\");\n  return WM_operator_filesel(C, op, event);\n}\n\nvoid FILE_OT_open_blend(wmOperatorType *ot)\n{\n  /* identifiers */\n  ot->name = \"Open Blend File\";\n  ot->description = \"Open a .blend file\";\n  ot->idname = \"FILE_OT_open_blend\";\n\n  /* api callbacks */\n  ot->exec = file_open_blend_exec;\n  ot->invoke = file_open_blend_invoke;\n  ot->poll = WM_operator_winactive;\n\n  /* flags */\n  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;\n\n  /* properties */\n  WM_operator_properties_filesel(ot,\n                                FILE_TYPE_FOLDER | FILE_TYPE_BLENDER,\n                                FILE_BLENDER,\n                                FILE_OPENFILE,\n                                WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,\n                                FILE_DEFAULTDISPLAY,\n                                FILE_SORT_DEFAULT);\n}\n\n}  // namespace blender\n" }
   },
 
-  "src/source/blender/makesdna/DNA_space_enums.h": {
-    "0": { "text": "  SI_MODE_MIXAR_UV = 4,\n};\n" },
-    "2": "upstream"
-  },
-
-  "src/source/blender/makesdna/DNA_space_types.h": ["mixar", "upstream"],
-
-  "src/source/blender/makesrna/intern/makesrna.cc": "both",
-
-  "src/source/blender/makesrna/intern/rna_main_api.cc": {
-    "0": { "text": "#  include \"ED_render.hh\"\n#  include \"ED_scene.hh\"\n\n#  include \"NOD_defaults.hh\"\n" },
-    "1": "both"
-  },
-
-  "src/source/blender/makesrna/intern/rna_space.cc": {
-    "0": { "text": "      return RNA_SpaceSpreadsheet;\n    case SPACE_MIXIE:\n      return RNA_SpaceMixie;\n    case SPACE_MIXIE_CHAT:\n      return RNA_SpaceMixieChat;\n    case SPACE_AGENT_BUBBLE:\n      return RNA_SpaceAgentBubble;\n    case SPACE_MIXAR_LAYERS:\n      return RNA_SpaceMixarLayers;\n    case SPACE_MIXAR_PROPERTIES:\n      return RNA_SpaceMixarProperties;\n    case SPACE_MIXAR_ASSETS:\n      return RNA_SpaceMixarAssets;\n    /* SPACE_MIXAR_UV_PROPERTIES removed */\n    case SPACE_BAKING:\n      return RNA_SpaceBaking;\n    case SPACE_TEXTURE_SETS:\n      return RNA_SpaceTextureSets;\n\n    case SPACE_TOPBAR:\n      return RNA_SpaceTopBar;\n" },
-    "1": ["mixar", "upstream"]
-  },
-
-  "src/source/blender/makesrna/intern/rna_ui_api.cc": {
-    "0": { "text": "/* Mixar custom section widget. */\n#  include \"../../editors/interface/interface_mixar_section.hh\"\n\nnamespace blender {\n\nusing ui::Layout;\n" }
-  },
-
-  "src/source/blender/makesrna/intern/rna_userdef.cc": ["mixar", "upstream"],
-
-  "src/source/blender/windowmanager/intern/wm_event_system.cc": {
-    "0": { "text": "              action |= wm_handlers_do(\n                  C, event, static_cast<ListBaseT<wmEventHandler> *>(&area->handlers));\n\n              /* Mixar: a handler may close `win` itself, invalidating `win`,\n               * `area` and `event` (see #wm_window_is_alive). */\n              if (!wm_window_is_alive(wm, win)) {\n                wm_event_free_and_remove_from_queue_if_valid(event);\n                GPU_render_end();\n                return;\n              }\n" }
+  "src/source/blender/windowmanager/intern/wm_draw.cc": {
+    "0": { "text": "#if defined(WIN32) || defined(__APPLE__)\n    /* Mixar: never draw or present a window that is natively hidden.\n     *\n     * The Agent Bubble overlay windows are hidden with ShowWindow(SW_HIDE) /\n     * orderOut: while the bubble is minimised to its pill or suppressed for a\n     * modal \u2014 they stay in `wm->windows` so upstream's loop keeps drawing\n     * them and calling SwapBuffers on their GL contexts. Upstream Blender\n     * never hides a GHOST window, so this present-into-a-hidden-window state\n     * is Mixar-only, and NVIDIA's GL driver intermittently crashes on it\n     * right after resume-from-sleep (access violation in DrvPresentBuffers,\n     * nvoglv64.dll). The minimized-state skip above doesn't catch it:\n     * SW_HIDE windows still report GHOST_kWindowStateNormal.\n     *\n     * The bubble restore paths force a refresh + redraw tag after re-showing\n     * the window, so skipping updates while hidden never leaves stale\n     * content on screen. */\n    if (win.ghostwin != nullptr && !Mixar_WindowIsVisible(win.ghostwin)) {\n      continue;\n    }\n#endif\n\n    CTX_wm_window_set(C, &win);\n" }
   },
 
   "src/source/blender/windowmanager/intern/wm_files.cc": {
-    "3": { "text": "  std::vector<wmWindow *> agent_bubble_windows = wm_agent_bubble_windows_unlink_for_write(wm);\n  const bool success = BLO_write_file(bmain, filepath, fileflags, &params, reports);\n  wm_agent_bubble_windows_relink_after_write(wm, agent_bubble_windows);\n" },
-    "4": "both",
-    "5": { "text": "    layout.label(RPT_(\"This file is managed by the Mixar asset system. It can only be\"),\n                 ICON_NONE);\n    layout.label(RPT_(\"saved as a new, regular file.\"), ICON_NONE);\n" },
-    "6": { "text": "  popup_block_close(C, win, static_cast<ui::Block *>(arg_block));\n  wm_mixar_floating_docks_restore_after_modal();\n" },
-    "7": { "text": "  popup_block_close(C, win, static_cast<ui::Block *>(arg_block));\n  wm_mixar_floating_docks_restore_after_modal();\n" },
-    "8": { "text": "  popup_block_close(C, win, static_cast<ui::Block *>(arg_block));\n  wm_mixar_floating_docks_restore_after_modal();\n" }
-  },
-
-  "src/source/blender/windowmanager/intern/wm_operator_props.cc": {
-    "0": { "text": "                         \"Filter backup .mixar files\",\n" }
+    "0": { "text": "  for (wmWindow &win : wm->windows) {\n    /* Mixar: never hand a live GHOST window to a deserialized Agent Bubble\n     * window. Bubble windows should not exist in files at all (they are\n     * runtime overlay UI), but files written before the autosave fix carry\n     * them, and their `winid` can collide with a real window of the current\n     * session. Matching one would transfer a main window's OS window onto a\n     * bubble wmWindow that #wm_file_read_strip_agent_bubble_windows is about\n     * to close. */\n    if (wm_window_contains_agent_bubble_space(&win)) {\n      continue;\n    }\n    for (wmWindow &old_win : old_wm->windows) {\n      /* Mixar: the symmetric case \u2014 a live bubble/pill of the outgoing\n       * session must not donate its chromeless 400x350 OS window to a\n       * regular window of the incoming file on a `winid` collision.\n       * Unmatched old windows are freed together with their GHOST windows\n       * by wm_close_and_free() below, which also resets the bubble's\n       * cached native pointers via #ED_agent_bubble_window_freed. */\n      if (wm_window_contains_agent_bubble_space(&old_win)) {\n        continue;\n      }\n      if (old_win.winid == win.winid) {\n" },
+    "1": "upstream",
+    "2": "upstream",
+    "3": { "text": "  if (!ui::popup_block_name_exists(CTX_wm_screen(C), close_file_dialog_name)) {\n    save_images_when_file_is_closed = true;\n\n    wm_mixar_floating_docks_suppress_for_modal();\n    ui::popup_block_invoke(\n        C,\n        block_create__close_file_dialog,\n        post_action,\n        free_post_file_close_action_restore_floating_docks);\n" }
   },
 
   "src/source/blender/windowmanager/intern/wm_splash_screen.cc": {
-    "0": "both",
-    "2": { "text": "  popup_block_close(C, win, block);\n  wm_mixar_floating_docks_restore_after_modal();\n" },
-    "3": "mixar",
-    "4": { "text": "  wm_mixar_floating_docks_suppress_for_modal();\n  ui::popup_block_invoke(\n      C, wm_block_splash_create, nullptr, wm_mixar_floating_docks_restore_after_modal_free);\n" },
-    "5": "mixar"
-  },
-
-  "src/source/blender/windowmanager/intern/wm_window.cc": {
-    "1": { "text": "    if (win_other != win && win_other->parent == nullptr && !WM_window_is_temp_screen(win_other) &&\n        !wm_window_contains_agent_bubble_space(win_other))\n    {\n      return false;\n" },
-    "2": "upstream",
-    "3": "upstream"
-  },
-
-  "src/source/creator/CMakeLists.txt": {
-    "0": { "text": "      set(TARGETDIR_VER \"share/mixar/${BLENDER_VERSION}\")\n      set(TARGETDIR_TEXT \"share/doc/mixar\")\n      if(CMAKE_INSTALL_LIBDIR)\n        set(TARGETDIR_VER_LIBS \"${CMAKE_INSTALL_LIBDIR}/mixar/${BLENDER_VERSION}\")\n      else()\n        set(TARGETDIR_VER_LIBS \"lib/mixar/${BLENDER_VERSION}\")\n      endif()\n" },
-    "1": { "text": "        ${CMAKE_SOURCE_DIR}/release/bin/mixar-launcher\n" },
-    "2": { "text": "setup_platform_linker_flags(mixar)\nsetup_platform_linker_libs(mixar)\nsetup_platform_linker_symbol_hiding(mixar)\n" },
-    "3": { "text": "      install(DIRECTORY ${LIBDIR}/usd/plugin/usd/ DESTINATION \"mixar.shared/usd\")\n" }
-  },
-
-  "src/source/creator/creator.cc": "both"
+    "0": { "text": "static void wm_mixar_floating_docks_suppress_for_modal()\n{\n#if defined(__APPLE__) || defined(_WIN32)\n  Mixar_FloatingDocksSuppressForModal();\n#endif\n}\n\nstatic void wm_mixar_floating_docks_restore_after_modal()\n{\n#if defined(__APPLE__) || defined(_WIN32)\n  Mixar_FloatingDocksRestoreAfterModal();\n#endif\n}\n\nstatic void wm_mixar_floating_docks_restore_after_modal_free(void * /*arg*/)\n{\n  wm_mixar_floating_docks_restore_after_modal();\n}\n\nstatic void wm_block_splash_close(bContext *C, ui::Block *block)\n" }
+  }
 }
