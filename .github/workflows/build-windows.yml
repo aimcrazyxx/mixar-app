@@ -5,10 +5,21 @@
 # Builds Mixar on Windows against a pinned Blender revision and uploads a real
 # installer (.exe) plus a portable zip.
 #
-# Reality check before you dispatch this: a from-scratch Blender build needs
-# tens of GB of precompiled libraries and hours of CPU. GitHub-hosted Windows
-# runners ship with roughly 14 GB free, so the honest way to run this is a
-# self-hosted Windows runner with VS 2022 (Desktop C++), CMake and Git LFS.
+# Reality check before you start this: a from-scratch Blender build needs tens
+# of GB of precompiled libraries and hours of CPU. GitHub-hosted Windows
+# runners ship with roughly 14 GB free and are hard-killed at the 6 hour job
+# limit, so the honest way to run this is a larger runner or a self-hosted
+# Windows runner with VS 2022 (Desktop C++), CMake and Git LFS. windows-latest
+# stays the default only so that a first attempt costs a single click.
+#
+# Two ways to start it:
+#   * Actions -> "Build Windows installer" -> Run workflow  (full control)
+#   * push to the ci/build-windows branch                   (uses the defaults)
+#
+# What makes a retry cheap: every compile goes through sccache, and the cache is
+# saved even when the job is cancelled or times out, so the next run resumes
+# instead of starting from zero. cmake/mixar_overrides.cmake enables
+# WITH_WINDOWS_SCCACHE by itself as soon as sccache is on PATH.
 
 name: Build Windows installer
 
@@ -16,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       runner:
-        description: "Runner label (self-hosted recommended; windows-latest usually runs out of disk)"
+        description: "Runner label (self-hosted or a larger runner recommended; windows-latest usually runs out of disk)"
         required: true
         default: "windows-latest"
       blender_ref:
@@ -47,6 +58,9 @@ on:
         description: "Run NSIS to produce the .exe installer"
         type: boolean
         default: true
+  push:
+    branches:
+      - ci/build-windows
 
 concurrency:
   group: build-windows-${{ github.ref }}
@@ -57,14 +71,22 @@ permissions:
 
 jobs:
   build:
-    name: ${{ inputs.mixar_env }} / Blender ${{ inputs.blender_version }}
-    runs-on: ${{ inputs.runner }}
+    name: ${{ inputs.mixar_env || 'Prod' }} / Blender ${{ inputs.blender_version || '5.2' }}
+    runs-on: ${{ inputs.runner || 'windows-latest' }}
     timeout-minutes: 600
     env:
-      MIXAR_ENV: ${{ inputs.mixar_env }}
-      BLENDER_VERSION: ${{ inputs.blender_version }}
-      BUILD_WITH_NINJA: ${{ inputs.use_ninja && '1' || '0' }}
+      # Every value carries a literal fallback: on a push-triggered run the
+      # inputs context is empty, and an empty runs-on or blender ref would fail
+      # the run minutes in, after the checkout has already burned time.
+      MIXAR_ENV: ${{ inputs.mixar_env || 'Prod' }}
+      BLENDER_VERSION: ${{ inputs.blender_version || '5.2' }}
+      BLENDER_REF: ${{ inputs.blender_ref || 'v5.2.0' }}
+      BUILD_WITH_NINJA: ${{ github.event_name == 'workflow_dispatch' && (inputs.use_ninja && '1' || '0') || '1' }}
+      MAKE_INSTALLER: ${{ github.event_name == 'workflow_dispatch' && (inputs.make_installer && 'true' || 'false') || 'true' }}
       GIT_LFS_SKIP_SMUDGE: "1"
+      SCCACHE_DIR: ${{ github.workspace }}\.sccache
+      # Kept under GitHub's 10 GB per-repository cache budget on purpose.
+      SCCACHE_CACHE_SIZE: 5G
     steps:
       - name: Configure git and derive short sha
         shell: pwsh
@@ -100,8 +122,19 @@ jobs:
             Write-Host "vswhere not found - is Visual Studio 2022 installed?"
           }
 
+      - name: Tune build parallelism
+        shell: pwsh
+        run: |
+          # settings.bat defaults BUILD_CORES to NUMBER_OF_PROCESSORS-2, which
+          # leaves half of a 4-core hosted runner idle for the whole build.
+          # An environment variable wins over that default.
+          $cores = [int]$env:NUMBER_OF_PROCESSORS
+          if ($cores -lt 2) { $cores = 2 }
+          Write-Host "BUILD_CORES=$cores (detected $env:NUMBER_OF_PROCESSORS logical processors)"
+          Add-Content -Path $env:GITHUB_ENV -Value "BUILD_CORES=$cores"
+
       - name: Reclaim disk space (hosted runners only)
-        if: ${{ !contains(inputs.runner, 'self-hosted') }}
+        if: ${{ !contains(inputs.runner || 'windows-latest', 'self-hosted') }}
         continue-on-error: true
         shell: pwsh
         run: |
@@ -112,10 +145,14 @@ jobs:
             "C:\Program Files\MongoDB",
             "C:\Program Files\MySQL",
             "C:\Program Files\PostgreSQL",
+            "C:\Program Files\Amazon",
+            "C:\Program Files\Microsoft SDKs\Azure",
             "C:\Program Files (x86)\Android",
+            "C:\Program Files (x86)\Microsoft SDKs\Azure",
             "C:\hostedtoolcache\windows\Ruby",
             "C:\hostedtoolcache\windows\go",
-            "C:\hostedtoolcache\windows\node"
+            "C:\hostedtoolcache\windows\node",
+            "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk"
           )
           foreach ($target in $targets) {
             if (Test-Path $target) {
@@ -125,18 +162,23 @@ jobs:
           }
           Get-PSDrive C | Select-Object Used, Free | Format-List
 
-      - name: Install NSIS and Ninja if missing
+      - name: Install NSIS, Ninja and sccache if missing
         shell: pwsh
         run: |
           $choco = Get-Command choco -ErrorAction SilentlyContinue
           if (-not $choco) {
             Write-Host "chocolatey not available - skipping tool install"
           } else {
-            if ('${{ inputs.make_installer }}' -eq 'true' -and -not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            if ('${{ env.MAKE_INSTALLER }}' -eq 'true' -and -not (Get-Command makensis -ErrorAction SilentlyContinue)) {
               choco install nsis -y --no-progress
             }
-            if ('${{ inputs.use_ninja }}' -eq 'true' -and -not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+            if ('${{ env.BUILD_WITH_NINJA }}' -eq '1' -and -not (Get-Command ninja -ErrorAction SilentlyContinue)) {
               choco install ninja -y --no-progress
+            }
+            # mixar_overrides.cmake turns on WITH_WINDOWS_SCCACHE the moment
+            # this binary is on PATH, so installing it is the whole opt-in.
+            if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
+              choco install sccache -y --no-progress
             }
           }
           $nsis = "${env:ProgramFiles(x86)}\NSIS"
@@ -144,10 +186,17 @@ jobs:
             Add-Content -Path $env:GITHUB_PATH -Value $nsis
           }
 
-      - name: Pin upstream to ${{ inputs.blender_ref }}
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-${{ github.sha }}
+          restore-keys: |
+            sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-
+            sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-
+
+      - name: Pin upstream to the requested Blender revision
         shell: bash
-        env:
-          BLENDER_REF: ${{ inputs.blender_ref }}
         run: |
           set -euo pipefail
           # Deliberately not scripts/windows/init.bat: it re-checks out upstream at
@@ -165,7 +214,7 @@ jobs:
           grep -n "BLENDER_VERSION=" scripts/windows/settings.bat scripts/unix/settings.sh || true
           if ! grep -q "BLENDER_VERSION=${BLENDER_VERSION}" scripts/windows/settings.bat; then
             echo "::warning::scripts/windows/settings.bat does not pin BLENDER_VERSION=${BLENDER_VERSION};" \
-                 "run scripts/upgrade/set_blender_version.sh ${BLENDER_VERSION} ${{ inputs.blender_ref }}"
+                 "run scripts/upgrade/set_blender_version.sh ${BLENDER_VERSION} ${BLENDER_REF}"
           fi
 
       - name: Download Blender precompiled libraries
@@ -182,6 +231,14 @@ jobs:
           git lfs pull
           exit /b 0
 
+      - name: Report free space after libraries
+        shell: pwsh
+        run: |
+          # Disk, not CPU, is what ends this job early on hosted runners. The
+          # overlay below copies the whole upstream tree into source\, so
+          # whatever is free here still has to absorb a second copy plus objects.
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+
       - name: Apply backend URL override
         if: ${{ inputs.backend_url != '' }}
         shell: pwsh
@@ -193,11 +250,27 @@ jobs:
           if (-not (Test-Path .env)) {
             Copy-Item .env.example .env
           }
-          Write-Host "MIXAR_ENV=$env:MIXAR_ENV BLENDER_VERSION=$env:BLENDER_VERSION BUILD_WITH_NINJA=$env:BUILD_WITH_NINJA"
+          Write-Host "MIXAR_ENV=$env:MIXAR_ENV BLENDER_VERSION=$env:BLENDER_VERSION BUILD_WITH_NINJA=$env:BUILD_WITH_NINJA BUILD_CORES=$env:BUILD_CORES"
 
       - name: Build Mixar
         shell: cmd
         run: call scripts\windows\build.bat
+
+      - name: Compiler cache statistics
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          if (Get-Command sccache -ErrorAction SilentlyContinue) {
+            sccache --show-stats
+          }
+
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-${{ github.sha }}
 
       - name: Overlay Mixar scripts into the bundle
         shell: cmd
@@ -206,7 +279,7 @@ jobs:
       - name: Package installer and portable zip
         shell: cmd
         env:
-          PACKAGE_EXTRA: ${{ inputs.make_installer && ' ' || '--no-installer' }}
+          PACKAGE_EXTRA: ${{ env.MAKE_INSTALLER == 'true' && ' ' || '--no-installer' }}
         run: call scripts\windows\package.bat --suffix %SHORT_SHA% %PACKAGE_EXTRA%
 
       - name: Summarize artifacts
@@ -217,8 +290,8 @@ jobs:
             Format-Table -AutoSize
           $summary = $env:GITHUB_STEP_SUMMARY
           Add-Content -Path $summary -Value "## Mixar Windows build"
-          Add-Content -Path $summary -Value "- Blender: ${{ inputs.blender_ref }} (resources ${{ inputs.blender_version }})"
-          Add-Content -Path $summary -Value "- Environment: ${{ inputs.mixar_env }}"
+          Add-Content -Path $summary -Value "- Blender: $env:BLENDER_REF (resources $env:BLENDER_VERSION)"
+          Add-Content -Path $summary -Value "- Environment: $env:MIXAR_ENV"
           Add-Content -Path $summary -Value "- Commit: $env:SHORT_SHA"
           Add-Content -Path $summary -Value ""
           Add-Content -Path $summary -Value "SHA-256:"
@@ -229,7 +302,7 @@ jobs:
       - name: Upload installer and portable build
         uses: actions/upload-artifact@v4
         with:
-          name: Mixar-${{ inputs.mixar_env }}-blender${{ inputs.blender_version }}-${{ env.SHORT_SHA }}
+          name: Mixar-${{ env.MIXAR_ENV }}-blender${{ env.BLENDER_VERSION }}-${{ env.SHORT_SHA }}
           path: |
             dist/*.exe
             dist/*.zip
