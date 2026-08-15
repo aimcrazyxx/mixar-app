@@ -1,0 +1,42 @@
+{
+  "$schema-note": "Maps a repo-relative path to a decision. A decision is 'upstream', 'mixar', 'ancestor', 'both', 'drop', or {\"text\": \"...\"}. Use a bare decision to apply it to every hunk in the file, or an object keyed by hunk index for per-hunk control. Hunk indices come from docs/migration/conflicts-remaining.md.",
+
+  "src/source/blender/makesdna/DNA_fileglobal_types.h": {
+    "0": {
+      "text": "  char subvstr[4] = \"\";\n\n  short subversion = 0;\n  short minversion = 0, minsubversion = 0;\n\n  /* Mixar file version fields, repurposing the original 6-byte _pad.\n   * SDNA handles the field rename: old files (which had char _pad[6]) read as 0,\n   * new files store actual Mixar version values.\n   * 3 shorts = 6 bytes = same size as the original _pad[6]. */\n  short mixar_version = 0;      /* MIXAR_FILE_VERSION when saved; 0 for pre-versioning files */\n  short mixar_subversion = 0;   /* MIXAR_FILE_SUBVERSION when saved */\n  short mixar_min_version = 0;  /* Minimum Mixar version that can read this file */\n\n  struct bScreen *curscreen = nullptr;\n  struct Scene *curscene = nullptr;\n  struct ViewLayer *cur_view_layer = nullptr;\n  void *_pad1 = nullptr;\n\n  int fileflags = 0;\n  int globalf = 0;\n"
+    }
+  },
+
+  "src/source/blender/blenkernel/BKE_appdir.hh": {
+    "0": {
+      "text": "\n#define MIXAR_USERPREF_FILE \"mixar_userpref.blend\"\n\n}  // namespace blender\n"
+    }
+  },
+
+  "src/source/blender/makesdna/DNA_theme_types.h": {
+    "0": {
+      "text": "  (CHECK_TYPE_INLINE(btheme, bTheme *), (&((btheme)->space_agent_bubble) + 1))\n\n#ifdef __cplusplus\n}  // namespace blender\n#endif\n"
+    }
+  },
+
+  "src/source/blender/blenlib/intern/winstuff.cc": {
+    "0": { "text": "    registry_error(root, \"Unable to register Mixar file type\");\n" },
+    "1": { "text": "      registry_error(root, \"Unable to register Mixar file type\");\n" },
+    "2": { "text": "      registry_error(root, \"Unable to register Mixar file type\");\n" },
+    "3": { "text": "    registry_error(root, \"Unable to register Mixar file type\");\n" }
+  },
+
+  "src/source/blender/draw/engines/overlay/overlay_grid.hh": "upstream",
+
+  "src/tests/python/CMakeLists.txt": {
+    "0": {
+      "text": "  script_pyapi_bpy_app\n  --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_bpy_app.py\n)\n\nif(WITH_GPU_BACKEND_TESTS)\n  if(WITH_OPENGL_BACKEND)\n    add_blender_test(\n      script_pyapi_gpu_opengl\n      --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_gpu.py\n      --gpu-backend opengl\n    )\n  endif()\n\n  if(WITH_METAL_BACKEND)\n    add_blender_test(\n      script_pyapi_gpu_metal\n      --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_gpu.py\n      --gpu-backend metal\n    )\n  endif()\n\n  if(WITH_VULKAN_BACKEND)\n    add_blender_test(\n      script_pyapi_gpu_vulkan\n      --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_gpu.py\n      --gpu-backend vulkan\n    )\n  endif()\nendif()\n\nadd_blender_test(\n"
+    }
+  },
+
+  "src/build_files/windows/configure_msbuild.cmd": {
+    "0": {
+      "text": "REM SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited\nREM\nREM SPDX-License-Identifier: GPL-2.0-or-later\n\nset BUILD_GENERATOR_POST=\nset BUILD_PLATFORM_SELECT=\nset MSBUILD_PLATFORM=x64\n\nif \"%BUILD_WITH_SCCACHE%\"==\"1\" (\n\t\techo sccache is only supported with ninja as the build system. \n\t\texit /b 1 \n)\n\nif \"%WITH_CLANG%\"==\"1\" (\n\tset CLANG_CMAKE_ARGS=-T\"ClangCl\"\n\n\tREM Create the build directory, so that we can create the Directory.build.props file\n\tif NOT EXIST %BUILD_DIR%\\nul (\n\t\tmkdir %BUILD_DIR%\n\t)\n\n\tREM This is required as per https://learn.microsoft.com/en-us/cpp/build/clang-support-msbuild?view=msvc-170#custom_llvm_location\n\tREM Which allows any copy of LLVM to be used, not just the one that ships with VS\n\techo ^<Project^> >> %BUILD_DIR%\\Directory.build.props\n\techo   ^<PropertyGroup^> >> %BUILD_DIR%\\Directory.build.props\n\techo     ^<LLVMInstallDir^>%LLVM_DIR%^</LLVMInstallDir^> >> %BUILD_DIR%\\Directory.build.props\n\techo     ^<LLVMToolsVersion^>%CLANG_VERSION%^</LLVMToolsVersion^> >> %BUILD_DIR%\\Directory.build.props\n\techo   ^</PropertyGroup^> >> %BUILD_DIR%\\Directory.build.props\n\techo ^</Project^> >> %BUILD_DIR%\\Directory.build.props\n)\n\nif \"%WITH_ASAN%\"==\"1\" (\n\t\tset ASAN_CMAKE_ARGS=-DWITH_COMPILER_ASAN=On\n)\n\nif \"%WITH_PYDEBUG%\"==\"1\" (\n\tset PYDEBUG_CMAKE_ARGS=-DWINDOWS_PYTHON_DEBUG=On\n)\n\nif \"%BUILD_ARCH%\"==\"arm64\" (\n\tset MSBUILD_PLATFORM=arm64\n\tset BUILD_PLATFORM_SELECT=-A ARM64\n)\n\nset BUILD_CMAKE_ARGS=%BUILD_CMAKE_ARGS% -G \"Visual Studio %BUILD_VS_VER% %BUILD_VS_YEAR%%BUILD_GENERATOR_POST%\" %BUILD_PLATFORM_SELECT% %TESTS_CMAKE_ARGS% %CLANG_CMAKE_ARGS% %ASAN_CMAKE_ARGS% %PYDEBUG_CMAKE_ARGS%\n\nif NOT EXIST %BUILD_DIR%\\nul (\n\tmkdir %BUILD_DIR%\n)\n\nif \"%MUST_CLEAN%\"==\"1\" (\n\techo Cleaning %BUILD_DIR%\n\tmsbuild ^\n\t\t%BUILD_DIR%\\Mixar.%VS_SLN_EXT% ^\n\t\t/target:clean ^\n\t\t/property:Configuration=%BUILD_TYPE% ^\n\t\t/verbosity:minimal ^\n\t\t/p:platform=%MSBUILD_PLATFORM%\n)\n\nif NOT EXIST %BUILD_DIR%\\Mixar.%VS_SLN_EXT% set MUST_CONFIGURE=1\nif \"%NOBUILD%\"==\"1\" set MUST_CONFIGURE=1\n\nif \"%MUST_CONFIGURE%\"==\"1\" (\n\n\tif NOT \"%verbose%\" == \"\" (\n\t\techo \"%CMAKE% %BUILD_CMAKE_ARGS% -H%BLENDER_DIR% -B%BUILD_DIR%\"\n\t)\n\n\tcmake ^\n\t\t%BUILD_CMAKE_ARGS% ^\n\t\t-H%BLENDER_DIR% ^\n\t\t-B%BUILD_DIR% \n\t\n\tif errorlevel 1 (\n\t\techo \"Configuration Failed\"\n\t\texit /b 1\n\t)\n)\necho echo off > %BUILD_DIR%\\rebuild.cmd\necho if \"%%VSCMD_VER%%\" == \"\" ^( >> %BUILD_DIR%\\rebuild.cmd\necho   call \"%VCVARS%\" %BUILD_ARCH% >> %BUILD_DIR%\\rebuild.cmd\necho ^) >> %BUILD_DIR%\\rebuild.cmd\necho \"%CMAKE%\" . >> %BUILD_DIR%\\rebuild.cmd\necho echo %%TIME%% ^> buildtime.txt >> %BUILD_DIR%\\rebuild.cmd\necho msbuild ^\n\t%BUILD_DIR%\\INSTALL.vcxproj ^\n\t/property:Configuration=%BUILD_TYPE% ^\n\t/maxcpucount:2 ^\n\t/verbosity:minimal ^\n\t/p:platform=%MSBUILD_PLATFORM% ^\n\t/flp:Summary;Verbosity=minimal;LogFile=%BUILD_DIR%\\Build.log >> %BUILD_DIR%\\rebuild.cmd\n"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+name: Resolve overlay conflicts
+
+on:
+  push:
+    branches:
+      - migration/blender-5.2
+    paths:
+      - scripts/upgrade/resolutions.json
+      - scripts/upgrade/conflicts.py
+      - .github/conflict-trigger.md
+
+permissions:
+  contents: write
+
+concurrency:
+  group: resolve-conflicts-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure git identity
+        run: |
+          git config user.name "mixar-bot"
+          git config user.email "mixar-bot@users.noreply.github.com"
+
+      - name: Apply the resolutions
+        run: |
+          python scripts/upgrade/conflicts.py resolve \
+            --root . \
+            --decisions scripts/upgrade/resolutions.json
+
+      - name: Report what is still unresolved
+        if: always()
+        run: |
+          python scripts/upgrade/conflicts.py report \
+            --src src \
+            --output docs/migration/conflicts-remaining.md
+
+      - name: Commit the result
+        if: always()
+        run: |
+          git add -A src docs/migration
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "merge: apply conflict resolutions (run ${{ github.run_id }})"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "### Remaining conflicts"
+            echo
+            head -n 12 docs/migration/conflicts-remaining.md || true
+          } >> "$GITHUB_STEP_SUMMARY"
