@@ -903,7 +903,7 @@ void block_layout_free(Block *block);
  * traffic-light + pill buttons whose host NSWindow is too small
  * for the tooltip popup to fit without clipping. Implemented in
  * interface_layout.cc where uiBlock is fully visible. */
-void UI_layout_disable_last_button_tooltip(uiLayout *layout);
+void UI_layout_disable_last_button_tooltip(Layout *layout);
 
 enum eUI_Item_Flag : uint16_t {
   /** Align text input to the right. */
