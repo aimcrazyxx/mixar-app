@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Scan Blender 5.2 API remnants
+on:
+  push:
+    branches:
+      - migration/blender-5.2
+    paths:
+      - ".github/workflows/scan-blender-52-apis.yml"
+permissions:
+  contents: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: migration/blender-5.2
+          fetch-depth: 0
+          submodules: false
+      - name: Port known UI layout signature and scan stale APIs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path("src")
+          header = Path("src/source/blender/editors/include/UI_interface_layout.hh")
+          old_decl = "void UI_layout_disable_last_button_tooltip(uiLayout *layout);"
+          new_decl = "void UI_layout_disable_last_button_tooltip(Layout *layout);"
+          text = header.read_text(encoding="utf-8")
+          if text.count(old_decl) != 1:
+              raise RuntimeError(f"expected one stale declaration, found {text.count(old_decl)}")
+          header.write_text(text.replace(old_decl, new_decl), encoding="utf-8")
+
+          definition_replacements = 0
+          exact_old = "UI_layout_disable_last_button_tooltip(uiLayout *layout)"
+          exact_new = "UI_layout_disable_last_button_tooltip(Layout *layout)"
+          source_suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
+          files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in source_suffixes or p.name == "CMakeLists.txt")]
+          for path in files:
+              value = path.read_text(encoding="utf-8", errors="replace")
+              count = value.count(exact_old)
+              if count:
+                  path.write_text(value.replace(exact_old, exact_new), encoding="utf-8")
+                  definition_replacements += count
+
+          patterns = [
+              ("legacy uiLayout type", re.compile(r"\buiLayout\b")),
+              ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib")),
+              ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b")),
+              ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<")),
+              ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)")),
+          ]
+          report_path = Path("docs/migration/blender-52-api-scan.md")
+          original = report_path.read_text(encoding="utf-8")
+          prefix = original.split("# Blender 5.2 API scan", 1)[0]
+          out = [prefix.rstrip(), "", "# Blender 5.2 API scan", "", f"Exact implementation signatures ported: **{definition_replacements}**", ""]
+          total_hits = 0
+          for label, pattern in patterns:
+              hits = []
+              for path in files:
+                  for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                      if pattern.search(line):
+                          hits.append(f"- `{path}:{number}` — `{line.strip()}`")
+              total_hits += len(hits)
+              out.extend([f"## {label}", "", f"Count: **{len(hits)}**", ""])
+              out.extend(hits[:300] or ["- None"])
+              if len(hits) > 300:
+                  out.append(f"- … {len(hits) - 300} more")
+              out.append("")
+          out.extend(["## Summary", "", f"Total stale-pattern hits: **{total_hits}**", ""])
+          report_path.write_text("\n".join(out), encoding="utf-8")
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src docs/migration/blender-52-api-scan.md
+          git commit -m "fix: port UI layout API and record Blender 5.2 scan"
+          git push origin HEAD:refs/heads/migration/blender-5.2
