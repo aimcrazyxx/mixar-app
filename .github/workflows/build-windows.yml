@@ -24,8 +24,7 @@
 # Reading a failure without opening the browser: the heavy steps tee their
 # output into logs/, every stage records free disk, and a failed job publishes
 # the tails as a repository issue. Anything that can only be seen in the raw
-# Actions log is invisible to tooling, and that made the last three attempts
-# guesswork.
+# Actions log is invisible to tooling, and that made three attempts guesswork.
 
 name: Build Windows installer
 
@@ -100,8 +99,13 @@ jobs:
       - name: Configure git and derive short sha
         shell: pwsh
         run: |
-          # Blender's source paths overflow MAX_PATH, and the repo's *.sh helpers
-          # must keep LF endings to stay runnable under git bash.
+          # Blender's source paths overflow MAX_PATH.
+          #
+          # autocrlf stays off so the repo's *.sh helpers keep their LF endings
+          # under git bash. That also removes the conversion a Windows clone
+          # normally applies, which is what the *.bat files were silently
+          # depending on - .gitattributes is what guarantees they arrive as
+          # CRLF now, and the next step proves it.
           git config --global core.longpaths true
           git config --global core.autocrlf false
           Add-Content -Path $env:GITHUB_ENV -Value "SHORT_SHA=$($env:GITHUB_SHA.Substring(0, 7))"
@@ -111,6 +115,40 @@ jobs:
         with:
           submodules: false
           fetch-depth: 1
+
+      - name: Verify batch files use CRLF
+        shell: pwsh
+        run: |
+          # cmd.exe mis-parses LF-only batch files by dropping the first
+          # character of some lines: REM runs as EM, for as or, if as f. It
+          # never says so - it just skips work. That silently emptied ROOT_DIR
+          # in settings.bat and sent robocopy to D:\upstream\.
+          #
+          # With .gitattributes in place this should find nothing. It stays as
+          # the safety net, and as the thing that names the file if it returns.
+          # upstream/ is untouched on purpose: separate repository, its own
+          # attributes, and its make.bat already parses fine.
+          $files = Get-ChildItem -Recurse -File |
+            Where-Object {
+              @('.bat', '.cmd') -contains $_.Extension -and
+              $_.FullName -notmatch '\\upstream\\'
+            }
+          $rewritten = @()
+          foreach ($file in $files) {
+            $raw = [System.IO.File]::ReadAllText($file.FullName)
+            $crlf = ($raw -replace "`r`n", "`n") -replace "`n", "`r`n"
+            if ($crlf -ne $raw) {
+              [System.IO.File]::WriteAllText($file.FullName, $crlf)
+              $rewritten += $file.FullName.Substring($PWD.Path.Length + 1)
+            }
+          }
+          Write-Host "checked $($files.Count) batch file(s)"
+          if ($rewritten.Count -eq 0) {
+            Write-Host "all of them already use CRLF"
+          } else {
+            Write-Host "::warning::rewrote $($rewritten.Count) batch file(s) checked out with LF endings"
+            $rewritten | ForEach-Object { Write-Host "  $_" }
+          }
 
       - name: Start the disk ledger
         shell: pwsh
