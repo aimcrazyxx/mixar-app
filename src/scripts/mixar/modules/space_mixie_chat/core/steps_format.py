@@ -355,7 +355,18 @@ def apply_steps_to_bubble(bubble, steps_data: dict) -> None:
 # branch, swapping the bare "Failed" label and the raw error dump for one
 # explanatory line plus the original text. An unrecognized error is passed
 # through unchanged, so ordinary Blender tracebacks read exactly as before.
-from .provider_errors import describe as _describe_provider_failure  # noqa: E402
+#
+# The import is guarded because this module is loaded three different ways in
+# this repository — as part of the mixar package inside Blender, by path from
+# the fork's tests, and by the dev-data mock — and a chat panel that fails to
+# import is a far worse bug than an unexplained error string.
+try:
+    from .provider_errors import describe as _describe_provider_failure  # noqa: E402
+except ImportError:  # pragma: no cover - loaded outside its package
+    try:
+        from provider_errors import describe as _describe_provider_failure  # noqa: E402
+    except ImportError:
+        _describe_provider_failure = None
 
 _upstream_finish_step_on_bubble = finish_step_on_bubble
 
@@ -367,11 +378,19 @@ def finish_step_on_bubble(bubble, request_id: str, result: dict) -> bool:  # noq
     the provider, and that rejection arrives as kilobytes of escaped JSON. See
     provider_errors and docs/PROVIDER_ERROR_400_TOOLS.md.
     """
+    # The backend does not promise a string here. Upstream slices the value
+    # with [:500], which raises TypeError on a dict or a list and leaves the
+    # row RUNNING for the rest of the session, so coerce it first.
+    raw = result.get("error")
+    if raw is not None and not isinstance(raw, str):
+        raw = str(raw)
+        result = dict(result)
+        result["error"] = raw
+
     updated = _upstream_finish_step_on_bubble(bubble, request_id, result)
     if not updated or bool(result.get("success")):
         return updated
-    raw = result.get("error") or ""
-    if not raw:
+    if not raw or _describe_provider_failure is None:
         return updated
     label, detail = _describe_provider_failure(raw)
     # Same newest-first scan the upstream helper used, so the same row wins.

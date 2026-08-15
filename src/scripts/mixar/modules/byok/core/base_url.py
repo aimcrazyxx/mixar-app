@@ -72,6 +72,13 @@ _LOCAL_SUFFIXES = (".local", ".localhost", ".internal", ".test", ".lan")
 
 _STORE_LOCK = threading.RLock()
 
+# Parsed store, cached. The dialog's Base URL field is RNA get/set backed, so
+# every redraw asks for the effective value: without this, one dialog frame
+# opens and JSON-parses the file several times. Keyed by path plus
+# (mtime_ns, size) and dropped after every write, so a file edited by hand
+# outside the app is still picked up.
+_STORE_CACHE = {"path": None, "stamp": None, "data": {}}
+
 
 class BaseUrlError(ValueError):
     """The supplied base URL cannot be used. Message is user-facing."""
@@ -179,18 +186,49 @@ def store_path() -> str:
     return os.path.join(user_config_dir(), STORE_FILENAME)
 
 
-def _read_store() -> dict:
-    """Parsed store, or ``{}``. Unreadable or corrupt content is ignored."""
-    path = store_path()
+def _store_stamp(path: str):
+    """``(mtime_ns, size)`` for the store, or ``None`` when it does not exist."""
     try:
-        with open(path, "r", encoding="utf-8") as handle:
-            loaded = json.load(handle)
-    except FileNotFoundError:
-        return {}
-    except (OSError, ValueError) as exc:
-        logger.warning("Ignoring unreadable BYOK settings at %s: %s", path, exc)
-        return {}
-    return loaded if isinstance(loaded, dict) else {}
+        info = os.stat(path)
+    except OSError:
+        return None
+    return (info.st_mtime_ns, info.st_size)
+
+
+def _forget_cache() -> None:
+    _STORE_CACHE["path"] = None
+    _STORE_CACHE["stamp"] = None
+    _STORE_CACHE["data"] = {}
+
+
+def _read_store() -> dict:
+    """Parsed store, or ``{}``. Unreadable or corrupt content is ignored.
+
+    Returns a copy: ``set_stored`` mutates the result, and the cache must not
+    follow it.
+    """
+    path = store_path()
+    stamp = _store_stamp(path)
+    if _STORE_CACHE["path"] == path and _STORE_CACHE["stamp"] == stamp:
+        return dict(_STORE_CACHE["data"])
+
+    data = {}
+    if stamp is not None:
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                loaded = json.load(handle)
+        except FileNotFoundError:
+            loaded = {}
+        except (OSError, ValueError) as exc:
+            logger.warning("Ignoring unreadable BYOK settings at %s: %s", path, exc)
+            loaded = {}
+        if isinstance(loaded, dict):
+            data = loaded
+
+    _STORE_CACHE["path"] = path
+    _STORE_CACHE["stamp"] = stamp
+    _STORE_CACHE["data"] = data
+    return dict(data)
 
 
 def _write_store(data: dict) -> None:
@@ -200,13 +238,23 @@ def _write_store(data: dict) -> None:
         OSError: the caller turns this into a user-facing message.
     """
     path = store_path()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     temp_path = path + ".tmp"
-    with open(temp_path, "w", encoding="utf-8") as handle:
-        json.dump(data, handle, indent=2, sort_keys=True)
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.replace(temp_path, path)
+    try:
+        with open(temp_path, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    except OSError:
+        # Never leave a half-written .tmp behind for the next run to trip over.
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
+        raise
+    finally:
+        _forget_cache()
 
 
 def get_stored() -> str:
@@ -302,12 +350,19 @@ def _schedule_on_main(callback: Callable[..., None], *args) -> None:
             logger.warning("BYOK base URL callback failed: %s", exc, exc_info=True)
         return None
 
-    bpy.app.timers.register(_run, first_interval=0.0)
+    try:
+        bpy.app.timers.register(_run, first_interval=0.0)
+    except Exception as exc:  # noqa: BLE001 - losing the result is worse
+        logger.debug("Could not schedule on the main thread (%s); calling直接", exc)
+        _run()
 
 
 def _probe_sync(base: str) -> Tuple[bool, str]:
     """Blocking probe. Anything below HTTP 500 proves something is listening."""
-    import requests
+    try:
+        import requests
+    except ImportError:
+        return False, "no HTTP client available in this build"
 
     last = ""
     for path in PROBE_PATHS:
@@ -326,7 +381,9 @@ def _probe_sync(base: str) -> Tuple[bool, str]:
 def probe(raw: str, on_done: Callable[[bool, str], None]) -> None:
     """Validate ``raw`` and probe it off the main thread.
 
-    ``on_done(ok, message)`` is always delivered on the main thread.
+    ``on_done(ok, message)`` is always delivered on the main thread, including
+    when the probe itself blows up - a thread that dies quietly would leave the
+    dialog saying "Testing..." for the rest of the session.
 
     Raises:
         BaseUrlError: invalid URL (no thread is started).
@@ -336,7 +393,11 @@ def probe(raw: str, on_done: Callable[[bool, str], None]) -> None:
         raise BaseUrlError("Enter a URL first.")
 
     def _thread():
-        ok, message = _probe_sync(normalized)
+        try:
+            ok, message = _probe_sync(normalized)
+        except Exception as exc:  # noqa: BLE001 - the UI must never hang
+            logger.warning("BYOK base URL probe crashed: %s", exc, exc_info=True)
+            ok, message = False, str(exc) or exc.__class__.__name__
         _schedule_on_main(on_done, ok, message)
 
     threading.Thread(target=_thread, daemon=True, name="MixarBYOKBaseUrlProbe").start()
@@ -364,13 +425,21 @@ def install_patches() -> None:
 
     original = agent_service_module.AgentService.save_credentials_all
 
-    def save_credentials_all(self, provider, model, api_key, base_url=None):
-        """PUT /agent/byok, optionally pinning the provider base URL."""
+    def save_credentials_all(self, provider, model, api_key, base_url=None, **extra):
+        """PUT /agent/byok, optionally pinning the provider base URL.
+
+        ``**extra`` is forwarded rather than dropped: if upstream grows a
+        parameter, its own callers keep working instead of hitting a TypeError
+        raised by this patch.
+        """
         payload = {
             "provider": provider,
             "model": model,
             "api_key": api_key,
         }
+        for key, value in extra.items():
+            if value is not None:
+                payload[key] = value
         resolved = base_url if base_url is not None else get_base_url()
         if resolved:
             payload["base_url"] = resolved
