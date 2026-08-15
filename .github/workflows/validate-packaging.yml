@@ -1,16 +1,6 @@
-# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
-#
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
-#
-# Compiling Mixar needs Windows, MSVC, tens of GB of Blender libraries and
-# hours of CPU. The packaging layer needs none of that: makensis has a native
-# POSIX build, so a free ubuntu runner can compile installer/windows/mixar.nsi
-# and exercise every safety check in the packaging script in about a minute.
-#
-# Run this before spending a multi-hour Windows build on a broken installer.
-
 name: Validate packaging
-
 on:
   push:
     paths:
@@ -21,6 +11,8 @@ on:
       - "src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py"
       - "tests/test_byok_base_url.py"
+      - "tests/test_byok_custom_provider.py"
+      - "tests/test_byok_openai_models.py"
       - "tests/test_provider_errors.py"
       - ".github/workflows/validate-packaging.yml"
   pull_request:
@@ -32,17 +24,16 @@ on:
       - "src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py"
       - "tests/test_byok_base_url.py"
+      - "tests/test_byok_custom_provider.py"
+      - "tests/test_byok_openai_models.py"
       - "tests/test_provider_errors.py"
       - ".github/workflows/validate-packaging.yml"
   workflow_dispatch:
-
 concurrency:
   group: validate-packaging-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: read
-
 jobs:
   packaging:
     name: Packaging and NSIS script
@@ -54,44 +45,36 @@ jobs:
         with:
           submodules: false
           fetch-depth: 1
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-
+          python-version: "3.13"
       - name: Install NSIS
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends nsis
           makensis -VERSION
-
-      # The *_ops.py modules import bpy, so no test on a bare runner can
-      # import them - compileall is the only syntax gate they can have, and
-      # without this step a typo in the files with the most UI code in them
-      # would ship in an installer. Listed file by file on purpose: only what
-      # this fork owns,
-      # never upstream trees that a future Python may parse differently.
       - name: Byte-compile every file this fork owns
         run: |
           python3 -m compileall -q \
             scripts/packaging \
             src/scripts/mixar/modules/byok/core/base_url.py \
             src/scripts/mixar/modules/byok/core/custom_provider.py \
+            src/scripts/mixar/modules/byok/core/openai_models.py \
             src/scripts/mixar/modules/byok/ui/operators/byok_base_url_ops.py \
             src/scripts/mixar/modules/byok/ui/operators/byok_custom_provider_ops.py \
+            src/scripts/mixar/modules/byok/ui/operators/byok_custom_models_ops.py \
             src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py \
             src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py \
             tests/test_byok_base_url.py \
             tests/test_byok_custom_provider.py \
+            tests/test_byok_openai_models.py \
             tests/test_provider_errors.py
           bash -n scripts/upgrade/set_blender_version.sh
-
       - name: Self-test the packager and compile the installer
         run: |
           python3 scripts/packaging/validate_installer.py \
             --keep-artifacts "${{ runner.temp }}/pkgcheck"
-
       - name: Describe the generated installer
         run: |
           ls -lh "${{ runner.temp }}/pkgcheck"
@@ -108,7 +91,6 @@ jobs:
             cat "${{ runner.temp }}/pkgcheck/SHA256SUMS.txt"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Upload the stub installer
         uses: actions/upload-artifact@v5
         with:
@@ -116,24 +98,15 @@ jobs:
           path: ${{ runner.temp }}/pkgcheck/*-setup.exe
           if-no-files-found: error
           retention-days: 7
-
-      # Only the modules this fork owns gate the job, and both tests run in a
-      # bare interpreter: they install their own stubs, or load the module
-      # straight from disk, and keep any state inside a tmp directory. Running
-      # the whole tests/ tree here would instead import ~40 files that need the
-      # Blender runtime dependencies, and pytest would exit 2 on collection
-      # errors before ever reaching the code this workflow protects.
       - name: Test the modules this fork owns
         run: |
           python3 -m pip install --disable-pip-version-check pytest
-          for t in tests/test_byok_base_url.py tests/test_provider_errors.py; do
+          for t in tests/test_byok_base_url.py tests/test_byok_custom_provider.py tests/test_byok_openai_models.py tests/test_provider_errors.py; do
             test -f "$t" || { echo "::error::$t is missing"; exit 1; }
           done
           python3 -m pytest -q -p no:cacheprovider \
-            tests/test_byok_base_url.py tests/test_provider_errors.py
-
-      # Informational: says whether this fork broke anything else, without
-      # letting a missing runtime dependency mask a packaging regression.
+            tests/test_byok_base_url.py tests/test_byok_custom_provider.py \
+            tests/test_byok_openai_models.py tests/test_provider_errors.py
       - name: Full test suite (informational)
         continue-on-error: true
         run: |
