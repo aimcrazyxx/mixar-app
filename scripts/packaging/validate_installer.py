@@ -42,8 +42,10 @@ REPO_ROOT = HERE.parents[1]
 STUB_VERSION = "9.9.9"
 RESOURCE_DIR = "5.2"
 
+# The files this fork adds to the bundle. Keep in sync with OVERLAY_MARKERS in
+# make_windows_installer.py: the packager refuses to package a tree that is
+# missing them, and the stub payload below has to look like a real overlay.
 OVERLAY_FILES = (
-    "scripts/mixar/config/endpoints.py",
     "scripts/mixar/modules/byok/core/base_url.py",
     "scripts/mixar/modules/byok/ui/operators/byok_base_url_ops.py",
 )
@@ -352,6 +354,11 @@ def case_helpers() -> None:
     check("four_part_version pads X.Y", module.four_part_version("2.0") == "2.0.0.0")
     check("four_part_version ignores text", module.four_part_version("v2.1.3-rc4") == "2.1.3.4")
     check("four_part_version truncates", module.four_part_version("1.2.3.4.5") == "1.2.3.4")
+    # The two lists that have to agree, or a real package aborts on a bundle
+    # that is in fact correct.
+    check("marker lists agree",
+          tuple(str(p) for p in module.OVERLAY_MARKERS) == OVERLAY_FILES,
+          f"{[str(p) for p in module.OVERLAY_MARKERS]} vs {list(OVERLAY_FILES)}")
     # The POSIX build of makensis reads "/V2" as a file name, so the switch
     # prefix has to follow the binary, not the author's habits.
     posix = module.nsis_switch_prefix(Path("/usr/bin/makensis"))

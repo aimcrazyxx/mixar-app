@@ -25,7 +25,7 @@ Windows build at all.
 Steps
   1. Locate the built tree (``build/<env>/bin``, ``bin/Release``, ``bin/Debug``).
   2. Verify it: the executable, the ``<X.Y>`` resource directory, the generated
-     ``config/mixar.json`` and the fork's custom base URL / BYOK modules.
+     ``config/mixar.json`` and this fork's BYOK provider modules.
   3. Refuse to package a bundle that carries dev bypass credentials.
   4. Optionally regenerate ``config/mixar.json`` with a different backend URL.
   5. Write ``dist/<name>.zip`` (portable, nothing to install).
@@ -58,10 +58,10 @@ EXCLUDE_NAMES = {"__pycache__", ".git", ".gitignore", ".gitattributes", "CMakeFi
 EXCLUDE_SUFFIXES = (".pdb", ".ilk", ".exp", ".obj", ".log", ".tmp")
 
 # Proof that install.bat overlaid this fork's work into the bundle. Without
-# these files the artifact is just vanilla Mixar and the custom base URL
-# feature would be silently missing.
+# these files the artifact is just vanilla Mixar and the custom provider base
+# URL would be silently missing. Keep this list in sync with OVERLAY_FILES in
+# validate_installer.py - the fork owns exactly these two modules.
 OVERLAY_MARKERS = (
-    Path("scripts/mixar/config/endpoints.py"),
     Path("scripts/mixar/modules/byok/core/base_url.py"),
     Path("scripts/mixar/modules/byok/ui/operators/byok_base_url_ops.py"),
 )
@@ -173,7 +173,7 @@ def check_bundle(resource_dir: Path, skip_overlay_check: bool) -> None:
 
     missing = [str(marker) for marker in OVERLAY_MARKERS if not (resource_dir / marker).is_file()]
     if not missing:
-        log("custom endpoint / BYOK base URL modules present in the bundle")
+        log("BYOK base URL modules present in the bundle")
         return
     message = "the bundle is missing this fork's modules:\n  " + "\n  ".join(missing)
     if skip_overlay_check:
