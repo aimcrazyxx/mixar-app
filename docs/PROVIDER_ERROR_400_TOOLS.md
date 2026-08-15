@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# The 400 INVALID_ARGUMENT on delegated tool calls
+# The 400 on delegated tool calls
 
 ## Symptom
 
@@ -27,8 +27,8 @@ Parameters flagged: `placements`, `object_names`, `chain_ids`, `assignments`,
 
 ## What the provider is actually complaining about
 
-In the provider's schema dialect an array must declare the type of its
-elements. This is rejected:
+In JSON Schema an array must declare the type of its elements. This is
+rejected:
 
 ```json
 { "name": "location", "type": "array" }
@@ -40,7 +40,7 @@ and this is accepted:
 { "name": "location", "type": "array", "items": { "type": "number" } }
 ```
 
-The accepted subset is `type, format, description, nullable, enum, items,
+Gemini's accepted subset is `type, format, description, nullable, enum, items,
 properties, required, minItems, maxItems, propertyOrdering`. One malformed
 entry invalidates the whole request, which is why the step fails before any
 Blender work happens - and why the count of failures matches the count of
@@ -48,10 +48,26 @@ malformed fields, not anything about the scene.
 
 ## Why it happens with every provider
 
-Because the failing request is not the one your selected provider serves. The
-tool list is assembled by the Mixar backend and sent to the model it uses for
-that sub-task, so the provider picked in *AI Provider Settings* (and its custom
-base URL) does not change the malformed payload. Same 400, every provider.
+Two reasons, and the second one is the important one.
+
+First, the failing request is not the one your selected provider serves for
+chat. The tool list is assembled by the Mixar backend and sent with the
+delegated sub-task, so the provider picked in *AI Provider Settings* and its
+custom base URL do not change the payload.
+
+Second, and this is why switching providers never helps: **every major provider
+validates tool schemas and refuses an array with no `items`.** Only the wording
+differs, so the built-in Mixar AI, OpenAI, Gemini and Claude all fail on the
+same declarations.
+
+| Provider | What it says |
+| --- | --- |
+| Gemini / Vertex | `GenerateContentRequest.tools[0].function_declarations[24].parameters.properties[location].items: missing field.` with `"status": "INVALID_ARGUMENT"` |
+| OpenAI and OpenAI-compatible gateways | `Invalid schema for function 'place_objects': In context=('properties', 'placements'), array schema missing items.` with `"code": "invalid_function_parameters"`, `"param": "tools[N].function.parameters"` |
+| Claude | `tools.15.custom.input_schema: JSON schema is invalid.` with `"type": "invalid_request_error"` |
+
+Gemini lists every offending field, OpenAI stops at the first one but names the
+function, Claude only points at the tool index. Same defect, three views of it.
 
 ## Why this repository cannot fix it
 
@@ -92,13 +108,15 @@ For the eight flagged parameters that means:
 
 A generic guard is worth adding too: walk every declaration before sending it
 and attach a permissive `items` to any `array` that lacks one. That turns this
-class of bug into a degraded schema instead of a hard 400.
+class of bug into a degraded schema instead of a hard 400 - and it fixes all
+providers at once, since they all reject the same thing.
 
 ## What this fork does about it
 
 It cannot fix the schema, so it fixes the message.
-`space_mixie_chat/core/provider_errors.py` classifies the raw text and
-`steps_format.py` wraps `finish_step_on_bubble`, so a failed row reads:
+`space_mixie_chat/core/provider_errors.py` classifies the raw text - in all
+three dialects above - and `steps_format.py` wraps `finish_step_on_bubble`, so
+a failed row reads:
 
 > **Failed - backend tool schema**
 > 8 array parameters were declared without the required 'items' sub-schema:
@@ -108,10 +126,14 @@ It cannot fix the schema, so it fixes the message.
 > it, and a retry fails the same way.
 > Provider said: ClientError: 400 Bad Request. ...
 
+When the provider names the function instead of indexing it, the row names it
+too: `1 array parameter was declared without the required 'items' sub-schema:
+placements (tool: place_objects).`
+
 The original text is kept underneath, credential / quota / timeout / network
 failures get their own one-line explanation, and an error the classifier does
-not recognize is passed through untouched. There is no automatic retry:
-`INVALID_ARGUMENT` is deterministic, so retrying only burns time.
+not recognize is passed through untouched. There is no automatic retry: a
+malformed schema is deterministic, so retrying only burns time.
 
 Covered by `tests/test_provider_errors.py`, which the packaging workflow gates
 on.

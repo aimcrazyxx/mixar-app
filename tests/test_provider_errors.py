@@ -19,8 +19,10 @@ CORE_DIR = (
 )
 PACKAGE = "mixar_fork_chat_core"
 
-# The 400 this fork actually hit, trimmed to three of the repeated lines. Quote
-# characters are simplified - the classifier only looks at the wording.
+# The same backend defect as reported by three providers. Quote characters are
+# simplified - the classifier only looks at the wording, never at the JSON.
+
+# Gemini / the built-in Mixar AI, trimmed to three of the repeated lines.
 SCHEMA_ERROR = (
     "ClientError: 400 Bad Request. {'message': '{\\n  'error': {\\n    "
     "'code': 400,\\n    'message': '* GenerateContentRequest.tools[0]"
@@ -30,6 +32,23 @@ SCHEMA_ERROR = (
     "missing field.\\n* GenerateContentRequest.tools[0]"
     ".function_declarations[11].parameters.properties[placements].items: "
     "missing field.\\n',\\n    'status': 'INVALID_ARGUMENT'\\n  }\\n}'}"
+)
+
+# OpenAI and OpenAI-compatible gateways name the function and stop at the
+# first offending parameter.
+OPENAI_ERROR = (
+    "BadRequestError: 400 {'error': {'message': 'Invalid schema for function "
+    "'place_objects': In context=('properties', 'placements'), array schema "
+    "missing items.', 'type': 'invalid_request_error', 'param': "
+    "'tools[11].function.parameters', 'code': 'invalid_function_parameters'}}"
+)
+
+# Claude reports a dotted path into the tool it could not validate.
+CLAUDE_ERROR = (
+    "BadRequestError: 400 {'type': 'error', 'error': {'type': "
+    "'invalid_request_error', 'message': "
+    "'tools.15.custom.input_schema.properties.mesh_names: "
+    "JSON schema is invalid.'}}"
 )
 
 
@@ -99,6 +118,27 @@ def test_the_schema_400_is_recognized():
     assert provider_errors.classify(SCHEMA_ERROR) == provider_errors.PROVIDER_SCHEMA
 
 
+def test_the_openai_wording_is_recognized_too():
+    assert provider_errors.classify(OPENAI_ERROR) == provider_errors.PROVIDER_SCHEMA
+    assert provider_errors.missing_schema_fields(OPENAI_ERROR) == ["placements"]
+    assert provider_errors.offending_tools(OPENAI_ERROR) == ["place_objects"]
+
+
+def test_the_claude_wording_is_recognized_too():
+    assert provider_errors.classify(CLAUDE_ERROR) == provider_errors.PROVIDER_SCHEMA
+    assert provider_errors.missing_schema_fields(CLAUDE_ERROR) == ["mesh_names"]
+    assert provider_errors.offending_declarations(CLAUDE_ERROR) == ["15"]
+
+
+def test_every_provider_gets_the_same_label_and_explanation():
+    for message in (SCHEMA_ERROR, OPENAI_ERROR, CLAUDE_ERROR):
+        row_label, detail = provider_errors.describe(message)
+        assert row_label == "Failed - backend tool schema", message
+        assert "'items'" in detail, message
+        assert "Mixar backend" in detail, message
+        assert len(detail) <= provider_errors.MAX_DETAIL, message
+
+
 def test_every_flagged_parameter_is_listed_once_in_order():
     assert provider_errors.missing_schema_fields(SCHEMA_ERROR) == [
         "location",
@@ -116,6 +156,12 @@ def test_the_headline_names_the_missing_sub_schema():
     assert "items" in headline
     assert "location" in headline
     assert "backend" in headline.lower()
+
+
+def test_the_headline_names_the_tool_when_the_provider_does():
+    headline = provider_errors.headline(OPENAI_ERROR)
+    assert "1 array parameter was" in headline
+    assert "(tool: place_objects)" in headline
 
 
 def test_credentials_quota_timeout_and_network_are_told_apart():
@@ -141,8 +187,8 @@ def test_a_schema_400_is_never_retryable():
 
 
 def test_a_non_string_error_does_not_explode():
-    label, detail = provider_errors.describe({"code": 400})
-    assert label == "Failed"
+    row_label, detail = provider_errors.describe({"code": 400})
+    assert row_label == "Failed"
     assert "400" in detail
 
 
@@ -150,8 +196,8 @@ def test_a_non_string_error_does_not_explode():
 
 
 def test_the_detail_explains_and_stays_within_the_cap():
-    label, detail = provider_errors.describe(SCHEMA_ERROR)
-    assert label == "Failed - backend tool schema"
+    row_label, detail = provider_errors.describe(SCHEMA_ERROR)
+    assert row_label == "Failed - backend tool schema"
     assert len(detail) <= provider_errors.MAX_DETAIL
     assert "3 array parameters" in detail
     assert "Provider said:" in detail
@@ -160,15 +206,15 @@ def test_the_detail_explains_and_stays_within_the_cap():
 
 
 def test_an_unrecognized_error_is_passed_through_verbatim():
-    raw = "Traceback (most recent call last):\n  File \"x.py\"\nValueError: no"
-    label, detail = provider_errors.describe(raw)
-    assert label == "Failed"
+    raw = "Traceback (most recent call last):\n  File 'x.py'\nValueError: no"
+    row_label, detail = provider_errors.describe(raw)
+    assert row_label == "Failed"
     assert detail == raw
 
 
 def test_the_cap_is_honoured_for_long_unknown_errors():
-    label, detail = provider_errors.describe("x" * 900)
-    assert label == "Failed"
+    row_label, detail = provider_errors.describe("x" * 900)
+    assert row_label == "Failed"
     assert len(detail) == provider_errors.MAX_DETAIL
     assert detail.endswith("\u2026")
 
@@ -187,6 +233,17 @@ def test_a_failed_row_gets_the_readable_message():
     assert row.label == "Failed - backend tool schema"
     assert "items" in row.detail
     assert len(row.detail) <= provider_errors.MAX_DETAIL
+
+
+def test_a_failed_row_reads_the_same_for_an_openai_rejection():
+    bubble = _bubble_with_running_step(label="Modeling environment")
+    steps_format.finish_step_on_bubble(
+        bubble, "req-1", {"success": False, "error": OPENAI_ERROR}
+    )
+    row = bubble.step_items[0]
+    assert row.status == "FAILED"
+    assert row.label == "Failed - backend tool schema"
+    assert "placements" in row.detail
 
 
 def test_a_failure_with_no_message_keeps_the_upstream_label():

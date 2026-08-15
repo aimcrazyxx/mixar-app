@@ -11,15 +11,23 @@ When the agent hands a sub-task to a model (generating a 3D asset, modeling an
 environment), the request that carries the tool list is assembled and sent by
 the Mixar backend, not by this client. If one of those declarations is
 malformed the provider rejects the WHOLE request, and the raw rejection lands
-in the chat panel as a wall of escaped JSON, repeated once per offending field:
+in the chat panel as a wall of escaped JSON, repeated once per offending field.
 
-    ClientError: 400 Bad Request. {'message': '{ 'error': { 'code': 400,
-    'message': '* GenerateContentRequest.tools[0].function_declarations[24]
-    .parameters.properties[location].items: missing field. ...
+This is not a Gemini quirk. Every major provider validates tool schemas and
+refuses an array parameter that does not say what its elements are, so the same
+backend defect surfaces on the built-in Mixar AI and on every BYOK provider -
+only the wording changes:
 
-That is unreadable, and it looks like the user's scene or prompt is at fault.
-It is neither: an array parameter was declared without the ``items``
-sub-schema that the provider requires.
+    Gemini   * GenerateContentRequest.tools[0].function_declarations[24]
+             .parameters.properties[location].items: missing field.
+             'status': 'INVALID_ARGUMENT'
+    OpenAI   Invalid schema for function 'place_objects': In
+             context=('properties', 'placements'), array schema missing items.
+             'code': 'invalid_function_parameters'
+    Claude   tools.15.custom.input_schema: JSON schema is invalid.
+
+All three are unreadable in a chat row, and all three look like the user's
+scene or prompt is at fault. None of them is.
 
 Scope: make the row say what happened in one line and keep the original text
 underneath. This CANNOT fix the declarations - they are not in this
@@ -34,8 +42,9 @@ import re
 # known to survive is deliberate.
 MAX_DETAIL = 500
 
-# How many parameter names to spell out before summarizing the rest.
+# How many names to spell out before summarizing the rest.
 _MAX_FIELDS_SHOWN = 8
+_MAX_TOOLS_SHOWN = 2
 
 PROVIDER_SCHEMA = "provider_schema"
 AUTH = "auth"
@@ -45,11 +54,18 @@ NETWORK = "network"
 UNKNOWN = "unknown"
 
 # (kind, needles) checked in order, first match wins - so the specific schema
-# signature is recognized before a generic "400 bad request" would be.
+# signatures are recognized before a generic "400 bad request" would be.
 _SIGNATURES = (
     (PROVIDER_SCHEMA, (
+        # Gemini / Vertex
         "function_declarations", "generatecontentrequest", "missing field",
         "invalid_argument", "invalid json payload",
+        # OpenAI and OpenAI-compatible gateways
+        "invalid schema for function", "array schema missing items",
+        "invalid_function_parameters", "function.parameters",
+        # Claude, and anything else that validates the tool schema
+        "input_schema", "json schema is invalid", "missing items",
+        "'items' is required", "items is required",
     )),
     (AUTH, (
         "unauthorized", "permission_denied", "api key", "api_key",
@@ -99,12 +115,42 @@ _LABELS = {
     UNKNOWN: "Failed",
 }
 
-# Only these are transient. INVALID_ARGUMENT is deterministic: the same request
-# is rejected every single time, so it must never be retried automatically.
+# Only these are transient. A malformed schema is deterministic: the same
+# request is rejected every single time, so it must never be retried
+# automatically.
 _RETRYABLE = frozenset({TIMEOUT, NETWORK, QUOTA})
 
-_PROPERTY_RE = re.compile(r"properties\[([A-Za-z0-9_]+)\]")
-_DECLARATION_RE = re.compile(r"function_declarations\[(\d+)\]")
+# Providers quote identifiers with ' or " and sometimes the typographic
+# variants, so build the character class instead of escaping quotes inline.
+_QUOTE_CHARS = "'" + chr(34) + "\u2018\u2019\u201c\u201d"
+_Q = "[" + re.escape(_QUOTE_CHARS) + "]"
+
+# Three dialects name the offending parameter three different ways.
+_PROPERTY_PATTERNS = (
+    # Gemini: ....parameters.properties[location].items: missing field.
+    re.compile(r"properties\[([A-Za-z0-9_]+)\]"),
+    # OpenAI: In context=('properties', 'placements'), array schema missing...
+    re.compile(
+        _Q + "properties" + _Q + r"\s*,\s*" + _Q + "([A-Za-z0-9_]+)" + _Q
+    ),
+    # Claude and other dotted paths: ...input_schema.properties.mesh_names
+    re.compile(r"properties\.([A-Za-z0-9_]+)"),
+)
+
+# Schema keywords are not parameter names, however they are quoted.
+_NOT_A_FIELD = frozenset({"items", "properties", "parameters", "type"})
+
+_DECLARATION_PATTERNS = (
+    # Gemini numbers the declaration.
+    re.compile(r"function_declarations\[(\d+)\]"),
+    # Claude numbers the tool. The dotted form keeps Gemini's "tools[0]" out.
+    re.compile(r"tools\.(\d+)\."),
+)
+
+# OpenAI is the friendly one: it names the function instead of indexing it.
+_FUNCTION_NAME_RE = re.compile(
+    r"function\s+" + _Q + r"([A-Za-z0-9_.\-]+)" + _Q
+)
 
 
 def _as_text(message) -> str:
@@ -138,18 +184,39 @@ def _unique(values) -> list:
     return seen
 
 
-def missing_schema_fields(message) -> list:
-    """The parameter names the provider flagged, de-duplicated, in order.
+def _ordered_matches(patterns, message) -> list:
+    """Every capture from every pattern, in the order they appear in the text.
 
-    The provider repeats one line per field, so the raw text names the same
-    parameter several times across different declarations.
+    Providers repeat one line per offending field, and different providers use
+    different shapes for the same information, so matches are merged by
+    position and then de-duplicated.
     """
-    return _unique(_PROPERTY_RE.findall(_as_text(message)))
+    text = _as_text(message)
+    found = []
+    for pattern in patterns:
+        for match in pattern.finditer(text):
+            found.append((match.start(), match.group(1)))
+    found.sort(key=lambda item: item[0])
+    return _unique(value for _, value in found)
+
+
+def missing_schema_fields(message) -> list:
+    """The parameter names the provider flagged, de-duplicated, in order."""
+    return [
+        name
+        for name in _ordered_matches(_PROPERTY_PATTERNS, message)
+        if name not in _NOT_A_FIELD
+    ]
 
 
 def offending_declarations(message) -> list:
-    """The function_declarations indices the provider flagged, in order."""
-    return _unique(_DECLARATION_RE.findall(_as_text(message)))
+    """The declaration/tool indices the provider flagged, in order."""
+    return _ordered_matches(_DECLARATION_PATTERNS, message)
+
+
+def offending_tools(message) -> list:
+    """The tool names the provider flagged, when it names them at all."""
+    return _ordered_matches((_FUNCTION_NAME_RE,), message)
 
 
 def collapse(message) -> str:
@@ -178,6 +245,9 @@ def headline(message, kind=None) -> str:
     shown = ", ".join(fields[:_MAX_FIELDS_SHOWN])
     if len(fields) > _MAX_FIELDS_SHOWN:
         shown += " (+%d more)" % (len(fields) - _MAX_FIELDS_SHOWN)
+    tools = offending_tools(message)
+    if tools:
+        shown += " (tool: %s)" % ", ".join(tools[:_MAX_TOOLS_SHOWN])
     count = len(fields)
     return "%d array parameter%s %s declared without the required 'items' " \
            "sub-schema: %s. %s" % (
