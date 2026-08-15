@@ -14,6 +14,11 @@ name: Migrate Blender upstream
 #
 # This job is pure Python text processing, so it runs on Linux in minutes and
 # needs neither a compiler nor the precompiled library set.
+#
+# There are two ways to start it: the Run workflow button, or a change to
+# .github/migration-trigger.md on main. The second path exists so automation
+# that can push commits but cannot reach the Actions API can still start a run;
+# it uses the defaults declared below.
 
 on:
   workflow_dispatch:
@@ -30,6 +35,11 @@ on:
         description: Branch to publish the migrated overlay to
         required: true
         default: migration/blender-5.2
+  push:
+    branches:
+      - main
+    paths:
+      - .github/migration-trigger.md
 
 permissions:
   contents: write
@@ -40,13 +50,13 @@ concurrency:
 
 jobs:
   migrate:
-    name: Overlay ${{ inputs.base_ref }} to ${{ inputs.target_ref }}
+    name: Overlay ${{ inputs.base_ref || 'v5.0.0' }} to ${{ inputs.target_ref || 'v5.2.0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      BASE_REF: ${{ inputs.base_ref }}
-      TARGET_REF: ${{ inputs.target_ref }}
-      PUSH_BRANCH: ${{ inputs.push_branch }}
+      BASE_REF: ${{ inputs.base_ref || 'v5.0.0' }}
+      TARGET_REF: ${{ inputs.target_ref || 'v5.2.0' }}
+      PUSH_BRANCH: ${{ inputs.push_branch || 'migration/blender-5.2' }}
     steps:
       - name: Checkout fork
         uses: actions/checkout@v4
