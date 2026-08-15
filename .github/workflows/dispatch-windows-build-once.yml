@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Dispatch Blender 5.2 Windows build
+on:
+  push:
+    branches:
+      - migration/blender-5.2
+    paths:
+      - ".github/workflows/dispatch-windows-build-once.yml"
+permissions:
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start the pinned Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run build-windows.yml \
+            --repo aimcrazyxx/mixar-app \
+            --ref migration/blender-5.2 \
+            -f runner=windows-latest \
+            -f blender_ref=v5.2.0 \
+            -f blender_version=5.2 \
+            -f mixar_env=Prod \
+            -f use_ninja=true \
+            -f make_installer=true
+          echo "Dispatched Blender v5.2.0 / Python 3.13 Windows build."
