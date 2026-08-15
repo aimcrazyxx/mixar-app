@@ -1,2 +1,3 @@
-<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
-Capture finalizer run 31913159324 with gh run view.
+<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+Capture REUSE run 31913537531.
