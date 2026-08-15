@@ -13,37 +13,41 @@ jobs:
         with: {ref: migration/blender-5.2, fetch-depth: 0, submodules: false}
       - uses: actions/setup-python@v6
         with: {python-version: "3.13"}
-      - name: Finalize pinned Blender 5.2 overlay
+      - name: Fetch, finalize and validate
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          LOG=/tmp/finalize.log
-          exec > >(tee "$LOG") 2>&1
-          failed() {
-            rc=$?
-            trap - ERR
-            { echo '# Blender 5.2 finalization failure'; echo; echo "Run: $GITHUB_RUN_ID"; echo '```text'; tail -n 240 "$LOG"; echo '```'; } > docs/migration/finalize-blender-52-failure.md
-            git add docs/migration/finalize-blender-52-failure.md
-            git commit -m 'ci: capture exact Blender finalizer error' || true
-            git push origin HEAD:refs/heads/migration/blender-5.2 || true
-            exit "$rc"
+          checkpoint() {
+            printf '%s\n' "$1" > docs/migration/finalize-blender-52-stage.txt
+            git add -A
+            git commit -m "ci: Blender 5.2 stage - $1" || true
+            git push origin HEAD:refs/heads/migration/blender-5.2
           }
-          trap failed ERR
           fetch_file() {
-            gh api "repos/blender/blender/contents/$1?ref=v5.2.0" --jq .content | base64 --decode > "$2"
+            mkdir -p "$(dirname "$2")"
+            gh api "repos/blender/blender/contents/$1" -f ref=v5.2.0 --jq .content | base64 --decode > "$2"
+            test -s "$2"
+            checkpoint "$3"
           }
-          mkdir -p src/source/blender/blenloader_core/intern src/source/blender/editors/space_file
-          fetch_file source/blender/blenloader_core/intern/blo_core_blend_header.cc src/source/blender/blenloader_core/intern/blo_core_blend_header.cc
-          fetch_file source/blender/editors/space_file/space_file.cc src/source/blender/editors/space_file/space_file.cc
-          fetch_file source/blender/editors/space_file/file_intern.hh src/source/blender/editors/space_file/file_intern.hh
-          python3 scripts/upgrade/run_finalize_blender_52.py
+          checkpoint api-fetch-started
+          fetch_file source/blender/blenloader_core/intern/blo_core_blend_header.cc src/source/blender/blenloader_core/intern/blo_core_blend_header.cc decoder-fetched
+          fetch_file source/blender/editors/space_file/space_file.cc src/source/blender/editors/space_file/space_file.cc space-file-fetched
+          fetch_file source/blender/editors/space_file/file_intern.hh src/source/blender/editors/space_file/file_intern.hh file-header-fetched
+          set +e
+          python3 scripts/upgrade/run_finalize_blender_52.py > /tmp/finalize.log 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo '# Blender 5.2 finalization failure'; echo; echo "Run: $GITHUB_RUN_ID"; echo '```text'; cat /tmp/finalize.log; echo '```'; } > docs/migration/finalize-blender-52-failure.md
+            checkpoint finalizer-failed
+            exit "$rc"
+          fi
+          checkpoint source-finalized
           python3 -m pip install -q pytest
           python3 -m pytest -q tests/test_byok_base_url.py tests/test_byok_custom_provider.py tests/test_byok_openai_models.py
           ! grep -RIl '^<<<<<<< ' src
           rm -f docs/migration/finalize-blender-52-failure.md docs/migration/finalize-blender-52-stage.txt
-          git add -A
-          git commit -m 'fix: complete Blender 5.2 and custom provider integration'
-          git push origin HEAD:refs/heads/migration/blender-5.2
+          checkpoint tests-passed
