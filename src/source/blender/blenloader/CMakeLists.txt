@@ -53,14 +53,8 @@ set(SRC
   BLO_writefile.hh
   versioning_common.hh
   intern/readfile.hh
-<<<<<<< /tmp/tmp99ym8pdb/new
   intern/writefile.hh
-||||||| /tmp/tmp99ym8pdb/old
-  intern/versioning_common.hh
-=======
-  versioning_common.hh
   versioning_mixar_200.hh
->>>>>>> /tmp/tmp99ym8pdb/modified
 )
 
 set(LIB
