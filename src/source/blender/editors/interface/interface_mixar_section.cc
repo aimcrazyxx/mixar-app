@@ -130,6 +130,21 @@ void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout)
   }
 }
 
+void UI_layout_disable_last_button_tooltip(::blender::ui::Layout *layout)
+{
+  if (layout == nullptr) {
+    return;
+  }
+
+  ::blender::ui::Block *block = layout->block();
+  if (block == nullptr || block->buttons_ptrs.is_empty()) {
+    return;
+  }
+
+  ::blender::ui::button_drawflag_enable(block->buttons_ptrs.last().get(),
+                                         ::blender::ui::BUT_NO_TOOLTIP);
+}
+
 /* -------------------------------------------------------------------- */
 /* Mixar Custom Panel Category Tabs                                      */
 
@@ -221,9 +236,9 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
 
   int y_ofs = tab_v_pad;
 
-  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {
-    rcti *rct = &pc_dyn->rect;
-    const char *category_id_draw = IFACE_(pc_dyn->idname);
+  for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {
+    rcti *rct = &pc_dyn.rect;
+    const char *category_id_draw = IFACE_(pc_dyn.idname);
     const int category_width = round_fl_to_int(
         BLF_width(fontid, category_id_draw, BLF_DRAW_STR_DUMMY_MAX));
 
@@ -238,8 +253,8 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
   const int max_scroll = std::max(y_ofs - BLI_rcti_size_y(&v2d->mask), 0);
   const int scroll = std::clamp(region->category_scroll, 0, max_scroll);
   region->category_scroll = scroll;
-  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {
-    rcti *rct = &pc_dyn->rect;
+  for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {
+    rcti *rct = &pc_dyn.rect;
     rct->ymin += scroll;
     rct->ymax += scroll;
   }
@@ -279,8 +294,8 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
 
   GPU_line_smooth(true);
 
-  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {
-    const rcti *rct = &pc_dyn->rect;
+  for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {
+    const rcti *rct = &pc_dyn.rect;
 
     if (rct->ymin > v2d->mask.ymax) {
       continue;
@@ -289,7 +304,7 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
       break;
     }
 
-    const char *category_id = pc_dyn->idname;
+    const char *category_id = pc_dyn.idname;
     const char *category_id_draw = IFACE_(category_id);
     const size_t category_draw_len = BLF_DRAW_STR_DUMMY_MAX;
     const bool is_active = !too_narrow && STREQ(category_id, category_id_active);
@@ -355,10 +370,10 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
     }
 
     if (is_left) {
-      pc_dyn->rect.xmin = v2d->mask.xmin;
+      pc_dyn.rect.xmin = v2d->mask.xmin;
     }
     else {
-      pc_dyn->rect.xmax = v2d->mask.xmax;
+      pc_dyn.rect.xmax = v2d->mask.xmax;
     }
   }
 
