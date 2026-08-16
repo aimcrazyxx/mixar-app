@@ -1507,10 +1507,10 @@ void UI_layout_disable_last_button_tooltip(ui::Layout *layout)
     return;
   }
   ui::Block *block = layout->block();
-  if (!block || block->buttons.is_empty()) {
+  if (!block || block->buttons_ptrs.is_empty()) {
     return;
   }
-  but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);
+  button_drawflag_enable(block->buttons_ptrs.last().get(), BUT_NO_TOOLTIP);
 }
 
 PointerRNA Layout::op_menu_hold(wmOperatorType *ot,
