@@ -21,6 +21,11 @@ jobs:
           ref: migration/blender-5.2
           fetch-depth: 0
           submodules: false
+      - name: Synchronize the branch before editing
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin migration/blender-5.2
       - name: Port custom RNA property calls to Blender 5.2
         shell: bash
         run: |
@@ -58,7 +63,6 @@ jobs:
           set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git pull --rebase origin migration/blender-5.2
           git add src/source/blender/makesrna/intern/rna_ui_api.cc
           git commit -m "fix: pass Blender 5.2 alignment to RNA UI items"
           git push origin HEAD:refs/heads/migration/blender-5.2
