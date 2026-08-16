@@ -18,62 +18,101 @@ jobs:
           ref: migration/blender-5.2
           fetch-depth: 0
           submodules: false
-      - name: Port known UI layout signature and scan stale APIs
+      - name: Port known Blender 5.2 APIs and rescan
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
           root = Path("src")
-          header = Path("src/source/blender/editors/include/UI_interface_layout.hh")
-          old_decl = "void UI_layout_disable_last_button_tooltip(uiLayout *layout);"
-          new_decl = "void UI_layout_disable_last_button_tooltip(Layout *layout);"
-          text = header.read_text(encoding="utf-8")
-          if text.count(old_decl) != 1:
-              raise RuntimeError(f"expected one stale declaration, found {text.count(old_decl)}")
-          header.write_text(text.replace(old_decl, new_decl), encoding="utf-8")
-
-          definition_replacements = 0
-          exact_old = "UI_layout_disable_last_button_tooltip(uiLayout *layout)"
-          exact_new = "UI_layout_disable_last_button_tooltip(Layout *layout)"
           source_suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
           files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in source_suffixes or p.name == "CMakeLists.txt")]
+
+          counts = {
+              "uiLayout": 0,
+              "ghostwin": 0,
+              "MEM_callocN": 0,
+          }
           for path in files:
               value = path.read_text(encoding="utf-8", errors="replace")
-              count = value.count(exact_old)
-              if count:
-                  path.write_text(value.replace(exact_old, exact_new), encoding="utf-8")
-                  definition_replacements += count
+              original = value
+
+              # Blender 5.2 moved uiLayout to blender::ui::Layout. The one
+              # standalone forward declaration must become a namespace declaration.
+              if "struct uiLayout;" in value:
+                  value = value.replace(
+                      "struct uiLayout;",
+                      "namespace blender::ui {\nstruct Layout;\n}",
+                  )
+              value, count = re.subn(r"\buiLayout\b", "::blender::ui::Layout", value)
+              counts["uiLayout"] += count
+
+              # wmWindow's GHOST handle moved into wmWindowRuntime in Blender 5.2.
+              value, count = re.subn(r"(?<!runtime)->ghostwin\b", "->runtime->ghostwin", value)
+              counts["ghostwin"] += count
+
+              # Blender 5.2 removed typed MEM_callocN in favor of constructors
+              # which preserve zero-initialization and C++ object lifetime.
+              value, count = re.subn(r"\bMEM_callocN\s*<", "MEM_new_zeroed<", value)
+              counts["MEM_callocN"] += count
+
+              if value != original:
+                  path.write_text(value, encoding="utf-8")
 
           patterns = [
               ("legacy uiLayout type", re.compile(r"\buiLayout\b")),
               ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib")),
               ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b")),
               ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<")),
+              ("legacy uiBut type", re.compile(r"\buiBut\b")),
+              ("legacy uiBlock type", re.compile(r"\buiBlock\b")),
+              ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b")),
+              ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b")),
               ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)")),
           ]
           report_path = Path("docs/migration/blender-52-api-scan.md")
-          original = report_path.read_text(encoding="utf-8")
-          prefix = original.split("# Blender 5.2 API scan", 1)[0]
-          out = [prefix.rstrip(), "", "# Blender 5.2 API scan", "", f"Exact implementation signatures ported: **{definition_replacements}**", ""]
-          total_hits = 0
+          original_report = report_path.read_text(encoding="utf-8")
+          prefix = original_report.split("# Blender 5.2 API scan", 1)[0]
+          out = [
+              prefix.rstrip(),
+              "",
+              "# Blender 5.2 API scan",
+              "",
+              "## Applied ports",
+              "",
+              f"- `uiLayout` → `blender::ui::Layout`: **{counts['uiLayout']}**",
+              f"- `wmWindow::ghostwin` → `wmWindow::runtime->ghostwin`: **{counts['ghostwin']}**",
+              f"- `MEM_callocN<T>` → `MEM_new_zeroed<T>`: **{counts['MEM_callocN']}**",
+              "",
+          ]
+          blocking_hits = 0
           for label, pattern in patterns:
               hits = []
               for path in files:
                   for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
                       if pattern.search(line):
                           hits.append(f"- `{path}:{number}` — `{line.strip()}`")
-              total_hits += len(hits)
+              if label in {
+                  "legacy uiLayout type",
+                  "obsolete fmtlib target",
+                  "direct ghostwin access",
+                  "obsolete typed MEM_callocN",
+                  "merge conflict marker",
+              }:
+                  blocking_hits += len(hits)
               out.extend([f"## {label}", "", f"Count: **{len(hits)}**", ""])
               out.extend(hits[:300] or ["- None"])
               if len(hits) > 300:
                   out.append(f"- … {len(hits) - 300} more")
               out.append("")
-          out.extend(["## Summary", "", f"Total stale-pattern hits: **{total_hits}**", ""])
+          out.extend(["## Summary", "", f"Blocking stale-pattern hits: **{blocking_hits}**", ""])
           report_path.write_text("\n".join(out), encoding="utf-8")
+
+          if blocking_hits:
+              raise RuntimeError(f"{blocking_hits} blocking Blender 5.2 API remnants remain")
           PY
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src docs/migration/blender-52-api-scan.md
-          git commit -m "fix: port UI layout API and record Blender 5.2 scan"
+          git commit -m "fix: port remaining Blender 5.2 UI window and allocation APIs"
           git push origin HEAD:refs/heads/migration/blender-5.2
