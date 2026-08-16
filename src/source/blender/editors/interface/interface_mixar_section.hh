@@ -11,9 +11,13 @@
 
 #pragma once
 
-namespace blender::ui {
+namespace blender {
+struct ARegion;
+
+namespace ui {
 struct Layout;
 }
+}  // namespace blender
 
 /* -------------------------------------------------------------------- */
 /* Custom flag2 bits — checked in interface_widgets.cc widget dispatch.  */
@@ -38,40 +42,16 @@ struct Layout;
  */
 ::blender::ui::Layout *UI_layout_mixar_section(::blender::ui::Layout *layout);
 
-/**
- * Mark the most recently created Menu/Block/Popover button in the layout's
- * block with #UI_BUT2_MIXAR_DROPDOWN so it renders with custom styling.
- *
- * Call this immediately after layout->prop() for an enum property.
- */
+/** Mark the most recently created Menu/Block/Popover button. */
 void UI_layout_mixar_mark_last_dropdown(::blender::ui::Layout *layout);
-
-/**
- * Mark the most recently created But (operator) button with
- * #UI_BUT2_MIXAR_ACTION so it renders as an accent action button.
- */
+/** Mark the most recently created operator button. */
 void UI_layout_mixar_mark_last_action(::blender::ui::Layout *layout);
-
-/**
- * Mark the most recently created Checkbox button with
- * #UI_BUT2_MIXAR_TOGGLE so it renders as a pill-shaped toggle switch.
- */
+/** Mark the most recently created Checkbox button. */
 void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout);
-
-/**
- * Mark the most recently created Text button with
- * #UI_BUT2_MIXAR_INPUT so it renders with visible border and focus glow.
- */
+/** Mark the most recently created Text button. */
 void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout);
 
 /* -------------------------------------------------------------------- */
 /* Custom panel category tab drawing for MIXIE space                     */
 
-struct ARegion;
-
-/**
- * Draw a custom styled panel category tab bar for the MIXIE space.
- * Replaces the default Blender vertical tab strip with a modern design:
- * dark background, accent-blue active pill with glow, subtle inactive tabs.
- */
-void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);
+void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *category_id_active);
