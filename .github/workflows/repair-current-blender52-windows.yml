@@ -4,12 +4,19 @@ name: Repair current Blender 5.2 Windows failures
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/blender-52-build-20260816
+    paths:
+      - "src/source/blender/editors/interface/**"
+      - ".github/workflows/repair-current-blender52-windows.yml"
 
 permissions:
   contents: write
 
 jobs:
   repair:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -28,9 +35,6 @@ jobs:
 
           root = Path('src/source/blender/editors/interface')
 
-          # Blender 5.2 stores owned UI buttons in Block::buttons_ptrs.
-          # Normalize both the legacy spelling and any accidental repeated suffixes so this
-          # repair remains strictly idempotent across repeated manual runs.
           p = root / 'interface_mixar_section.cc'
           s = p.read_text(encoding='utf-8')
           s = re.sub(r'block->buttons(?:_ptrs)*', 'block->buttons_ptrs', s)
@@ -44,8 +48,6 @@ jobs:
               s = s.replace(marker, marker + '\n' + using_line, 1)
           p.write_text(s, encoding='utf-8')
 
-          # ARegion is in namespace blender in 5.2. A global forward declaration creates
-          # an unrelated incomplete type and breaks every region/View2D member access.
           p = root / 'interface_mixar_section.hh'
           s = p.read_text(encoding='utf-8')
           s = s.replace('namespace blender::ui {\nstruct Layout;\n}\n',
@@ -56,7 +58,6 @@ jobs:
                         'void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *category_id_active);')
           p.write_text(s, encoding='utf-8')
 
-          # Blender 5.2 removed the old helper and renamed the Block storage.
           p = root / 'interface_layout.cc'
           s = p.read_text(encoding='utf-8')
           s = re.sub(r'block->buttons(?:_ptrs)*\.is_empty\(\)',
