@@ -261,7 +261,7 @@ void draw_context_actions(::blender::ui::Block *block,
 
 void director_overlay_panel_draw(const rctf &rect, const float radius)
 {
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
   UI_draw_roundbox_4fv_ex(&rect, PANEL_COLOR, nullptr, 1.0f, PANEL_BORDER, UI_SCALE_FAC, radius);
 }
 
@@ -277,7 +277,7 @@ void director_overlay_panel_draw(const rctf &rect, const float radius)
 {
   if (label && label[0]) {
     return uiDefIconTextButO(block,
-                             ButType::But,
+                             ::blender::ui::ButtonType::But,
                              operator_id,
                              blender::wm::OpCallContext::InvokeRegionWin,
                              icon,
@@ -289,7 +289,7 @@ void director_overlay_panel_draw(const rctf &rect, const float radius)
                              tooltip);
   }
   return uiDefIconButO(block,
-                       ButType::But,
+                       ::blender::ui::ButtonType::But,
                        operator_id,
                        blender::wm::OpCallContext::InvokeRegionWin,
                        icon,

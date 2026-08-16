@@ -85,7 +85,7 @@ int popup_row_height()
   if (data.shot_ptr.data != nullptr) {
     y -= gap + row_h;
     ::blender::ui::Button *name = uiDefButR(block,
-                            ButType::Text,
+                            ::blender::ui::ButtonType::Text,
                             0,
                             "",
                             0,
@@ -195,7 +195,7 @@ int popup_row_height()
   director_popup_section_label(block, "What happens in the shot?", y, width);
   y -= row_h;
   ::blender::ui::Button *prompt = uiDefButR(block,
-                            ButType::Text,
+                            ::blender::ui::ButtonType::Text,
                             0,
                             "",
                             0,
@@ -211,7 +211,7 @@ int popup_row_height()
   director_popup_state(prompt, false, data.editable);
   y -= row_h;
   ::blender::ui::Button *adherence = uiDefButR(block,
-                               ButType::Menu,
+                               ::blender::ui::ButtonType::Menu,
                                0,
                                std::nullopt,
                                0,
@@ -230,7 +230,7 @@ int popup_row_height()
   director_popup_section_label(block, "Timing", y, width);
   y -= row_h;
   ::blender::ui::Button *fps = uiDefButR(block,
-                         ButType::Num,
+                         ::blender::ui::ButtonType::Num,
                          0,
                          "Frame Rate",
                          0,
@@ -245,7 +245,7 @@ int popup_row_height()
                          std::nullopt);
   director_popup_state(fps, false, data.editable);
   ::blender::ui::Button *spacing = uiDefButR(block,
-                             ButType::NumSlider,
+                             ::blender::ui::ButtonType::NumSlider,
                              0,
                              "Spacing",
                              half_w + gap,
@@ -266,7 +266,7 @@ int popup_row_height()
     y -= row_h;
     const int third_w = (width - gap * 2) / 3;
     ::blender::ui::Button *thirds = uiDefButR(block,
-                              ButType::Toggle,
+                              ::blender::ui::ButtonType::Toggle,
                               0,
                               "Thirds",
                               0,
@@ -281,7 +281,7 @@ int popup_row_height()
                               std::nullopt);
     director_popup_state(thirds, false, true);
     ::blender::ui::Button *safe = uiDefButR(block,
-                            ButType::Toggle,
+                            ::blender::ui::ButtonType::Toggle,
                             0,
                             "Safe Areas",
                             third_w + gap,
@@ -296,7 +296,7 @@ int popup_row_height()
                             std::nullopt);
     director_popup_state(safe, false, true);
     ::blender::ui::Button *path = uiDefButR(block,
-                            ButType::Toggle,
+                            ::blender::ui::ButtonType::Toggle,
                             0,
                             "Path",
                             (third_w + gap) * 2,
@@ -389,7 +389,7 @@ int popup_row_height()
   if (available) {
     y -= row_h;
     ::blender::ui::Button *seconds = uiDefButR(block,
-                               ButType::NumSlider,
+                               ::blender::ui::ButtonType::NumSlider,
                                0,
                                "Motion Length",
                                0,

@@ -49,8 +49,8 @@ float mixie_chat_feedback_comment_input_height(PointerRNA *msg_ptr, const float 
    * floor(rect_height / line_height) lines. Measuring with any other font or
    * per-line height makes the button taller than the widget's line grid —
    * phantom lines the cursor can't reach. */
-  uiFontStyle fstyle = UI_style_get()->widget;
-  UI_fontstyle_set(&fstyle);
+  uiFontStyle fstyle = ::blender::ui::style_get()->widget;
+  ::blender::ui::fontstyle_set(&fstyle);
   const int fontid = fstyle.uifont_id;
   const int line_height = std::max(int(BLF_height(fontid, "Wg", 2) + 2.0f * U.pixelsize), 1);
   const int pad = int(4.0f * U.pixelsize); /* widget top inset; mirrored at bottom */
@@ -67,7 +67,7 @@ float mixie_chat_feedback_comment_input_height(PointerRNA *msg_ptr, const float 
         fontid,
         blender::StringRef(text, text_len),
         rect_width,
-        BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit)));
+        BLFWrapMode::Typographical | BLFWrapMode::HardLimit);
     line_count = std::max(1, int(lines.size()));
     /* Trailing newline shows as a virtual empty line in the widget. */
     if (text[text_len - 1] == '\n') {
@@ -344,7 +344,7 @@ void mixie_chat_render_feedback(const bContext *C,
   ::blender::ui::Block *block = ::blender::ui::block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
 
   ::blender::ui::Button *comment_but = uiDefButR(block,
-                                 ButType::Text,
+                                 ::blender::ui::ButtonType::Text,
                                  0,
                                  "",
                                  rx1,
@@ -435,7 +435,7 @@ bool mixie_chat_handle_feedback_click(bContext *C,
         wmOperatorType *ot = WM_operatortype_find("mixie_chat.set_feedback_rating", true);
         if (ot) {
           PointerRNA op_ptr;
-          WM_operator_properties_create_ptr(&op_ptr, ot);
+          op_ptr = WM_operator_properties_create_ptr(ot);
           RNA_string_set(&op_ptr, "bubble_id", layout.bubble_id);
           RNA_int_set(&op_ptr, "rating", star.star_index);
           WM_operator_name_call_ptr(
@@ -455,7 +455,7 @@ bool mixie_chat_handle_feedback_click(bContext *C,
       wmOperatorType *ot = WM_operatortype_find("mixie_chat.toggle_feedback_comment", true);
       if (ot) {
         PointerRNA op_ptr;
-        WM_operator_properties_create_ptr(&op_ptr, ot);
+        op_ptr = WM_operator_properties_create_ptr(ot);
         RNA_string_set(&op_ptr, "bubble_id", layout.bubble_id);
         WM_operator_name_call_ptr(
             C, ot, blender::wm::OpCallContext::ExecDefault, &op_ptr, nullptr);

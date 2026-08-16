@@ -63,7 +63,7 @@ static bool toast_call_mouse_op(bContext *C, const wmEvent *event, const char *i
   }
 
   PointerRNA op_ptr;
-  WM_operator_properties_create_ptr(&op_ptr, ot);
+  op_ptr = WM_operator_properties_create_ptr(ot);
   RNA_int_set(&op_ptr, "mouse_x", event->mval[0]);
   RNA_int_set(&op_ptr, "mouse_y", event->mval[1]);
 

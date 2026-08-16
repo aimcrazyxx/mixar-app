@@ -87,7 +87,7 @@ int draw_kind_toggles(bContext *C,
       continue;
     }
     ::blender::ui::Button *toggle = uiDefIconTextButR_prop(block,
-                                           ButType::Row,
+                                           ::blender::ui::ButtonType::Row,
                                            0,
                                            render_kind_icon(items[index].identifier),
                                            items[index].name,
@@ -179,7 +179,7 @@ int draw_kind_toggles(bContext *C,
 
   y -= gap + row_h;
   ::blender::ui::Button *resolution = uiDefButR(block,
-                                ButType::NumSlider,
+                                ::blender::ui::ButtonType::NumSlider,
                                 0,
                                 "Resolution",
                                 0,
@@ -263,7 +263,7 @@ int draw_kind_toggles(bContext *C,
       const ID *image_id = static_cast<const ID *>(image_ptr.data);
       y -= label_h;
       uiDefIconTextBut(block,
-                       ButType::Label,
+                       ::blender::ui::ButtonType::Label,
                        0,
                        ICON_FILE_MOVIE,
                        image_id ? image_id->name + 2 : "Missing video",

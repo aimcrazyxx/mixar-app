@@ -62,7 +62,7 @@ void RNA_def_wm_mixar(BlenderRNA *brna)
 {
   /* `RNA_struct_find` is unavailable to the standalone makesrna executable.
    * Blender 5.2 stores its registration map as Map<StringRef, StructRNA *>, so use the
-   * exact key type from rna_internal_types.hh rather than the post-5.2 UString API. */
+   * exact key type from rna_internal_types.hh rather than the post-5.2 interned-string API. */
   if (brna == nullptr) {
     return;
   }

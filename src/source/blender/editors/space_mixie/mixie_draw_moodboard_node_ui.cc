@@ -49,7 +49,7 @@ static ::blender::ui::Button *screen_prop_button(::blender::ui::Block *block,
                                  PointerRNA *ptr,
                                  const char *property,
                                  const char *label,
-                                 const ButType type,
+                                 const ::blender::ui::ButtonType type,
                                  const int x,
                                  const int y,
                                  const int width,
@@ -80,9 +80,9 @@ static void draw_floating_background(const rctf &rect)
 {
   const float background[4] = {0.14f, 0.14f, 0.15f, 0.98f};
   const float border[4] = {0.34f, 0.35f, 0.38f, 0.88f};
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&rect, true, 16.0f, background);
-  UI_draw_roundbox_4fv(&rect, false, 16.0f, border);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&rect, true, 16.0f, background);
+  ::blender::ui::draw_roundbox_4fv(&rect, false, 16.0f, border);
 }
 
 static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
@@ -96,7 +96,7 @@ static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
   mixie_rna_string_get_clamped(parameter, "label", label, sizeof(label));
   const int parameter_type = RNA_enum_get(parameter, "parameter_type");
   const char *value_property = "value_string";
-  ButType button_type = ButType::Text;
+  ::blender::ui::ButtonType button_type = ::blender::ui::ButtonType::Text;
   float minimum = 0.0f;
   float maximum = 0.0f;
   if (parameter_type == 1 || parameter_type == 2) {
@@ -110,15 +110,15 @@ static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
      * min/max only clamp on release — the slider dragged to huge values and
      * snapped back. A correct slider needs a per-param property range (as the
      * N-panel engine builds); the node deliberately uses Num until then. */
-    button_type = ButType::Num;
+    button_type = ::blender::ui::ButtonType::Num;
   }
   else if (parameter_type == 3) {
     value_property = "value_boolean";
-    button_type = ButType::Checkbox;
+    button_type = ::blender::ui::ButtonType::Checkbox;
   }
   else if (parameter_type == 4) {
     value_property = "value_enum";
-    button_type = ButType::Menu;
+    button_type = ::blender::ui::ButtonType::Menu;
   }
   /* Show the VALUE, not the param name. The enum can't self-display (it stores
    * a fragile index; a null label blanks the menu), so the current choice's
@@ -128,11 +128,11 @@ static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
    * keep their label — a lone tick is meaningless. */
   char value_label[MIXIE_GRAPH_LABEL_BUF];
   const char *display_label = label;
-  if (button_type == ButType::Menu) {
+  if (button_type == ::blender::ui::ButtonType::Menu) {
     mixie_rna_string_get_clamped(parameter, "value_label", value_label, sizeof(value_label));
     display_label = value_label[0] ? value_label : label;
   }
-  else if (ELEM(button_type, ButType::Num, ButType::NumSlider, ButType::Text)) {
+  else if (ELEM(button_type, ::blender::ui::ButtonType::Num, ::blender::ui::ButtonType::NumSlider, ::blender::ui::ButtonType::Text)) {
     display_label = "";
   }
   return screen_prop_button(block,
@@ -255,7 +255,7 @@ static void add_action_toolbar(::blender::ui::Block *block,
                                      node,
                                      "service_key",
                                      mode_label[0] ? mode_label : "Mode",
-                                     ButType::Menu,
+                                     ::blender::ui::ButtonType::Menu,
                                      content_x,
                                      y,
                                      field_width,
@@ -269,7 +269,7 @@ static void add_action_toolbar(::blender::ui::Block *block,
                                     node,
                                     "model",
                                     model_label[0] ? model_label : "Model",
-                                    ButType::Menu,
+                                    ::blender::ui::ButtonType::Menu,
                                     content_x,
                                     y,
                                     field_width,
@@ -296,7 +296,7 @@ static void add_action_toolbar(::blender::ui::Block *block,
   char reset_node_id[MIXIE_GRAPH_ID_BUF];
   mixie_rna_string_get_clamped(node, "node_id", reset_node_id, sizeof(reset_node_id));
   ::blender::ui::Button *reset = uiDefButO(block,
-                           ButType::But,
+                           ::blender::ui::ButtonType::But,
                            "MIXIE_OT_moodboard_reset_node_params",
                            blender::wm::OpCallContext::ExecDefault,
                            "Reset",
@@ -333,7 +333,7 @@ static void add_action_toolbar(::blender::ui::Block *block,
                                          node,
                                          "prompt",
                                          "",
-                                         ButType::Text,
+                                         ::blender::ui::ButtonType::Text,
                                          node_region.xmin + prompt_margin,
                                          prompt_y,
                                          BLI_rcti_size_x(&node_region) - prompt_margin * 2,
@@ -349,7 +349,7 @@ static void add_action_toolbar(::blender::ui::Block *block,
     mixie_rna_string_get_clamped(node, "node_id", node_id, sizeof(node_id));
     const char *button_label = generation_running ? "Generating..." : "Generate";
     ::blender::ui::Button *generate = uiDefButO(block,
-                                ButType::But,
+                                ::blender::ui::ButtonType::But,
                                 "MIXIE_OT_moodboard_run_action_node",
                                 blender::wm::OpCallContext::ExecDefault,
                                 button_label,
@@ -418,7 +418,7 @@ static void add_selected_media_toolbar(::blender::ui::Block *block,
       rctf bar_rect = {float(bar_x), float(bar_x + bar_width), float(bar_y), float(bar_y + 44)};
       draw_floating_background(bar_rect);
       uiDefBut(block,
-               ButType::Label,
+               ::blender::ui::ButtonType::Label,
                0,
                image->source == IMA_SRC_MOVIE ? "Video" : "Image",
                bar_x + 12,

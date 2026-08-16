@@ -81,7 +81,7 @@ void director_popup_section_label(::blender::ui::Block *block,
                                   const int width)
 {
   uiDefBut(block,
-           ButType::Label,
+           ::blender::ui::ButtonType::Label,
            0,
            text,
            0,
@@ -185,7 +185,7 @@ namespace {
     }
     y -= gap + row_h;
     ::blender::ui::Button *slider = uiDefButR(block,
-                              ButType::NumSlider,
+                              ::blender::ui::ButtonType::NumSlider,
                               0,
                               "Focal Length",
                               0,
@@ -206,7 +206,7 @@ namespace {
     const std::optional<blender::StringRef> value_label =
         ortho ? std::optional<blender::StringRef>("Scale") : std::nullopt;
     ::blender::ui::Button *value = uiDefButR(block,
-                             ortho ? ButType::NumSlider : ButType::Menu,
+                             ortho ? ::blender::ui::ButtonType::NumSlider : ::blender::ui::ButtonType::Menu,
                              0,
                              value_label,
                              0,
@@ -348,7 +348,7 @@ namespace {
 
   y -= gap + row_h;
   ::blender::ui::Button *spacing = uiDefButR(block,
-                             ButType::NumSlider,
+                             ::blender::ui::ButtonType::NumSlider,
                              0,
                              "Keyframe Spacing",
                              0,
@@ -365,7 +365,7 @@ namespace {
 
   y -= gap + row_h;
   ::blender::ui::Button *handheld = uiDefIconTextButR(block,
-                                      ButType::Toggle,
+                                      ::blender::ui::ButtonType::Toggle,
                                       0,
                                       ICON_FORCE_TURBULENCE,
                                       "Handheld",
@@ -379,7 +379,7 @@ namespace {
                                       std::nullopt);
   director_popup_state(handheld, false, data.editable);
   ::blender::ui::Button *intensity = uiDefButR(block,
-                               ButType::NumSlider,
+                               ::blender::ui::ButtonType::NumSlider,
                                0,
                                "",
                                half_w + gap,

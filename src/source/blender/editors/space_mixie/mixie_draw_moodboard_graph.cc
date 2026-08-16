@@ -95,9 +95,9 @@ static void draw_card_background(const rctf &rect, const bool selected)
 {
   const float background[4] = {0.105f, 0.105f, 0.11f, 0.99f};
   const float border[4] = {0.38f, 0.39f, 0.42f, selected ? 0.92f : 0.58f};
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&rect, true, 22.0f, background);
-  UI_draw_roundbox_4fv(&rect, false, 22.0f, border);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&rect, true, 22.0f, background);
+  ::blender::ui::draw_roundbox_4fv(&rect, false, 22.0f, border);
 }
 
 static void draw_running_glow(const rctf &rect)
@@ -109,16 +109,16 @@ static void draw_running_glow(const rctf &rect)
    * wall clock supplies the phase (~2.9s breathe). */
   const float pulse = 0.5f + 0.5f * float(std::sin(BLI_time_now_seconds() * 2.2));
   const float accent[3] = {0.32f, 0.72f, 0.55f}; /* muted Mixar green */
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
   rctf halo = rect;
   halo.xmin -= 3.0f;
   halo.ymin -= 3.0f;
   halo.xmax += 3.0f;
   halo.ymax += 3.0f;
   const float halo_color[4] = {accent[0], accent[1], accent[2], 0.05f + 0.10f * pulse};
-  UI_draw_roundbox_4fv(&halo, false, 25.0f, halo_color);
+  ::blender::ui::draw_roundbox_4fv(&halo, false, 25.0f, halo_color);
   const float border[4] = {accent[0], accent[1], accent[2], 0.24f + 0.30f * pulse};
-  UI_draw_roundbox_4fv(&rect, false, 22.0f, border);
+  ::blender::ui::draw_roundbox_4fv(&rect, false, 22.0f, border);
 }
 
 static void draw_socket(const float x, const float y, const float color[3])

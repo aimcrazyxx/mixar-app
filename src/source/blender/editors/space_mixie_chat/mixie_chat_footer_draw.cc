@@ -58,8 +58,8 @@ void footer_draw_send_button_glow(ARegion *region,
     gr.xmax = float(pos.send_btn_x + pos.btn_size) + gp;
     gr.ymin = float(pos.buttons_y) - gp;
     gr.ymax = float(pos.buttons_y + pos.btn_size) + gp;
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(&gr, true, (float(pos.btn_size) + gp * 2.0f) * 0.5f, gc);
+    ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+    ::blender::ui::draw_roundbox_4fv(&gr, true, (float(pos.btn_size) + gp * 2.0f) * 0.5f, gc);
     GPU_blend(GPU_BLEND_NONE);
     ED_region_tag_redraw(region);
   }
@@ -123,8 +123,8 @@ void footer_draw_plan_toggle(ARegion *region,
   track_rect.xmax = track_x + float(switch_track_w);
   track_rect.ymax = track_y + float(switch_track_h);
 
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&track_rect, true, float(switch_track_h) * 0.5f, track_color);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&track_rect, true, float(switch_track_h) * 0.5f, track_color);
 
   /* Draw knob: left when OFF, right when ON */
   const float *knob_color = theme->toggle_knob_color;
@@ -143,8 +143,8 @@ void footer_draw_plan_toggle(ARegion *region,
   knob_rect.xmax = knob_x + float(knob_diameter);
   knob_rect.ymax = knob_y + float(knob_diameter);
 
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&knob_rect, true, float(knob_diameter) * 0.5f, knob_color);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&knob_rect, true, float(knob_diameter) * 0.5f, knob_color);
 
   /* Draw "Plan" label text to the left of the switch */
   const float *text_color = theme->toggle_label_color;
@@ -219,7 +219,7 @@ void footer_draw_thumbnails(const bContext *C,
 
       for (int index = 0; index < max_buttons; index++) {
         ::blender::ui::Button *remove_but = uiDefIconButO(remove_block,
-                                          ButType::But,
+                                          ::blender::ui::ButtonType::But,
                                           "MIXIE_CHAT_OT_remove_attachment",
                                           blender::wm::OpCallContext::InvokeDefault,
                                           ICON_X,

@@ -165,7 +165,7 @@ void view3d_director_frame_controls_draw(::blender::ui::Block *block,
   /* Precise stays hidden until its role is clear; Navigate is a plain text
    * action — no icon, so the gate reads as one word. */
   ::blender::ui::Button *navigate = uiDefButO(block,
-                              ButType::But,
+                              ::blender::ui::ButtonType::But,
                               "MIXAR_OT_director_navigate",
                               blender::wm::OpCallContext::InvokeRegionWin,
                               "Navigate",
@@ -220,6 +220,6 @@ void view3d_director_frame_controls_draw(::blender::ui::Block *block,
                            border.ymax - inset - dot_size,
                            border.ymax - inset};
   const float active_color[4] = {0.25f, 0.92f, 0.52f, 1.0f};
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&active_dot, true, dot_size * 0.5f, active_color);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&active_dot, true, dot_size * 0.5f, active_color);
 }

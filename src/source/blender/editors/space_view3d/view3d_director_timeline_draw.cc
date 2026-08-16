@@ -58,8 +58,8 @@ void draw_rect(
 
 void draw_round_rect(const rctf &rect, const float radius, const float color[4])
 {
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&rect, true, radius, color);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&rect, true, radius, color);
 }
 
 void draw_text(

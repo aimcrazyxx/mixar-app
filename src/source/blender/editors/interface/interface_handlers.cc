@@ -3343,7 +3343,7 @@ static int ui_multiline_get_lines(::blender::ui::Button *but,
       fontid,
       str,
       rect_width,
-      BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit)));
+      BLFWrapMode::Typographical | BLFWrapMode::HardLimit);
 
   /* Strip trailing \n from each line — matches widget_draw_text_multiline().
    * BLF_string_wrap clips mid-string \n via its newline path, but a trailing \n

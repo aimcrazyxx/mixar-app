@@ -49,7 +49,7 @@
    * that was just created by box(). It should be the most recently added. */
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
     ::blender::ui::Button *but = block->buttons[i].get();
-    if (but->type == ButType::Roundbox) {
+    if (but->type == ::blender::ui::ButtonType::Roundbox) {
       but->flag2 |= UI_BUT2_MIXAR_SECTION;
       break;
     }
@@ -65,7 +65,7 @@ void UI_layout_mixar_mark_last_dropdown(::blender::ui::Layout *layout)
   /* Walk backwards to find the most recently created Menu button. */
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
     ::blender::ui::Button *but = block->buttons[i].get();
-    if (ELEM(but->type, ButType::Menu, ButType::Block, ButType::Popover)) {
+    if (ELEM(but->type, ::blender::ui::ButtonType::Menu, ::blender::ui::ButtonType::Block, ::blender::ui::ButtonType::Popover)) {
       but->flag2 |= UI_BUT2_MIXAR_DROPDOWN;
       break;
     }
@@ -78,7 +78,7 @@ void UI_layout_mixar_mark_last_action(::blender::ui::Layout *layout)
 
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
     ::blender::ui::Button *but = block->buttons[i].get();
-    if (but->type == ButType::But) {
+    if (but->type == ::blender::ui::ButtonType::But) {
       but->flag2 |= UI_BUT2_MIXAR_ACTION;
       break;
     }
@@ -91,7 +91,7 @@ void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout)
 
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
     ::blender::ui::Button *but = block->buttons[i].get();
-    if (ELEM(but->type, ButType::Checkbox, ButType::CheckboxN)) {
+    if (ELEM(but->type, ::blender::ui::ButtonType::Checkbox, ::blender::ui::ButtonType::CheckboxN)) {
       but->flag2 |= UI_BUT2_MIXAR_TOGGLE;
       break;
     }
@@ -104,7 +104,7 @@ void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout)
 
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
     ::blender::ui::Button *but = block->buttons[i].get();
-    if (but->type == ButType::Text) {
+    if (but->type == ::blender::ui::ButtonType::Text) {
       but->flag2 |= UI_BUT2_MIXAR_INPUT;
       break;
     }
@@ -131,9 +131,9 @@ void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_a
 {
   const bool is_left = RGN_ALIGN_ENUM_FROM_MASK(region->alignment) != RGN_ALIGN_RIGHT;
   View2D *v2d = &region->v2d;
-  const uiStyle *style = UI_style_get();
+  const uiStyle *style = ::blender::ui::style_get();
   const uiFontStyle *fstyle = &style->widget;
-  UI_fontstyle_set(fstyle);
+  ::blender::ui::fontstyle_set(fstyle);
   const int fontid = fstyle->uifont_id;
   float fstyle_points = fstyle->points;
   const float aspect = BLI_listbase_is_empty(&region->runtime->uiblocks) ?
@@ -182,7 +182,7 @@ void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_a
 
   BLF_enable(fontid, BLF_ROTATION);
   BLF_rotation(fontid, is_left ? M_PI_2 : -M_PI_2);
-  ui_fontscale(&fstyle_points, aspect);
+  ::blender::ui::fontscale(&fstyle_points, aspect);
   BLF_size(fontid, fstyle_points * UI_SCALE_FAC);
 
   /* Tab strip position. */
@@ -226,8 +226,8 @@ void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_a
         float(v2d->mask.ymin),
         float(v2d->mask.ymax),
     };
-    UI_draw_roundbox_corner_set(UI_CNR_NONE);
-    UI_draw_roundbox_4fv(&bg_rect, true, 0.0f, col_strip_bg);
+    ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_NONE);
+    ::blender::ui::draw_roundbox_4fv(&bg_rect, true, 0.0f, col_strip_bg);
 
     /* Subtle accent line along the panel-facing edge. */
     const float edge_color[4] = {col_accent[0], col_accent[1], col_accent[2], 0.12f};
@@ -241,7 +241,7 @@ void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_a
       edge_rect = {float(rct_xmin), float(rct_xmin) + edge_w,
                     float(v2d->mask.ymin), float(v2d->mask.ymax)};
     }
-    UI_draw_roundbox_4fv(&edge_rect, true, 0.0f, edge_color);
+    ::blender::ui::draw_roundbox_4fv(&edge_rect, true, 0.0f, edge_color);
   }
 
   /* If area is too small, don't show any active. */
@@ -279,20 +279,20 @@ void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_a
        * the teal label (drawn below) carries the accent. Design-agent spec.
        * col_glow / col_highlight are intentionally left unused. */
       const float active_bg[4] = {0.0f, 192.0f / 255.0f, 199.0f / 255.0f, 0.13f};
-      UI_draw_roundbox_corner_set(UI_CNR_ALL);
-      UI_draw_roundbox_4fv(&tab_rect, true, tab_radius, active_bg);
+      ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+      ::blender::ui::draw_roundbox_4fv(&tab_rect, true, tab_radius, active_bg);
 
       const float active_outline[4] = {col_accent[0], col_accent[1], col_accent[2], 0.45f};
-      UI_draw_roundbox_4fv(&tab_rect, false, tab_radius, active_outline);
+      ::blender::ui::draw_roundbox_4fv(&tab_rect, false, tab_radius, active_outline);
     }
     else {
       /* --- Inactive tab: subtle dark fill --- */
-      UI_draw_roundbox_corner_set(UI_CNR_ALL);
-      UI_draw_roundbox_4fv(&tab_rect, true, tab_radius, col_inactive);
+      ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+      ::blender::ui::draw_roundbox_4fv(&tab_rect, true, tab_radius, col_inactive);
 
       /* Very subtle outline. */
       const float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.04f};
-      UI_draw_roundbox_4fv(&tab_rect, false, tab_radius, outline_color);
+      ::blender::ui::draw_roundbox_4fv(&tab_rect, false, tab_radius, outline_color);
     }
 
     /* --- Tab text --- */

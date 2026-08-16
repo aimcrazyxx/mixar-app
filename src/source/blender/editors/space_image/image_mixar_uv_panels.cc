@@ -338,20 +338,20 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
     ::blender::ui::Button *but;
     int y = -UI_UNIT_Y;
-    uiDefBut(move_block, ButType::Label, 0, IFACE_("Move"),
+    uiDefBut(move_block, ::blender::ui::ButtonType::Label, 0, IFACE_("Move"),
              0, y, row_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-    uiDefBut(move_block, ButType::Label, 0, IFACE_("X"),
+    uiDefBut(move_block, ::blender::ui::ButtonType::Label, 0, IFACE_("X"),
              row_label_w, y, xy_label_w, UI_UNIT_Y,
              nullptr, 0.0f, 0.0f, "");
-    but = uiDefButF(move_block, ButType::Num, B_MIXAR_UVEDIT_VERTEX, "",
+    but = uiDefButF(move_block, ::blender::ui::ButtonType::Num, B_MIXAR_UVEDIT_VERTEX, "",
                      row_label_w + xy_label_w, y, xy_input_w, UI_UNIT_Y,
                      &mixar_uv_vertex_old_center[0], UNPACK2(range_xy[0]), "");
     ::blender::ui::button_number_step_size_set(but, step);
     ::blender::ui::button_number_precision_set(but, digits);
-    uiDefBut(move_block, ButType::Label, 0, IFACE_("Y"),
+    uiDefBut(move_block, ::blender::ui::ButtonType::Label, 0, IFACE_("Y"),
              row_label_w + half_content + xy_gap, y,
              xy_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-    but = uiDefButF(move_block, ButType::Num, B_MIXAR_UVEDIT_VERTEX, "",
+    but = uiDefButF(move_block, ::blender::ui::ButtonType::Num, B_MIXAR_UVEDIT_VERTEX, "",
                      row_label_w + half_content + xy_gap + xy_label_w, y,
                      xy_input_w, UI_UNIT_Y,
                      &mixar_uv_vertex_old_center[1], UNPACK2(range_xy[1]), "");
@@ -379,10 +379,10 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     ::blender::ui::block_func_handle_set(angle_block, do_mixar_uvedit_transform, nullptr);
 
     const int angle_input_w = control_width - row_label_w;
-    uiDefBut(angle_block, ButType::Label, 0, IFACE_("Rotation Angle"),
+    uiDefBut(angle_block, ::blender::ui::ButtonType::Label, 0, IFACE_("Rotation Angle"),
              0, -UI_UNIT_Y, row_label_w, UI_UNIT_Y,
              nullptr, 0.0f, 0.0f, "");
-    ::blender::ui::Button *angle_but = uiDefButF(angle_block, ButType::Num,
+    ::blender::ui::Button *angle_but = uiDefButF(angle_block, ::blender::ui::ButtonType::Num,
                                  B_MIXAR_UVEDIT_ROTATE, "",
                                  row_label_w, -UI_UNIT_Y,
                                  angle_input_w, UI_UNIT_Y,
@@ -399,20 +399,20 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     ::blender::ui::block_func_handle_set(scale_block, do_mixar_uvedit_transform, nullptr);
 
     y = -UI_UNIT_Y;
-    uiDefBut(scale_block, ButType::Label, 0, IFACE_("Scale"),
+    uiDefBut(scale_block, ::blender::ui::ButtonType::Label, 0, IFACE_("Scale"),
              0, y, row_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-    uiDefBut(scale_block, ButType::Label, 0, IFACE_("X"),
+    uiDefBut(scale_block, ::blender::ui::ButtonType::Label, 0, IFACE_("X"),
              row_label_w, y, xy_label_w, UI_UNIT_Y,
              nullptr, 0.0f, 0.0f, "");
-    but = uiDefButF(scale_block, ButType::Num, B_MIXAR_UVEDIT_SCALE, "",
+    but = uiDefButF(scale_block, ::blender::ui::ButtonType::Num, B_MIXAR_UVEDIT_SCALE, "",
                      row_label_w + xy_label_w, y, xy_input_w, UI_UNIT_Y,
                      &mixar_uv_size_target[0], 0.0f, 10.0f, "Width in UV space");
     ::blender::ui::button_number_step_size_set(but, 1);
     ::blender::ui::button_number_precision_set(but, 3);
-    uiDefBut(scale_block, ButType::Label, 0, IFACE_("Y"),
+    uiDefBut(scale_block, ::blender::ui::ButtonType::Label, 0, IFACE_("Y"),
              row_label_w + half_content + xy_gap, y,
              xy_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-    but = uiDefButF(scale_block, ButType::Num, B_MIXAR_UVEDIT_SCALE, "",
+    but = uiDefButF(scale_block, ::blender::ui::ButtonType::Num, B_MIXAR_UVEDIT_SCALE, "",
                      row_label_w + half_content + xy_gap + xy_label_w, y,
                      xy_input_w, UI_UNIT_Y,
                      &mixar_uv_size_target[1], 0.0f, 10.0f, "Height in UV space");
@@ -455,7 +455,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
       row->scale_y_set(1.3f);
       ::blender::ui::Block *apply_move_block = row->absolute(false).block();
       ::blender::ui::block_func_handle_set(apply_move_block, do_mixar_uvedit_transform, nullptr);
-      uiDefBut(apply_move_block, ButType::But, B_MIXAR_UVEDIT_MOVE_AXIS,
+      uiDefBut(apply_move_block, ::blender::ui::ButtonType::But, B_MIXAR_UVEDIT_MOVE_AXIS,
                IFACE_("Apply Move"), 0, 0, control_width, UI_UNIT_Y * 1.3f,
                nullptr, 0.0f, 0.0f, "Apply move with current distance");
     }
@@ -489,16 +489,16 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
     ::blender::ui::Button *but;
     int y = -UI_UNIT_Y;
-    uiDefBut(cursor_block, ButType::Label, 0, IFACE_("X"),
+    uiDefBut(cursor_block, ::blender::ui::ButtonType::Label, 0, IFACE_("X"),
              0, y, label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-    but = uiDefButF(cursor_block, ButType::Num, B_MIXAR_UVEDIT_CURSOR, "",
+    but = uiDefButF(cursor_block, ::blender::ui::ButtonType::Num, B_MIXAR_UVEDIT_CURSOR, "",
                      label_w, y, input_w, UI_UNIT_Y,
                      &mixar_uv_cursor_edit[0], -FLT_MAX, FLT_MAX, "Cursor X position");
     ::blender::ui::button_number_step_size_set(but, step);
     ::blender::ui::button_number_precision_set(but, digits);
-    uiDefBut(cursor_block, ButType::Label, 0, IFACE_("Y"),
+    uiDefBut(cursor_block, ::blender::ui::ButtonType::Label, 0, IFACE_("Y"),
              half_w + xy_gap, y, label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-    but = uiDefButF(cursor_block, ButType::Num, B_MIXAR_UVEDIT_CURSOR, "",
+    but = uiDefButF(cursor_block, ::blender::ui::ButtonType::Num, B_MIXAR_UVEDIT_CURSOR, "",
                      half_w + xy_gap + label_w, y, input_w, UI_UNIT_Y,
                      &mixar_uv_cursor_edit[1], -FLT_MAX, FLT_MAX, "Cursor Y position");
     ::blender::ui::button_number_step_size_set(but, step);

@@ -226,9 +226,9 @@ void mixie_draw_moodboard_media_frame(
   const rctf frame = {x - padding, x + w + padding, y - padding, y + h + padding};
   const float background[4] = {0.105f, 0.105f, 0.11f, 0.99f};
   const float border[4] = {0.38f, 0.39f, 0.42f, selected ? 0.92f : 0.58f};
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&frame, true, MOODBOARD_MEDIA_FRAME_RADIUS, background);
-  UI_draw_roundbox_4fv(&frame, false, MOODBOARD_MEDIA_FRAME_RADIUS, border);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
+  ::blender::ui::draw_roundbox_4fv(&frame, true, MOODBOARD_MEDIA_FRAME_RADIUS, background);
+  ::blender::ui::draw_roundbox_4fv(&frame, false, MOODBOARD_MEDIA_FRAME_RADIUS, border);
 }
 
 void mixie_draw_moodboard_selection_overlay(View2D *v2d, float x, float y, float w, float h)
