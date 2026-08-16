@@ -130,6 +130,21 @@ void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout)
   }
 }
 
+void UI_layout_disable_last_button_tooltip(::blender::ui::Layout *layout)
+{
+  if (layout == nullptr) {
+    return;
+  }
+
+  ::blender::ui::Block *block = layout->block();
+  if (block == nullptr || block->buttons_ptrs.is_empty()) {
+    return;
+  }
+
+  ::blender::ui::button_drawflag_enable(block->buttons_ptrs.last().get(),
+                                         ::blender::ui::BUT_NO_TOOLTIP);
+}
+
 /* -------------------------------------------------------------------- */
 /* Mixar Custom Panel Category Tabs                                      */
 
@@ -154,12 +169,15 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
   const int fontid = fstyle->uifont_id;
   float fstyle_points = fstyle->points;
 
+  /* Match Blender 5.2's category-tab aspect calculation. Do not infer it from
+   * the UI block list, whose storage changed during the 5.x UI refactor. */
   const float aspect = BLI_rctf_size_y(&region->v2d.cur) /
                        (BLI_rcti_size_y(&region->v2d.mask) + 1);
   const float zoom = 1.0f / aspect;
   const float dpi_fac = UI_SCALE_FAC;
   const int px = U.pixelsize;
 
+  /* Blender 5.2 exposes the active theme through ui::theme::theme_get(). */
   const bTheme *btheme = ::blender::ui::theme::theme_get();
   const ThemeSpace *ts = &btheme->space_mixie;
 
@@ -218,9 +236,9 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
 
   int y_ofs = tab_v_pad;
 
-  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {
-    rcti *rct = &pc_dyn->rect;
-    const char *category_id_draw = IFACE_(pc_dyn->idname);
+  for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {
+    rcti *rct = &pc_dyn.rect;
+    const char *category_id_draw = IFACE_(pc_dyn.idname);
     const int category_width = round_fl_to_int(
         BLF_width(fontid, category_id_draw, BLF_DRAW_STR_DUMMY_MAX));
 
@@ -228,19 +246,21 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
     rct->xmax = rct_xmax;
     rct->ymin = v2d->mask.ymax - (y_ofs + category_width + (tab_v_pad_text * 2));
     rct->ymax = v2d->mask.ymax - y_ofs;
+
     y_ofs += category_width + tab_v_pad + (tab_v_pad_text * 2);
   }
 
   const int max_scroll = std::max(y_ofs - BLI_rcti_size_y(&v2d->mask), 0);
   const int scroll = std::clamp(region->category_scroll, 0, max_scroll);
   region->category_scroll = scroll;
-  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {
-    rcti *rct = &pc_dyn->rect;
+  for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {
+    rcti *rct = &pc_dyn.rect;
     rct->ymin += scroll;
     rct->ymax += scroll;
   }
 
   GPU_blend(GPU_BLEND_ALPHA);
+
   {
     const rctf bg_rect = {
         float(is_left ? v2d->mask.xmin : v2d->mask.xmax - category_tabs_width),
@@ -273,8 +293,10 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
                           int(UI_PANEL_CATEGORY_MIN_WIDTH * UI_SCALE_FAC / aspect);
 
   GPU_line_smooth(true);
-  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {
-    const rcti *rct = &pc_dyn->rect;
+
+  for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {
+    const rcti *rct = &pc_dyn.rect;
+
     if (rct->ymin > v2d->mask.ymax) {
       continue;
     }
@@ -282,7 +304,7 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
       break;
     }
 
-    const char *category_id = pc_dyn->idname;
+    const char *category_id = pc_dyn.idname;
     const char *category_id_draw = IFACE_(category_id);
     const size_t category_draw_len = BLF_DRAW_STR_DUMMY_MAX;
     const bool is_active = !too_narrow && STREQ(category_id, category_id_active);
@@ -298,18 +320,21 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
       const float active_bg[4] = {0.0f, 192.0f / 255.0f, 199.0f / 255.0f, 0.13f};
       ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
       ::blender::ui::draw_roundbox_4fv(&tab_rect, true, tab_radius, active_bg);
+
       const float active_outline[4] = {col_accent[0], col_accent[1], col_accent[2], 0.45f};
       ::blender::ui::draw_roundbox_4fv(&tab_rect, false, tab_radius, active_outline);
     }
     else {
       ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
       ::blender::ui::draw_roundbox_4fv(&tab_rect, true, tab_radius, col_inactive);
+
       const float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.04f};
       ::blender::ui::draw_roundbox_4fv(&tab_rect, false, tab_radius, outline_color);
     }
 
     const int text_v_ofs = round_fl_to_int(float(rct_xmax - rct_xmin) * 0.5f);
     const int text_size_offset = round_fl_to_int(fstyle_points * UI_SCALE_FAC * 0.35f);
+
     BLF_position(fontid,
                  is_left ? rct->xmax - text_v_ofs + text_size_offset :
                            rct->xmin + text_v_ofs - text_size_offset,
@@ -339,15 +364,16 @@ void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *ca
     }
 
     BLF_draw(fontid, category_id_draw, category_draw_len);
+
     if (fstyle->shadow) {
       BLF_disable(fontid, BLF_SHADOW);
     }
 
     if (is_left) {
-      pc_dyn->rect.xmin = v2d->mask.xmin;
+      pc_dyn.rect.xmin = v2d->mask.xmin;
     }
     else {
-      pc_dyn->rect.xmax = v2d->mask.xmax;
+      pc_dyn.rect.xmax = v2d->mask.xmax;
     }
   }
 
