@@ -2,12 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: Scan Blender 5.2 API remnants
 on:
-  push:
-    branches:
-      - migration/blender-5.2
-    paths:
-      - ".github/workflows/scan-blender-52-apis.yml"
+  workflow_dispatch:
+    inputs:
+      build_after_scan:
+        description: "Dispatch the full Windows build when the audit is clean"
+        required: true
+        type: boolean
+        default: true
 permissions:
+  actions: write
   contents: write
 jobs:
   scan:
@@ -15,128 +18,151 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: migration/blender-5.2
+          ref: main
           fetch-depth: 0
           submodules: false
-      - name: Port known Blender 5.2 APIs and rescan
+      - name: Scan main without rewriting source
+        id: scan
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import os
           import re
 
           root = Path("src")
           suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
-          files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in suffixes or p.name == "CMakeLists.txt")]
-          counts = {name: 0 for name in ("uiLayout", "uiBut", "uiBlock", "ghostwin", "MEM_callocN", "absolute_block", "ui_api", "ui_constants")}
-          ui_api_mappings = {
-              "UI_block_begin": "::blender::ui::block_begin",
-              "UI_block_end": "::blender::ui::block_end",
-              "UI_block_draw": "::blender::ui::block_draw",
-              "UI_block_theme_style_set": "::blender::ui::block_theme_style_set",
-              "UI_block_flag_enable": "::blender::ui::block_flag_enable",
-              "UI_block_direction_set": "::blender::ui::block_direction_set",
-              "UI_block_bounds_set_normal": "::blender::ui::block_bounds_set_normal",
-              "UI_block_bounds_set_centered": "::blender::ui::block_bounds_set_centered",
-              "UI_block_emboss_set": "::blender::ui::block_emboss_set",
-              "UI_block_func_handle_set": "::blender::ui::block_func_handle_set",
-              "UI_popup_menu_retval_set": "::blender::ui::popup_menu_retval_set",
-              "UI_popup_block_invoke": "::blender::ui::popup_block_invoke",
-              "UI_but_is_tool": "::blender::ui::but_is_tool",
-              "UI_but_flag_enable": "::blender::ui::button_flag_enable",
-              "UI_but_func_set": "::blender::ui::button_func_set",
-              "UI_but_operator_ptr_ensure": "::blender::ui::button_operator_ptr_ensure",
-              "UI_but_placeholder_set": "::blender::ui::button_placeholder_set",
-              "UI_but_flag2_enable": "::blender::ui::button_flag_enable",
-              "UI_but_number_step_size_set": "::blender::ui::button_number_step_size_set",
-              "UI_but_number_precision_set": "::blender::ui::button_number_precision_set",
-              "UI_but_disable": "::blender::ui::button_disable",
-          }
+          files = sorted(
+              p for p in root.rglob("*")
+              if p.is_file() and (p.suffix in suffixes or p.name == "CMakeLists.txt")
+          )
 
-          for path in files:
-              value = path.read_text(encoding="utf-8", errors="replace")
-              original = value
-              value = value.replace("struct uiLayout;", "namespace blender::ui {\nstruct Layout;\n}")
-              value = value.replace("struct uiBut;", "namespace blender::ui {\nstruct Button;\n}")
-              value = value.replace("struct uiBlock;", "namespace blender::ui {\nstruct Block;\n}")
-              value, count = re.subn(r"\buiLayout\b", "::blender::ui::Layout", value)
-              counts["uiLayout"] += count
-              value, count = re.subn(r"\buiBut\b", "::blender::ui::Button", value)
-              counts["uiBut"] += count
-              value, count = re.subn(r"\buiBlock\b", "::blender::ui::Block", value)
-              counts["uiBlock"] += count
-              value, count = re.subn(r"->absolute_block\s*\(\s*\)", "->absolute(false).block()", value)
-              counts["absolute_block"] += count
-              value, count = re.subn(r"(?<!runtime)->ghostwin\b", "->runtime->ghostwin", value)
-              counts["ghostwin"] += count
-              value, count = re.subn(r"\bMEM_callocN\s*<", "MEM_new_zeroed<", value)
-              counts["MEM_callocN"] += count
-              for old, new in ui_api_mappings.items():
-                  value, count = re.subn(rf"\b{re.escape(old)}\b", new, value)
-                  counts["ui_api"] += count
-              value, count = re.subn(
-                  r"\bUI_BUT2_ACTIVATE_ON_INIT_NO_SELECT\b",
-                  "::blender::ui::BUT_ACTIVATE_ON_INIT_NO_SELECT",
-                  value,
-              )
-              counts["ui_constants"] += count
-              value, count = re.subn(r"\bUI_BUT_([A-Z0-9_]+)\b", r"::blender::ui::BUT_\1", value)
-              counts["ui_constants"] += count
-              value, count = re.subn(r"\bUI_BLOCK_([A-Z0-9_]+)\b", r"::blender::ui::BLOCK_\1", value)
-              counts["ui_constants"] += count
-              if value != original:
-                  path.write_text(value, encoding="utf-8")
-
+          # These are report-only checks. Every source change is reviewed separately.
           patterns = [
-              ("legacy uiLayout type", re.compile(r"\buiLayout\b"), True),
-              ("legacy uiBut type", re.compile(r"\buiBut\b"), True),
-              ("legacy uiBlock type", re.compile(r"\buiBlock\b"), True),
-              ("removed absolute_block call", re.compile(r"absolute_block\s*\("), True),
-              ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib"), True),
-              ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b"), True),
-              ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<"), True),
-              ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b"), True),
-              ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b"), True),
-              ("remaining uppercase UI API", re.compile(r"\bUI_(?:block|but|popup)_[A-Za-z0-9_]+\b"), True),
-              ("remaining old UI button constant", re.compile(r"\bUI_BUT_[A-Z0-9_]+\b"), True),
-              ("remaining old UI block constant", re.compile(r"\bUI_BLOCK_[A-Z0-9_]+\b"), True),
-              ("tooltip helper occurrences", re.compile(r"UI_layout_disable_last_button_tooltip"), False),
-              ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)"), True),
+              ("legacy uiLayout type", re.compile(r"\buiLayout\b"), None),
+              ("legacy uiBut type", re.compile(r"\buiBut\b"), None),
+              ("legacy uiBlock type", re.compile(r"\buiBlock\b"), None),
+              ("legacy ButType enum", re.compile(r"\bButType::"), None),
+              ("legacy uiTextEdit type", re.compile(r"\buiTextEdit\b"), None),
+              ("legacy uiWidgetStateInfo type", re.compile(r"\buiWidgetStateInfo\b"), None),
+              ("legacy but_placeholder_get", re.compile(r"\bbut_placeholder_get\b"), None),
+              ("legacy UI_style_get", re.compile(r"\bUI_style_get\b"), None),
+              ("legacy ui_fontscale", re.compile(r"\bui_fontscale\b"), None),
+              ("legacy UI_fontstyle_set", re.compile(r"\bUI_fontstyle_set\b"), None),
+              ("legacy ui_block_to_window", re.compile(r"\bui_block_to_window(?:_fl)?\b"), None),
+              ("legacy ui_window_to_block", re.compile(r"\bui_window_to_block(?:_fl)?\b"), None),
+              ("legacy ui_but_text_password_hide", re.compile(r"\bui_but_text_password_hide\b"), None),
+              ("legacy UI_draw_roundbox_corner_set", re.compile(r"\bUI_draw_roundbox_corner_set\b"), None),
+              ("legacy UI_draw_roundbox_4fv", re.compile(r"\bUI_draw_roundbox_4fv\b"), None),
+              ("legacy UI_widgetbase_draw_cache_flush", re.compile(r"\bUI_widgetbase_draw_cache_flush\b"), None),
+              ("legacy UI_CNR constant", re.compile(r"\bUI_CNR_[A-Z0-9_]+\b"), None),
+              ("old WM_operator_properties_create_ptr arity", re.compile(r"WM_operator_properties_create_ptr\s*\(\s*&"), None),
+              ("removed absolute_block call", re.compile(r"absolute_block\s*\("), None),
+              ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib"), None),
+              ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b"), None),
+              ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<"), None),
+              ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b"), None),
+              ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b"), None),
+              ("remaining uppercase UI block/button/popup API", re.compile(r"\bUI_(?:block|but|popup)_[A-Za-z0-9_]+\b"), None),
+              ("remaining old UI button constant", re.compile(r"\bUI_BUT_[A-Z0-9_]+\b"), None),
+              ("remaining old UI block constant", re.compile(r"\bUI_BLOCK_[A-Z0-9_]+\b"), None),
+              ("UString in Mixar Window RNA", re.compile(r"\bUString\b"), lambda p: p.name == "rna_wm_mixar.cc"),
+              ("merge conflict marker", re.compile(r"^(?:<<<<<<< .+|=======|>>>>>>> .+)$"), None),
           ]
-          report_path = Path("docs/migration/blender-52-api-scan.md")
-          prefix = report_path.read_text(encoding="utf-8").split("# Blender 5.2 API scan", 1)[0]
-          out = [prefix.rstrip(), "", "# Blender 5.2 API scan", "", "## Applied ports", ""]
-          out.extend([
-              f"- `uiLayout` → `blender::ui::Layout`: **{counts['uiLayout']}**",
-              f"- `uiBut` → `blender::ui::Button`: **{counts['uiBut']}**",
-              f"- `uiBlock` → `blender::ui::Block`: **{counts['uiBlock']}**",
-              f"- `absolute_block()` → `absolute(false).block()`: **{counts['absolute_block']}**",
-              f"- `wmWindow::ghostwin` → `wmWindow::runtime->ghostwin`: **{counts['ghostwin']}**",
-              f"- `MEM_callocN<T>` → `MEM_new_zeroed<T>`: **{counts['MEM_callocN']}**",
-              f"- Renamed UI function calls: **{counts['ui_api']}**",
-              f"- Namespaced UI constants: **{counts['ui_constants']}**",
-              "",
-          ])
+
+          sections = []
           blocking_hits = 0
-          for label, pattern, blocking in patterns:
+          for label, pattern, path_filter in patterns:
               hits = []
               for path in files:
+                  if path_filter is not None and not path_filter(path):
+                      continue
                   for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
                       if pattern.search(line):
                           hits.append(f"- `{path}:{number}` — `{line.strip()}`")
-              if blocking:
-                  blocking_hits += len(hits)
-              out.extend([f"## {label}", "", f"Count: **{len(hits)}**", ""])
-              out.extend(hits[:300] or ["- None"])
-              if len(hits) > 300:
-                  out.append(f"- … {len(hits) - 300} more")
-              out.append("")
-          out.extend(["## Summary", "", f"Blocking stale-pattern hits: **{blocking_hits}**", ""])
-          report_path.write_text("\n".join(out), encoding="utf-8")
-          if blocking_hits:
-              raise RuntimeError(f"{blocking_hits} blocking Blender 5.2 API remnants remain")
+              blocking_hits += len(hits)
+              sections.extend([f"## {label}", "", f"Count: **{len(hits)}**", ""])
+              sections.extend(hits[:500] or ["- None"])
+              if len(hits) > 500:
+                  sections.append(f"- … {len(hits) - 500} more")
+              sections.append("")
+
+          anim_path = Path("src/source/blender/editors/animation/anim_filter.cc")
+          anim = anim_path.read_text(encoding="utf-8", errors="replace")
+          explicit_agent_case = "case SPACE_AGENT_BUBBLE:" in anim
+          if not explicit_agent_case:
+              blocking_hits += 1
+          sections.extend([
+              "## Custom-space switch coverage",
+              "",
+              f"`anim_filter.cc` explicitly handles `SPACE_AGENT_BUBBLE`: **{explicit_agent_case}**",
+              "",
+              "## Intentional compatibility symbol",
+              "",
+              "`UI_layout_disable_last_button_tooltip` is retained with the Blender 5.2 `blender::ui::Layout *` signature.",
+              "",
+          ])
+
+          report = [
+              "<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->",
+              "<!-- SPDX-License-Identifier: GPL-3.0-or-later -->",
+              "",
+              "# Blender 5.2 API scan",
+              "",
+              f"Scanned commit: `{os.environ['GITHUB_SHA']}`",
+              "",
+              "The audit is report-only; it never rewrites source files.",
+              "",
+              *sections,
+              "## Summary",
+              "",
+              f"Blocking stale-pattern hits: **{blocking_hits}**",
+              "",
+          ]
+          Path("docs/migration/blender-52-api-scan.md").write_text("\n".join(report), encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"blocking_hits={blocking_hits}\n")
+          print(f"Blocking stale-pattern hits: {blocking_hits}")
           PY
+          git diff --check
+      - name: Commit the audit report
+        id: report
+        run: |
+          set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src docs/migration/blender-52-api-scan.md
-          git commit -m "fix: port remaining Blender 5.2 UI functions and constants"
-          git push origin HEAD:refs/heads/migration/blender-5.2
+          git pull --rebase origin main
+          git add docs/migration/blender-52-api-scan.md
+          if git diff --cached --quiet; then
+            echo "Audit report is unchanged."
+          else
+            git commit -m "ci: refresh Blender 5.2 API audit"
+            git push origin HEAD:refs/heads/main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Fail on stale APIs
+        if: ${{ steps.scan.outputs.blocking_hits != '0' }}
+        run: |
+          echo "::error::${{ steps.scan.outputs.blocking_hits }} blocking Blender 5.2 API remnants remain"
+          exit 1
+      - name: Dispatch full Windows validation and exact result capture
+        if: ${{ steps.scan.outputs.blocking_hits == '0' && inputs.build_after_scan }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ steps.report.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh workflow run build-windows.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f runner=windows-latest \
+            -f blender_ref=v5.2.0 \
+            -f blender_version=5.2 \
+            -f mixar_env=Prod \
+            -f backend_url= \
+            -f use_ninja=true \
+            -f make_installer=true
+          gh workflow run capture-latest-windows-build.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f target_sha="$TARGET_SHA"
+          echo "Queued full Windows validation for $TARGET_SHA"

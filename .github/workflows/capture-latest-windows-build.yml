@@ -2,74 +2,84 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: Capture latest Blender 5.2 Windows build
 on:
-  push:
-    branches:
-      - migration/blender-5.2
-    paths:
-      - ".github/workflows/capture-latest-windows-build.yml"
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: "Exact main commit built by build-windows.yml"
+        required: true
+        type: string
 permissions:
   actions: read
   contents: write
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: migration/blender-5.2
+          ref: main
           fetch-depth: 0
           submodules: false
-      - name: Find the latest dispatched Windows build
+      - name: Find the Windows build for the exact commit
         id: find
         env:
           GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ inputs.target_sha }}
         run: |
           set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
           run_id=""
-          for _ in $(seq 1 60); do
+          for _ in $(seq 1 180); do
             runs="$(gh run list \
-              --repo aimcrazyxx/mixar-app \
+              --repo "$GITHUB_REPOSITORY" \
               --workflow build-windows.yml \
-              --branch migration/blender-5.2 \
-              --limit 20 \
+              --branch main \
+              --limit 50 \
               --json databaseId,status,conclusion,headSha,createdAt,url)"
-            run_id="$(jq -r '[.[] | select(.databaseId > 31916268680)] | sort_by(.databaseId) | last | .databaseId // empty' <<<"$runs")"
+            run_id="$(jq -r --arg sha "$TARGET_SHA" \
+              '[.[] | select(.headSha == $sha)] | sort_by(.databaseId) | last | .databaseId // empty' \
+              <<<"$runs")"
             if [ -n "$run_id" ]; then
               break
             fi
-            sleep 10
+            sleep 5
           done
           test -n "$run_id"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
-          echo "Monitoring Windows run $run_id"
+          echo "Monitoring Windows run $run_id for $TARGET_SHA"
       - name: Wait for completion
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.find.outputs.run_id }}
         run: |
           set +e
-          gh run watch "$RUN_ID" --repo aimcrazyxx/mixar-app --interval 30 --exit-status
+          gh run watch "$RUN_ID" --repo "$GITHUB_REPOSITORY" --interval 30 --exit-status
           echo "watch_exit=$?" >> "$GITHUB_ENV"
           exit 0
-      - name: Capture conclusion and failed log
+      - name: Capture conclusion and complete failed log
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.find.outputs.run_id }}
+          TARGET_SHA: ${{ inputs.target_sha }}
         run: |
           set -euo pipefail
+          git pull --rebase origin main
           gh run view "$RUN_ID" \
-            --repo aimcrazyxx/mixar-app \
+            --repo "$GITHUB_REPOSITORY" \
             --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt,jobs \
             > /tmp/windows-summary.json
           gh run view "$RUN_ID" \
-            --repo aimcrazyxx/mixar-app \
+            --repo "$GITHUB_REPOSITORY" \
             --log-failed \
             > /tmp/windows-failed.log 2>&1 || true
           {
-            head -n 2 docs/migration/latest-windows-build.md
+            echo '<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->'
+            echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'
             echo
             echo '# Latest Blender 5.2 Windows build'
+            echo
+            echo "Requested commit: \`$TARGET_SHA\`"
             echo
             echo '## Result'
             echo
@@ -80,16 +90,19 @@ jobs:
             echo '## Failed log'
             echo
             echo '```text'
-            tail -n 1200 /tmp/windows-failed.log
+            tail -n 2000 /tmp/windows-failed.log
             echo '```'
-          } > /tmp/latest-windows-build.md
-          mv /tmp/latest-windows-build.md docs/migration/latest-windows-build.md
+          } > docs/migration/latest-windows-build.md
+          cat /tmp/windows-summary.json >> "$GITHUB_STEP_SUMMARY"
       - name: Commit captured result
         run: |
           set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git pull --rebase origin migration/blender-5.2
           git add docs/migration/latest-windows-build.md
-          git commit -m "ci: capture latest Blender 5.2 Windows result"
-          git push origin HEAD:refs/heads/migration/blender-5.2
+          if git diff --cached --quiet; then
+            echo "Captured result is unchanged."
+          else
+            git commit -m "ci: capture main Blender 5.2 Windows result"
+            git push origin HEAD:refs/heads/main
+          fi
