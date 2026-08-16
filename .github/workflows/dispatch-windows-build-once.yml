@@ -29,4 +29,4 @@ jobs:
             -f use_ninja=true \
             -f make_installer=true
           echo "Dispatched Blender v5.2.0 / Python 3.13 Windows build."
-          echo "Retry 3 includes the UI type, window runtime, allocator and absolute-layout ports."
+          echo "Retry 4 includes the complete UI, window runtime, allocator, CMake and layout API sweep."
