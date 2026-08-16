@@ -228,14 +228,14 @@ void footer_draw_thumbnails(const bContext *C,
                                           remove_btn_size,
                                           remove_btn_size,
                                           std::nullopt);
-        RNA_int_set(UI_but_operator_ptr_ensure(remove_but), "index", index);
+        RNA_int_set(::blender::ui::button_operator_ptr_ensure(remove_but), "index", index);
 
         thumb_btn_x += pos.thumb_size + pos.thumb_spacing;
       }
     }
 
     ::blender::ui::block_end(C, remove_block);
-    UI_block_draw(C, remove_block);
+    ::blender::ui::block_draw(C, remove_block);
   }
 }
 

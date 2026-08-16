@@ -221,7 +221,7 @@ void draw_context_actions(::blender::ui::Block *block,
           unit * 2,
           "Auto Key: capture a keyframe automatically after every camera move");
       if (state.auto_key) {
-        UI_but_flag_enable(auto_key, UI_BUT_ACTIVE_DEFAULT);
+        ::blender::ui::button_flag_enable(auto_key, ::blender::ui::BUT_ACTIVE_DEFAULT);
       }
     }
   }
@@ -303,7 +303,7 @@ void director_overlay_panel_draw(const rctf &rect, const float radius)
 void director_overlay_disable_button(::blender::ui::Button *button, const bool disabled)
 {
   if (disabled && button) {
-    UI_but_flag_enable(button, UI_BUT_DISABLED);
+    ::blender::ui::button_flag_enable(button, ::blender::ui::BUT_DISABLED);
   }
 }
 
@@ -321,7 +321,7 @@ void view3d_director_overlay_draw(const bContext *C, ARegion *region)
   const int gap = std::max(4, int(6.0f * UI_SCALE_FAC));
   ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "mixar_director_overlay", blender::ui::EmbossType::Emboss);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  ::blender::ui::block_theme_style_set(block, ::blender::ui::BLOCK_THEME_STYLE_POPUP);
 
   view3d_director_frame_controls_draw(block, C, region, state, unit, gap);
   if (region->winy > unit * 18) {
@@ -333,6 +333,6 @@ void view3d_director_overlay_draw(const bContext *C, ARegion *region)
   draw_context_actions(block, region, state, unit, gap);
 
   ::blender::ui::block_end(C, block);
-  UI_block_draw(C, block);
+  ::blender::ui::block_draw(C, block);
   GPU_blend(GPU_BLEND_NONE);
 }

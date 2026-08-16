@@ -3294,7 +3294,7 @@ static bool ui_but_is_multiline_text(const ::blender::ui::Button *but)
   if (but->type != ButType::Text) {
     return false;
   }
-  if (!(but->flag & UI_BUT_TEXTEDIT_UPDATE)) {
+  if (!(but->flag & ::blender::ui::BUT_TEXTEDIT_UPDATE)) {
     return false;
   }
   return (int(BLI_rctf_size_y(&but->rect)) > int(UI_UNIT_Y * 1.5f));
@@ -3334,7 +3334,7 @@ static int ui_multiline_get_lines(::blender::ui::Button *but,
       startx += UI_ICON_SIZE / but->block->aspect;
     }
   }
-  if (!(but->drawflag & UI_BUT_NO_TEXT_PADDING)) {
+  if (!(but->drawflag & ::blender::ui::BUT_NO_TEXT_PADDING)) {
     startx += UI_TEXT_MARGIN_X * U.widget_unit / but->block->aspect;
   }
   const int rect_width = max_ii(int(but->rect.xmax - startx - 4.0f * U.pixelsize), 10);
@@ -4788,7 +4788,7 @@ static int do_but_textedit(
             retval = WM_UI_HANDLER_BREAK;
             break;
         }
-        if (but->flag & UI_BUT_TEXTEDIT_UPDATE && (is_space_chat || is_quick_prompt)) {
+        if (but->flag & ::blender::ui::BUT_TEXTEDIT_UPDATE && (is_space_chat || is_quick_prompt)) {
             /* In chat context, Shift+Enter ALWAYS inserts a newline —
              * regardless of whether the button is currently visually
              * multiline. The previous shift-handling branch above

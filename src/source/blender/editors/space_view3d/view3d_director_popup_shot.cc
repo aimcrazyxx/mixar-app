@@ -123,7 +123,7 @@ int popup_row_height()
                                                   width,
                                                   row_h,
                                                   "Direct this shot");
-    RNA_int_set(UI_but_operator_ptr_ensure(row), "index", index);
+    RNA_int_set(::blender::ui::button_operator_ptr_ensure(row), "index", index);
     director_popup_state(row, index == active_index, true);
   }
 
@@ -369,7 +369,7 @@ int popup_row_height()
         half_w,
         row_h,
         "Key this blocking-level motion from the playhead");
-    RNA_enum_set_identifier(C, UI_but_operator_ptr_ensure(left), "preset", pair.left_identifier);
+    RNA_enum_set_identifier(C, ::blender::ui::button_operator_ptr_ensure(left), "preset", pair.left_identifier);
     director_popup_state(left, false, true);
     ::blender::ui::Button *right = director_overlay_operator_button(
         block,
@@ -381,7 +381,7 @@ int popup_row_height()
         half_w,
         row_h,
         "Key this blocking-level motion from the playhead");
-    RNA_enum_set_identifier(C, UI_but_operator_ptr_ensure(right), "preset", pair.right_identifier);
+    RNA_enum_set_identifier(C, ::blender::ui::button_operator_ptr_ensure(right), "preset", pair.right_identifier);
     director_popup_state(right, false, true);
     y -= gap;
   }

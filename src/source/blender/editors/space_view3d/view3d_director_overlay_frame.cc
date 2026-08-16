@@ -175,7 +175,7 @@ void view3d_director_frame_controls_draw(::blender::ui::Block *block,
                               short(button_h),
                               "Navigate with WASD and mouse");
   if (state.navigate_mode) {
-    UI_but_flag_enable(navigate, UI_BUT_ACTIVE_DEFAULT);
+    ::blender::ui::button_flag_enable(navigate, ::blender::ui::BUT_ACTIVE_DEFAULT);
   }
   director_overlay_disable_button(navigate, state.locked);
 

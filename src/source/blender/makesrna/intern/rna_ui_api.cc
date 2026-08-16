@@ -515,7 +515,7 @@ static PointerRNA rna_uiItemO(Layout *layout,
    * windows (the agent bubble's pill / header) where Blender's
    * tooltip popup gets visually clipped to the host NSWindow's
    * bounds and shows only a leading fragment of the label, looking
-   * like a UI bug. The helper sets UI_BUT_NO_TOOLTIP on the most
+   * like a UI bug. The helper sets ::blender::ui::BUT_NO_TOOLTIP on the most
    * recently added button so the tooltip code in
    * interface_region_tooltip.cc bails entirely for this button. */
   if (no_tooltip) {

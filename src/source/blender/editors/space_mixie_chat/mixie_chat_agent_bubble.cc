@@ -8,7 +8,7 @@
  *
  * Floating "agent bubble" popup overlay.
  *
- * Renders a persistent popup block (UI_BLOCK_KEEP_OPEN) on top of every
+ * Renders a persistent popup block (::blender::ui::BLOCK_KEEP_OPEN) on top of every
  * editor in the active window. The popup is window-level, so it doesn't
  * clip at editor region boundaries the way a Python draw_handler would.
  *
@@ -48,10 +48,10 @@ static ::blender::ui::Block *mixie_chat_block_agent_bubble_create(bContext *C,
       C, region, "agent_bubble", blender::ui::EmbossType::Emboss);
 
   /* Persistent popup: stays open across redraws until we explicitly
-   * close it. UI_BLOCK_NO_WIN_CLIP keeps the popup intact during
+   * close it. ::blender::ui::BLOCK_NO_WIN_CLIP keeps the popup intact during
    * window-resize transients. */
-  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  ::blender::ui::block_flag_enable(block, ::blender::ui::BLOCK_LOOP | ::blender::ui::BLOCK_KEEP_OPEN | ::blender::ui::BLOCK_NO_WIN_CLIP);
+  ::blender::ui::block_theme_style_set(block, ::blender::ui::BLOCK_THEME_STYLE_POPUP);
 
   /* Width sized off the DPI-aware widget grid so it scales with the
    * user's interface scaling. 42 widget-points is ~30% narrower than
@@ -84,7 +84,7 @@ static ::blender::ui::Block *mixie_chat_block_agent_bubble_create(bContext *C,
     layout.label("Mixar agent bubble loading…", ICON_INFO);
   }
 
-  UI_block_bounds_set_centered(block, 6 * UI_SCALE_FAC);
+  ::blender::ui::block_bounds_set_centered(block, 6 * UI_SCALE_FAC);
 
   return block;
 }
@@ -99,7 +99,7 @@ static wmOperatorStatus mixie_chat_agent_bubble_show_invoke(bContext *C,
                                                              wmOperator * /*op*/,
                                                              const wmEvent * /*event*/)
 {
-  UI_popup_block_invoke(C, mixie_chat_block_agent_bubble_create, nullptr, nullptr);
+  ::blender::ui::popup_block_invoke(C, mixie_chat_block_agent_bubble_create, nullptr, nullptr);
   return OPERATOR_FINISHED;
 }
 

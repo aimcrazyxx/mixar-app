@@ -159,7 +159,7 @@ static void mixar_uv_redo_panel_draw(const bContext *C, Panel *panel)
   }
 
   ::blender::ui::Block *block = panel->layout->block();
-  UI_block_func_handle_set(block, mixar_uv_redo_cb, op);
+  ::blender::ui::block_func_handle_set(block, mixar_uv_redo_cb, op);
 
   /* Switch region for property drawing */
   ARegion *window_region = mixar_uv_find_window_region(C);
@@ -172,7 +172,7 @@ static void mixar_uv_redo_panel_draw(const bContext *C, Panel *panel)
   ::blender::ui::Layout *col = &panel->layout->column(false);
 
   if (WM_operator_repeat_check(C, op)) {
-    uiTemplateOperatorPropertyButs(C, col, op, UI_BUT_LABEL_ALIGN_NONE, 0);
+    uiTemplateOperatorPropertyButs(C, col, op, ::blender::ui::BUT_LABEL_ALIGN_NONE, 0);
   }
 
   CTX_wm_region_set((bContext *)C, region_prev);
@@ -334,7 +334,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     ::blender::ui::Layout *move_wrapper = &xform_col->column(false);
     move_wrapper->active_set(has_selection);
     ::blender::ui::Block *move_block = move_wrapper->absolute(false).block();
-    UI_block_func_handle_set(move_block, do_mixar_uvedit_transform, nullptr);
+    ::blender::ui::block_func_handle_set(move_block, do_mixar_uvedit_transform, nullptr);
 
     ::blender::ui::Button *but;
     int y = -UI_UNIT_Y;
@@ -346,8 +346,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     but = uiDefButF(move_block, ButType::Num, B_MIXAR_UVEDIT_VERTEX, "",
                      row_label_w + xy_label_w, y, xy_input_w, UI_UNIT_Y,
                      &mixar_uv_vertex_old_center[0], UNPACK2(range_xy[0]), "");
-    UI_but_number_step_size_set(but, step);
-    UI_but_number_precision_set(but, digits);
+    ::blender::ui::button_number_step_size_set(but, step);
+    ::blender::ui::button_number_precision_set(but, digits);
     uiDefBut(move_block, ButType::Label, 0, IFACE_("Y"),
              row_label_w + half_content + xy_gap, y,
              xy_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
@@ -355,8 +355,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
                      row_label_w + half_content + xy_gap + xy_label_w, y,
                      xy_input_w, UI_UNIT_Y,
                      &mixar_uv_vertex_old_center[1], UNPACK2(range_xy[1]), "");
-    UI_but_number_step_size_set(but, step);
-    UI_but_number_precision_set(but, digits);
+    ::blender::ui::button_number_step_size_set(but, step);
+    ::blender::ui::button_number_precision_set(but, digits);
 
     /* ---- Row 2: Pivot | dropdown ----
      * Use an explicit 40/60 split (matching the Texel Density panel)
@@ -376,7 +376,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     ::blender::ui::Layout *angle_wrapper = &xform_col->column(false);
     angle_wrapper->active_set(has_selection);
     ::blender::ui::Block *angle_block = angle_wrapper->absolute(false).block();
-    UI_block_func_handle_set(angle_block, do_mixar_uvedit_transform, nullptr);
+    ::blender::ui::block_func_handle_set(angle_block, do_mixar_uvedit_transform, nullptr);
 
     const int angle_input_w = control_width - row_label_w;
     uiDefBut(angle_block, ButType::Label, 0, IFACE_("Rotation Angle"),
@@ -388,15 +388,15 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
                                  angle_input_w, UI_UNIT_Y,
                                  &mixar_uv_vertex_old_angle, -360.0f, 360.0f,
                                  "Rotation angle in degrees");
-    UI_but_number_step_size_set(angle_but, 1);
-    UI_but_number_precision_set(angle_but, 3);
+    ::blender::ui::button_number_step_size_set(angle_but, 1);
+    ::blender::ui::button_number_precision_set(angle_but, 3);
 
     /* ---- Row 4: Scale | X | Y ---- */
     xform_col->separator(0.5f);
     ::blender::ui::Layout *scale_wrapper = &xform_col->column(false);
     scale_wrapper->active_set(has_bounds);
     ::blender::ui::Block *scale_block = scale_wrapper->absolute(false).block();
-    UI_block_func_handle_set(scale_block, do_mixar_uvedit_transform, nullptr);
+    ::blender::ui::block_func_handle_set(scale_block, do_mixar_uvedit_transform, nullptr);
 
     y = -UI_UNIT_Y;
     uiDefBut(scale_block, ButType::Label, 0, IFACE_("Scale"),
@@ -407,8 +407,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     but = uiDefButF(scale_block, ButType::Num, B_MIXAR_UVEDIT_SCALE, "",
                      row_label_w + xy_label_w, y, xy_input_w, UI_UNIT_Y,
                      &mixar_uv_size_target[0], 0.0f, 10.0f, "Width in UV space");
-    UI_but_number_step_size_set(but, 1);
-    UI_but_number_precision_set(but, 3);
+    ::blender::ui::button_number_step_size_set(but, 1);
+    ::blender::ui::button_number_precision_set(but, 3);
     uiDefBut(scale_block, ButType::Label, 0, IFACE_("Y"),
              row_label_w + half_content + xy_gap, y,
              xy_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
@@ -416,8 +416,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
                      row_label_w + half_content + xy_gap + xy_label_w, y,
                      xy_input_w, UI_UNIT_Y,
                      &mixar_uv_size_target[1], 0.0f, 10.0f, "Height in UV space");
-    UI_but_number_step_size_set(but, 1);
-    UI_but_number_precision_set(but, 3);
+    ::blender::ui::button_number_step_size_set(but, 1);
+    ::blender::ui::button_number_precision_set(but, 3);
   }
 
   /* ===== Move on Axis sub-section ===== */
@@ -454,7 +454,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
       ::blender::ui::Layout *row = &axis_col->row(false);
       row->scale_y_set(1.3f);
       ::blender::ui::Block *apply_move_block = row->absolute(false).block();
-      UI_block_func_handle_set(apply_move_block, do_mixar_uvedit_transform, nullptr);
+      ::blender::ui::block_func_handle_set(apply_move_block, do_mixar_uvedit_transform, nullptr);
       uiDefBut(apply_move_block, ButType::But, B_MIXAR_UVEDIT_MOVE_AXIS,
                IFACE_("Apply Move"), 0, 0, control_width, UI_UNIT_Y * 1.3f,
                nullptr, 0.0f, 0.0f, "Apply move with current distance");
@@ -477,7 +477,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     }
 
     ::blender::ui::Block *cursor_block = cursor_col->absolute(false).block();
-    UI_block_func_handle_set(cursor_block, do_mixar_uvedit_transform, nullptr);
+    ::blender::ui::block_func_handle_set(cursor_block, do_mixar_uvedit_transform, nullptr);
 
     /* X and Y on one row with external labels. A horizontal gutter
      * separates the X input from the Y label so the two number fields
@@ -494,15 +494,15 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     but = uiDefButF(cursor_block, ButType::Num, B_MIXAR_UVEDIT_CURSOR, "",
                      label_w, y, input_w, UI_UNIT_Y,
                      &mixar_uv_cursor_edit[0], -FLT_MAX, FLT_MAX, "Cursor X position");
-    UI_but_number_step_size_set(but, step);
-    UI_but_number_precision_set(but, digits);
+    ::blender::ui::button_number_step_size_set(but, step);
+    ::blender::ui::button_number_precision_set(but, digits);
     uiDefBut(cursor_block, ButType::Label, 0, IFACE_("Y"),
              half_w + xy_gap, y, label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
     but = uiDefButF(cursor_block, ButType::Num, B_MIXAR_UVEDIT_CURSOR, "",
                      half_w + xy_gap + label_w, y, input_w, UI_UNIT_Y,
                      &mixar_uv_cursor_edit[1], -FLT_MAX, FLT_MAX, "Cursor Y position");
-    UI_but_number_step_size_set(but, step);
-    UI_but_number_precision_set(but, digits);
+    ::blender::ui::button_number_step_size_set(but, step);
+    ::blender::ui::button_number_precision_set(but, digits);
   }
 
   /* ===== Mirror sub-section ===== */

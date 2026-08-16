@@ -1454,7 +1454,7 @@ static void widget_draw_icon(
      * `.dat` GEOM icons already self-scale via `USE_UI_TOOLBAR_HACK`.
      * The `extern "C"` prototype lives at file scope (above) — MSVC
      * `/permissive-` rejects in-function linkage specifications. */
-    const bool mixar_is_tool_icon = (but->icon != ICON_NONE) && UI_but_is_tool(but);
+    const bool mixar_is_tool_icon = (but->icon != ICON_NONE) && ::blender::ui::but_is_tool(but);
     if (mixar_is_tool_icon) {
       UI_mixar_set_drawing_tool_icon(true);
     }
@@ -2423,14 +2423,14 @@ static void widget_draw_vertical_text(const uiFontStyle *fstyle,
 /**
  * Detect whether a text button should use multi-line rendering.
  * Scoped to tall text buttons (height > 1.5 * UI_UNIT_Y) that have
- * UI_BUT_TEXTEDIT_UPDATE set - i.e. the chat input field.
+ * ::blender::ui::BUT_TEXTEDIT_UPDATE set - i.e. the chat input field.
  */
 static bool ui_but_is_multiline_text(const Button *but)
 {
   if (but->type != ButtonType::Text) {
     return false;
   }
-  if (!(but->flag & UI_BUT_TEXTEDIT_UPDATE)) {
+  if (!(but->flag & ::blender::ui::BUT_TEXTEDIT_UPDATE)) {
     return false;
   }
   return (int(BLI_rctf_size_y(&but->rect)) > int(UI_UNIT_Y * 1.5f));
@@ -5341,7 +5341,7 @@ static void widget_mixar_toggle(uiWidgetColors *wcol,
                                 const float /*zoom*/)
 {
   const bool is_checked = (state->but_flag & UI_SELECT) != 0;
-  const bool text_before_widget = (state->but_drawflag & UI_BUT_TEXT_RIGHT);
+  const bool text_before_widget = (state->but_drawflag & ::blender::ui::BUT_TEXT_RIGHT);
 
   /* --- Compute toggle track rect (pill shape) ----------------------------- */
   rcti track = *rect;
@@ -6457,10 +6457,10 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
       case ButtonType::CheckboxN:
         if (but->flag2 & UI_BUT2_MIXAR_TOGGLE) {
           wt = widget_type(WidgetStyle::MixarToggle);
-          if ((but->drawflag & (UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT)) == 0) {
-            but->drawflag |= UI_BUT_TEXT_LEFT;
+          if ((but->drawflag & (::blender::ui::BUT_TEXT_LEFT | ::blender::ui::BUT_TEXT_RIGHT)) == 0) {
+            but->drawflag |= ::blender::ui::BUT_TEXT_LEFT;
           }
-          but->drawflag |= UI_BUT_NO_TEXT_PADDING;
+          but->drawflag |= ::blender::ui::BUT_NO_TEXT_PADDING;
         }
         else if (!(but->flag & UI_HAS_ICON)) {
           wt = widget_type(WidgetStyle::Checkbox);

@@ -358,13 +358,13 @@ void mixie_chat_render_feedback(const bContext *C,
                                  0.0f,
                                  nullptr);
   if (comment_but) {
-    UI_but_placeholder_set(comment_but, "Add a comment (optional) \xe2\x80\x94 press Enter to send");
-    UI_but_flag_enable(comment_but, UI_BUT_TEXTEDIT_UPDATE);
+    ::blender::ui::button_placeholder_set(comment_but, "Add a comment (optional) \xe2\x80\x94 press Enter to send");
+    ::blender::ui::button_flag_enable(comment_but, ::blender::ui::BUT_TEXTEDIT_UPDATE);
   }
 
   ::blender::ui::block_end(C, block);
   UI_view2d_view_restore(C);
-  UI_block_draw(C, block);
+  ::blender::ui::block_draw(C, block);
   UI_view2d_view_ortho(v2d);
 }
 

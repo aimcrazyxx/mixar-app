@@ -151,7 +151,7 @@ static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
 static void disable_while_submitted(::blender::ui::Button *button, const bool submitted)
 {
   if (button && submitted) {
-    UI_but_disable(button, "Settings are locked while this generation is running");
+    ::blender::ui::button_disable(button, "Settings are locked while this generation is running");
   }
 }
 
@@ -305,7 +305,7 @@ static void add_action_toolbar(::blender::ui::Block *block,
                            field_width,
                            row_h,
                            nullptr);
-  RNA_string_set(UI_but_operator_ptr_ensure(reset), "node_id", reset_node_id);
+  RNA_string_set(::blender::ui::button_operator_ptr_ensure(reset), "node_id", reset_node_id);
   disable_while_submitted(reset, generation_running);
 
   if (!has_result || state == 0) {
@@ -339,8 +339,8 @@ static void add_action_toolbar(::blender::ui::Block *block,
                                          BLI_rcti_size_x(&node_region) - prompt_margin * 2,
                                          prompt_height);
       if (prompt) {
-        UI_but_placeholder_set(prompt, "Describe what you want to create...");
-        UI_but_flag_enable(prompt, UI_BUT_TEXTEDIT_UPDATE);
+        ::blender::ui::button_placeholder_set(prompt, "Describe what you want to create...");
+        ::blender::ui::button_flag_enable(prompt, ::blender::ui::BUT_TEXTEDIT_UPDATE);
         disable_while_submitted(prompt, generation_running);
       }
     }
@@ -358,9 +358,9 @@ static void add_action_toolbar(::blender::ui::Block *block,
                                 generate_w,
                                 generate_h,
                                 nullptr);
-    RNA_string_set(UI_but_operator_ptr_ensure(generate), "node_id", node_id);
+    RNA_string_set(::blender::ui::button_operator_ptr_ensure(generate), "node_id", node_id);
     if (generation_running) {
-      UI_but_disable(generate, "Generation is already running");
+      ::blender::ui::button_disable(generate, "Generation is already running");
     }
   }
 }
@@ -462,7 +462,7 @@ void mixie_draw_moodboard_graph_controls(const bContext *C, View2D *v2d)
   add_selected_media_toolbar(block, v2d, region, &scene_ptr);
 
   ::blender::ui::block_end(C, block);
-  UI_block_draw(C, block);
+  ::blender::ui::block_draw(C, block);
   for (const ObjectPreviewDraw &preview : object_previews) {
     PreviewImage *preview_image = BKE_previewimg_id_ensure(&preview.object->id);
     const int icon_id = BKE_icon_preview_ensure(&preview.object->id, preview_image);

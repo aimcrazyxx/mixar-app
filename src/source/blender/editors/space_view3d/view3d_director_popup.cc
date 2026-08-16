@@ -55,23 +55,23 @@ bool director_popup_data_get(bContext *C, DirectorPopupData *r_data)
 ::blender::ui::Block *director_popup_block_begin(bContext *C, ARegion *region, const char *name)
 {
   ::blender::ui::Block *block = ::blender::ui::block_begin(C, region, name, blender::ui::EmbossType::Emboss);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  ::blender::ui::block_theme_style_set(block, ::blender::ui::BLOCK_THEME_STYLE_POPUP);
   return block;
 }
 
 void director_popup_block_end(::blender::ui::Block *block)
 {
-  UI_block_direction_set(block, UI_DIR_DOWN);
-  UI_block_bounds_set_normal(block, int(0.4f * UI_UNIT_X));
+  ::blender::ui::block_direction_set(block, UI_DIR_DOWN);
+  ::blender::ui::block_bounds_set_normal(block, int(0.4f * UI_UNIT_X));
 }
 
 void director_popup_state(::blender::ui::Button *but, const bool active, const bool enabled)
 {
   if (active) {
-    UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+    ::blender::ui::button_flag_enable(but, ::blender::ui::BUT_ACTIVE_DEFAULT);
   }
   if (!enabled) {
-    UI_but_flag_enable(but, UI_BUT_DISABLED);
+    ::blender::ui::button_flag_enable(but, ::blender::ui::BUT_DISABLED);
   }
 }
 
@@ -151,7 +151,7 @@ namespace {
                                  row_h,
                                  "Switch the lens projection");
     RNA_enum_set_identifier(
-        C, UI_but_operator_ptr_ensure(but), "lens_type", types[index].identifier);
+        C, ::blender::ui::button_operator_ptr_ensure(but), "lens_type", types[index].identifier);
     director_popup_state(but, data.camera->type == types[index].camera_type, data.editable);
   }
   y -= gap;
@@ -180,7 +180,7 @@ namespace {
                                    width,
                                    row_h,
                                    "Apply this photographic focal length");
-      RNA_int_set(UI_but_operator_ptr_ensure(but), "lens_mm", preset.mm);
+      RNA_int_set(::blender::ui::button_operator_ptr_ensure(but), "lens_mm", preset.mm);
       director_popup_state(but, std::abs(data.camera->lens - float(preset.mm)) < 0.5f, data.editable);
     }
     y -= gap + row_h;
@@ -270,7 +270,7 @@ namespace {
                                  row_h,
                                  "Set this output aspect ratio");
     RNA_enum_set_identifier(
-        C, UI_but_operator_ptr_ensure(but), "preset", preset.identifier);
+        C, ::blender::ui::button_operator_ptr_ensure(but), "preset", preset.identifier);
     const bool active = int64_t(scene->r.xsch) * preset.ratio_height ==
                         int64_t(scene->r.ysch) * preset.ratio_width;
     director_popup_state(but, active, data.editable);
@@ -329,7 +329,7 @@ namespace {
                                   row_h,
                                   "Capture this move as sparse keyframes");
     RNA_enum_set_identifier(
-        C, UI_but_operator_ptr_ensure(left), "move", pair.left_identifier);
+        C, ::blender::ui::button_operator_ptr_ensure(left), "move", pair.left_identifier);
     director_popup_state(left, false, data.editable);
     ::blender::ui::Button *right = popup_op_button(block,
                                    "MIXAR_OT_director_camera_move",
@@ -341,7 +341,7 @@ namespace {
                                    row_h,
                                    "Capture this move as sparse keyframes");
     RNA_enum_set_identifier(
-        C, UI_but_operator_ptr_ensure(right), "move", pair.right_identifier);
+        C, ::blender::ui::button_operator_ptr_ensure(right), "move", pair.right_identifier);
     director_popup_state(right, false, data.editable);
     y -= gap;
   }

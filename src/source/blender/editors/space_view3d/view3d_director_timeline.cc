@@ -140,7 +140,7 @@ void draw_dock_panel(const ARegion *region, const int margin)
 void disable_button(::blender::ui::Button *button, const bool disabled)
 {
   if (button && disabled) {
-    UI_but_flag_enable(button, UI_BUT_DISABLED);
+    ::blender::ui::button_flag_enable(button, ::blender::ui::BUT_DISABLED);
   }
 }
 
@@ -261,7 +261,7 @@ void draw_control_row(::blender::ui::Block *block,
                                      "Fly the scene freely without moving the shot camera; "
                                      "Add Camera Here then starts a new shot at that view");
     if (state.explore_mode) {
-      UI_but_flag_enable(explore, UI_BUT_ACTIVE_DEFAULT);
+      ::blender::ui::button_flag_enable(explore, ::blender::ui::BUT_ACTIVE_DEFAULT);
     }
   }
 
@@ -342,13 +342,13 @@ void director_timeline_draw(const bContext *C, ARegion *region)
 
   ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "mixar_director_timeline", blender::ui::EmbossType::Emboss);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  ::blender::ui::block_theme_style_set(block, ::blender::ui::BLOCK_THEME_STYLE_POPUP);
   draw_control_row(block, region, state, playing, margin, unit, gap);
   DirectorTimelineRuntime *runtime = view3d_director_timeline_runtime_ensure(region);
   const int content_top = region->winy - margin - unit * 2 - gap * 2;
   view3d_director_timeline_draw_content(region, state, runtime, margin, unit, content_top);
   ::blender::ui::block_end(C, block);
-  UI_block_draw(C, block);
+  ::blender::ui::block_draw(C, block);
   GPU_blend(GPU_BLEND_NONE);
 }
 

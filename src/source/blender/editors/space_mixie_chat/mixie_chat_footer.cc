@@ -268,17 +268,17 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
          * set of concrete example prompts, picking a fresh one each time the
          * composer returns to empty (see mixie_chat_footer_next_placeholder). */
         const bool input_is_empty = (RNA_property_string_length(&scene_ptr, input_prop) == 0);
-        UI_but_placeholder_set(input_but, mixie_chat_footer_next_placeholder(input_is_empty));
+        ::blender::ui::button_placeholder_set(input_but, mixie_chat_footer_next_placeholder(input_is_empty));
 
         /* Place cursor at end instead of selecting all text when re-activating. */
-        UI_but_flag2_enable(input_but, UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT);
+        ::blender::ui::button_flag_enable(input_but, ::blender::ui::BUT_ACTIVATE_ON_INIT_NO_SELECT);
 
-        /* Enable UI_BUT_TEXTEDIT_UPDATE so interface_handlers.cc inserts \x1F on Enter.
+        /* Enable ::blender::ui::BUT_TEXTEDIT_UPDATE so interface_handlers.cc inserts \x1F on Enter.
          * Shift+Enter inserts a real newline for multi-line input.
          * The Python property's update callback detects the \x1F marker and triggers submit.
          * This ensures Enter key submits, but focus loss (clicking outside) does NOT submit.
-         * NOTE: Do NOT use UI_but_func_set here - that callback fires on focus loss too. */
-        UI_but_flag_enable(input_but, UI_BUT_TEXTEDIT_UPDATE);
+         * NOTE: Do NOT use ::blender::ui::button_func_set here - that callback fires on focus loss too. */
+        ::blender::ui::button_flag_enable(input_but, ::blender::ui::BUT_TEXTEDIT_UPDATE);
       }
     }
   }
@@ -397,7 +397,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
 
   /* Create footer icon buttons with hover effects.
    * Use EmbossType::None for clean icon-only appearance with subtle hover. */
-  UI_block_emboss_set(block, blender::ui::EmbossType::None);
+  ::blender::ui::block_emboss_set(block, blender::ui::EmbossType::None);
 
   /* Attachment button (paperclip icon) - position after dropdowns */
   int attach_btn_final_x = pos.attach_btn_x;
@@ -547,11 +547,11 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   }
 
   /* Restore emboss for any subsequent UI elements */
-  UI_block_emboss_set(block, blender::ui::EmbossType::Emboss);
+  ::blender::ui::block_emboss_set(block, blender::ui::EmbossType::Emboss);
 
   /* Finalize block */
   ::blender::ui::block_end(C, block);
-  UI_block_draw(C, block);
+  ::blender::ui::block_draw(C, block);
 
   /* Custom GPU overlays (delegated to mixie_chat_footer_draw.cc) */
   footer_draw_send_button_glow(region, &scene_ptr, pos, scale);

@@ -102,7 +102,7 @@ int draw_kind_toggles(bContext *C,
                                            float(items[index].value),
                                            items[index].description);
     if (running) {
-      UI_but_flag_enable(toggle, UI_BUT_DISABLED);
+      ::blender::ui::button_flag_enable(toggle, ::blender::ui::BUT_DISABLED);
     }
     enabled_count += int((flags & items[index].value) != 0);
     drawn++;
@@ -118,7 +118,7 @@ int draw_kind_toggles(bContext *C,
   ::blender::ui::Block *block = director_popup_block_begin(C, region, __func__);
   /* Multi-select: picking Beauty/Clay/Depth must not dismiss the popup —
    * it closes on click-outside, Esc, or the Export/Render actions below. */
-  UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN);
+  ::blender::ui::block_flag_enable(block, ::blender::ui::BLOCK_KEEP_OPEN);
   DirectorPopupData data;
   if (!director_popup_data_get(C, &data) || data.shot_ptr.data == nullptr) {
     director_popup_section_label(block, "No active Director shot", 0, UI_UNIT_X * 10);
@@ -169,7 +169,7 @@ int draw_kind_toggles(bContext *C,
       row_h,
       "Place this shot's keyframe stills together on the Moodboard");
   director_overlay_disable_button(export_stills, beat_count < 1);
-  UI_but_func_set(export_stills, render_popup_close, block, nullptr);
+  ::blender::ui::button_func_set(export_stills, render_popup_close, block, nullptr);
 
   /* Rendered motion-guide videos → Moodboard. */
   y -= gap + label_h;
@@ -193,7 +193,7 @@ int draw_kind_toggles(bContext *C,
                                 0,
                                 std::nullopt);
   if (running) {
-    UI_but_flag_enable(resolution, UI_BUT_DISABLED);
+    ::blender::ui::button_flag_enable(resolution, ::blender::ui::BUT_DISABLED);
   }
 
   y -= label_h;
@@ -242,7 +242,7 @@ int draw_kind_toggles(bContext *C,
         row_h,
         "Render the shot beat span and add each video to Moodboard");
     director_overlay_disable_button(render, beat_count < 2 || enabled_count == 0);
-    UI_but_func_set(render, render_popup_close, block, nullptr);
+    ::blender::ui::button_func_set(render, render_popup_close, block, nullptr);
   }
 
   PropertyRNA *outputs_prop = RNA_struct_find_property(&data.shot_ptr, "render_outputs");
