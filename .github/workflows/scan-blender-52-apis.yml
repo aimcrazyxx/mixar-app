@@ -27,11 +27,29 @@ jobs:
           root = Path("src")
           suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
           files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in suffixes or p.name == "CMakeLists.txt")]
-          counts = {name: 0 for name in ("uiLayout", "uiBut", "uiBlock", "ghostwin", "MEM_callocN", "absolute_block", "ui_api")}
+          counts = {name: 0 for name in ("uiLayout", "uiBut", "uiBlock", "ghostwin", "MEM_callocN", "absolute_block", "ui_api", "ui_constants")}
           ui_api_mappings = {
               "UI_block_begin": "::blender::ui::block_begin",
               "UI_block_end": "::blender::ui::block_end",
+              "UI_block_draw": "::blender::ui::block_draw",
+              "UI_block_theme_style_set": "::blender::ui::block_theme_style_set",
+              "UI_block_flag_enable": "::blender::ui::block_flag_enable",
+              "UI_block_direction_set": "::blender::ui::block_direction_set",
+              "UI_block_bounds_set_normal": "::blender::ui::block_bounds_set_normal",
+              "UI_block_bounds_set_centered": "::blender::ui::block_bounds_set_centered",
+              "UI_block_emboss_set": "::blender::ui::block_emboss_set",
+              "UI_block_func_handle_set": "::blender::ui::block_func_handle_set",
               "UI_popup_menu_retval_set": "::blender::ui::popup_menu_retval_set",
+              "UI_popup_block_invoke": "::blender::ui::popup_block_invoke",
+              "UI_but_is_tool": "::blender::ui::but_is_tool",
+              "UI_but_flag_enable": "::blender::ui::button_flag_enable",
+              "UI_but_func_set": "::blender::ui::button_func_set",
+              "UI_but_operator_ptr_ensure": "::blender::ui::button_operator_ptr_ensure",
+              "UI_but_placeholder_set": "::blender::ui::button_placeholder_set",
+              "UI_but_flag2_enable": "::blender::ui::button_flag_enable",
+              "UI_but_number_step_size_set": "::blender::ui::button_number_step_size_set",
+              "UI_but_number_precision_set": "::blender::ui::button_number_precision_set",
+              "UI_but_disable": "::blender::ui::button_disable",
           }
 
           for path in files:
@@ -55,6 +73,16 @@ jobs:
               for old, new in ui_api_mappings.items():
                   value, count = re.subn(rf"\b{re.escape(old)}\b", new, value)
                   counts["ui_api"] += count
+              value, count = re.subn(
+                  r"\bUI_BUT2_ACTIVATE_ON_INIT_NO_SELECT\b",
+                  "::blender::ui::BUT_ACTIVATE_ON_INIT_NO_SELECT",
+                  value,
+              )
+              counts["ui_constants"] += count
+              value, count = re.subn(r"\bUI_BUT_([A-Z0-9_]+)\b", r"::blender::ui::BUT_\1", value)
+              counts["ui_constants"] += count
+              value, count = re.subn(r"\bUI_BLOCK_([A-Z0-9_]+)\b", r"::blender::ui::BLOCK_\1", value)
+              counts["ui_constants"] += count
               if value != original:
                   path.write_text(value, encoding="utf-8")
 
@@ -68,7 +96,9 @@ jobs:
               ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<"), True),
               ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b"), True),
               ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b"), True),
-              ("remaining uppercase UI API", re.compile(r"\bUI_(?:block|but|popup)_[A-Za-z0-9_]+\b"), False),
+              ("remaining uppercase UI API", re.compile(r"\bUI_(?:block|but|popup)_[A-Za-z0-9_]+\b"), True),
+              ("remaining old UI button constant", re.compile(r"\bUI_BUT_[A-Z0-9_]+\b"), True),
+              ("remaining old UI block constant", re.compile(r"\bUI_BLOCK_[A-Z0-9_]+\b"), True),
               ("tooltip helper occurrences", re.compile(r"UI_layout_disable_last_button_tooltip"), False),
               ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)"), True),
           ]
@@ -83,6 +113,7 @@ jobs:
               f"- `wmWindow::ghostwin` → `wmWindow::runtime->ghostwin`: **{counts['ghostwin']}**",
               f"- `MEM_callocN<T>` → `MEM_new_zeroed<T>`: **{counts['MEM_callocN']}**",
               f"- Renamed UI function calls: **{counts['ui_api']}**",
+              f"- Namespaced UI constants: **{counts['ui_constants']}**",
               "",
           ])
           blocking_hits = 0
@@ -107,5 +138,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src docs/migration/blender-52-api-scan.md
-          git commit -m "fix: port renamed Blender 5.2 UI functions"
+          git commit -m "fix: port remaining Blender 5.2 UI functions and constants"
           git push origin HEAD:refs/heads/migration/blender-5.2
