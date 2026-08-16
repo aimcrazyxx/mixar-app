@@ -72,7 +72,7 @@ ALLOWED_LIBS = [
     'libxcb.so',
 ]
 
-IGNORE_FILES = ("mixar-launcher", "mixar-softwaregl", )
+IGNORE_FILES = ("mixar-launcher", )
 IGNORE_EXTENSION = (".sh", ".py", )
 
 

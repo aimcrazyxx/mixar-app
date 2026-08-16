@@ -329,7 +329,7 @@ void mixie_chat_render_feedback(const bContext *C,
   }
   const float input_y_bot = input_y_top - layout.feedback_comment_input_height;
 
-  /* uiBlock buttons use region pixel coordinates for rendering and hit testing. */
+  /* ::blender::ui::Block buttons use region pixel coordinates for rendering and hit testing. */
   int rx1, ry1, rx2, ry2;
   UI_view2d_view_to_region(v2d, layout.bubble_x, input_y_bot, &rx1, &ry1);
   UI_view2d_view_to_region(
@@ -341,9 +341,9 @@ void mixie_chat_render_feedback(const bContext *C,
 
   char block_name[64];
   BLI_snprintf(block_name, sizeof(block_name), "fb_comment_%d", layout.message_index);
-  uiBlock *block = UI_block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = ::blender::ui::block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
 
-  uiBut *comment_but = uiDefButR(block,
+  ::blender::ui::Button *comment_but = uiDefButR(block,
                                  ButType::Text,
                                  0,
                                  "",
@@ -358,13 +358,13 @@ void mixie_chat_render_feedback(const bContext *C,
                                  0.0f,
                                  nullptr);
   if (comment_but) {
-    UI_but_placeholder_set(comment_but, "Add a comment (optional) \xe2\x80\x94 press Enter to send");
-    UI_but_flag_enable(comment_but, UI_BUT_TEXTEDIT_UPDATE);
+    ::blender::ui::button_placeholder_set(comment_but, "Add a comment (optional) \xe2\x80\x94 press Enter to send");
+    ::blender::ui::button_flag_enable(comment_but, ::blender::ui::BUT_TEXTEDIT_UPDATE);
   }
 
-  UI_block_end(C, block);
+  ::blender::ui::block_end(C, block);
   UI_view2d_view_restore(C);
-  UI_block_draw(C, block);
+  ::blender::ui::block_draw(C, block);
   UI_view2d_view_ortho(v2d);
 }
 

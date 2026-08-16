@@ -159,3 +159,10 @@ Backend runs a LangGraph orchestrator with 200+ tools. Tool execution: LLM → b
 ## Repo Docs Map
 
 `README.md` — public build-from-source guide and licensing. `AGENTS.md` — mirror of this guide; keep shared facts in sync. `TESTING_GUIDE.md` — one-off manual test plan for the chat streaming fix (not general testing docs).
+
+## Custom OpenAI-compatible provider (Blender 5.2)
+
+- `custom` accepts a Base URL, API key, and free-text model ID.
+- `/models` discovery uses Bearer auth and accepts OpenAI `data[].id` only.
+- IDs are transient and endpoint-scoped; manual Model text is authoritative.
+- Blender 5.2 uses Python 3.13 in Unix, Windows, and CI tooling.

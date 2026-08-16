@@ -1,34 +1,6 @@
-# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
-#
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
-#
-# Builds Mixar on Windows against a pinned Blender revision and uploads a real
-# installer (.exe) plus a portable zip.
-#
-# Reality check before you start this: a from-scratch Blender build needs tens
-# of GB of precompiled libraries and hours of CPU. GitHub-hosted Windows
-# runners ship with roughly 14 GB free and are hard-killed at the 6 hour job
-# limit, so the honest way to run this is a larger runner or a self-hosted
-# Windows runner with VS 2022 (Desktop C++), CMake and Git LFS. windows-latest
-# stays the default only so that a first attempt costs a single click.
-#
-# Two ways to start it:
-#   * Actions -> "Build Windows installer" -> Run workflow  (full control)
-#   * push to the ci/build-windows branch                   (uses the defaults)
-#
-# What makes a retry cheap: every compile goes through sccache, and the cache is
-# saved even when the job is cancelled or times out, so the next run resumes
-# instead of starting from zero. cmake/mixar_overrides.cmake enables
-# WITH_WINDOWS_SCCACHE by itself as soon as sccache is on PATH.
-#
-# Reading a failure without opening the browser: the heavy steps tee their
-# output into logs/, every stage records free disk, and a failed job posts the
-# tails as a comment on the pull request for this branch. Anything that can only
-# be seen in the raw Actions log is invisible to tooling, and that made three
-# attempts guesswork.
-
 name: Build Windows installer
-
 on:
   workflow_dispatch:
     inputs:
@@ -67,74 +39,41 @@ on:
   push:
     branches:
       - ci/build-windows
-
 concurrency:
   group: build-windows-${{ github.ref }}
   cancel-in-progress: false
-
 permissions:
   contents: read
-  # The failure report has to land somewhere an API token can read it back;
-  # Actions run logs cannot be. A pull request comment is the reliable channel
-  # because forks always have pull requests, while Issues start disabled.
   issues: write
   pull-requests: write
-
 jobs:
   build:
     name: ${{ inputs.mixar_env || 'Prod' }} / Blender ${{ inputs.blender_version || '5.2' }}
     runs-on: ${{ inputs.runner || 'windows-latest' }}
     timeout-minutes: 600
     env:
-      # Every value carries a literal fallback: on a push-triggered run the
-      # inputs context is empty, and an empty runs-on or blender ref would fail
-      # the run minutes in, after the checkout has already burned time.
       MIXAR_ENV: ${{ inputs.mixar_env || 'Prod' }}
       BLENDER_VERSION: ${{ inputs.blender_version || '5.2' }}
       BLENDER_REF: ${{ inputs.blender_ref || 'v5.2.0' }}
       BUILD_WITH_NINJA: ${{ github.event_name == 'workflow_dispatch' && (inputs.use_ninja && '1' || '0') || '1' }}
       MAKE_INSTALLER: ${{ github.event_name == 'workflow_dispatch' && (inputs.make_installer && 'true' || 'false') || 'true' }}
-      # GIT_LFS_SKIP_SMUDGE is deliberately absent. It was set here as a
-      # checkout speedup, but a job-level variable also applies to the fetch of
-      # Blender's precompiled libraries, and those are git-lfs objects almost in
-      # their entirety - skipping the smudge filter turns every one of them into
-      # a 130 byte pointer that only fails at link time.
       SCCACHE_DIR: ${{ github.workspace }}\.sccache
-      # Kept under GitHub's 10 GB per-repository cache budget on purpose.
       SCCACHE_CACHE_SIZE: 5G
     steps:
       - name: Configure git and derive short sha
         shell: pwsh
         run: |
-          # Blender's source paths overflow MAX_PATH.
-          #
-          # autocrlf stays off so the repo's *.sh helpers keep their LF endings
-          # under git bash. That also removes the conversion a Windows clone
-          # normally applies, which is what the *.bat files were silently
-          # depending on - .gitattributes is what guarantees they arrive as
-          # CRLF now, and the next step proves it.
           git config --global core.longpaths true
           git config --global core.autocrlf false
           Add-Content -Path $env:GITHUB_ENV -Value "SHORT_SHA=$($env:GITHUB_SHA.Substring(0, 7))"
-
       - name: Checkout fork
         uses: actions/checkout@v4
         with:
           submodules: false
           fetch-depth: 1
-
       - name: Verify batch files use CRLF
         shell: pwsh
         run: |
-          # cmd.exe mis-parses LF-only batch files by dropping the first
-          # character of some lines: REM runs as EM, for as or, if as f. It
-          # never says so - it just skips work. That silently emptied ROOT_DIR
-          # in settings.bat and sent robocopy to D:\upstream\.
-          #
-          # With .gitattributes in place this should find nothing. It stays as
-          # the safety net, and as the thing that names the file if it returns.
-          # upstream/ is untouched on purpose: separate repository, its own
-          # attributes, and its make.bat already parses fine.
           $files = Get-ChildItem -Recurse -File |
             Where-Object {
               @('.bat', '.cmd') -contains $_.Extension -and
@@ -156,17 +95,13 @@ jobs:
             Write-Host "::warning::rewrote $($rewritten.Count) batch file(s) checked out with LF endings"
             $rewritten | ForEach-Object { Write-Host "  $_" }
           }
-
       - name: Start the disk ledger
         shell: pwsh
         run: |
-          # Free space is sampled after every heavy stage and printed in full if
-          # the job dies, so "it ran out of disk" stops being a hypothesis.
           New-Item -ItemType Directory -Force -Path logs | Out-Null
           $free = (Get-PSDrive C).Free / 1GB
           Set-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after checkout", $free)
           Get-Content logs\disk.log
-
       - name: Report runner state
         shell: pwsh
         run: |
@@ -186,18 +121,13 @@ jobs:
           } else {
             Write-Host "vswhere not found - is Visual Studio installed?"
           }
-
       - name: Tune build parallelism
         shell: pwsh
         run: |
-          # settings.bat defaults BUILD_CORES to NUMBER_OF_PROCESSORS-2, which
-          # leaves half of a 4-core hosted runner idle for the whole build.
-          # An environment variable wins over that default.
           $cores = [int]$env:NUMBER_OF_PROCESSORS
           if ($cores -lt 2) { $cores = 2 }
           Write-Host "BUILD_CORES=$cores (detected $env:NUMBER_OF_PROCESSORS logical processors)"
           Add-Content -Path $env:GITHUB_ENV -Value "BUILD_CORES=$cores"
-
       - name: Reclaim disk space (hosted runners only)
         if: ${{ !contains(inputs.runner || 'windows-latest', 'self-hosted') }}
         continue-on-error: true
@@ -228,7 +158,6 @@ jobs:
           $free = (Get-PSDrive C).Free / 1GB
           Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after reclaim", $free)
           Get-Content logs\disk.log
-
       - name: Install NSIS, Ninja and sccache if missing
         shell: pwsh
         run: |
@@ -242,8 +171,6 @@ jobs:
             if ('${{ env.BUILD_WITH_NINJA }}' -eq '1' -and -not (Get-Command ninja -ErrorAction SilentlyContinue)) {
               choco install ninja -y --no-progress
             }
-            # mixar_overrides.cmake turns on WITH_WINDOWS_SCCACHE the moment
-            # this binary is on PATH, so installing it is the whole opt-in.
             if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
               choco install sccache -y --no-progress
             }
@@ -252,7 +179,6 @@ jobs:
           if (Test-Path $nsis) {
             Add-Content -Path $env:GITHUB_PATH -Value $nsis
           }
-
       - name: Restore compiler cache
         uses: actions/cache/restore@v4
         with:
@@ -261,19 +187,15 @@ jobs:
           restore-keys: |
             sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-
             sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-
-
       - name: Pin upstream to the requested Blender revision
         shell: bash
         run: |
           set -euo pipefail
-          # Deliberately not scripts/windows/init.bat: it re-checks out upstream at
-          # the gitlink recorded in the parent repo, which would undo this pin.
           git submodule sync --recursive
           git submodule update --init --force --depth 1 upstream
           git -C upstream fetch --tags --depth 1 origin "$BLENDER_REF"
           git -C upstream checkout --force --detach FETCH_HEAD
           git -C upstream log -1 --format='upstream pinned to %H%d'
-
       - name: Check the resource version matches the pinned tag
         shell: bash
         run: |
@@ -283,38 +205,13 @@ jobs:
             echo "::warning::scripts/windows/settings.bat does not pin BLENDER_VERSION=${BLENDER_VERSION};" \
                  "run scripts/upgrade/set_blender_version.sh ${BLENDER_VERSION} ${BLENDER_REF}"
           fi
-
       - name: Fetch Blender precompiled libraries
         shell: pwsh
         working-directory: upstream
         run: |
-          # Blender keeps its precompiled libraries in per-platform submodules,
-          # and .gitmodules registers every one of them like this:
-          #
-          #   [submodule "lib/windows_x64"]
-          #       update = none
-          #       branch = blender-v5.2-release
-          #
-          # `update = none` means a plain `git submodule update --init` walks
-          # straight past them and leaves an empty lib/windows_x64 directory
-          # behind. Nothing complains: cmake sees the directory, accepts LIBDIR
-          # as valid, and only falls over much later with "Missing Python.h"
-          # and a screenful of absent dependency targets.
-          #
-          # `make update` is what normally handles these, but it resolves which
-          # library revision to fetch from the current *branch* name, and this
-          # checkout is deliberately detached at a tag - so it can do nothing at
-          # all and still exit 0. Naming the submodule with --checkout overrides
-          # `update = none` and needs no branch, which makes it the only form
-          # that is correct on a detached pin.
           $ErrorActionPreference = "Stop"
-
           git lfs install --local
           git submodule sync -- lib/windows_x64
-
-          # Shallow first: this repository is several GB. If the recorded commit
-          # is not the tip of the release branch a shallow fetch cannot reach
-          # it, so fall back to full depth instead of failing the run.
           & git submodule update --init --force --checkout --depth 1 -- lib/windows_x64 2>&1 |
             Tee-Object -FilePath ..\logs\libs.log
           if ($LASTEXITCODE -ne 0) {
@@ -323,16 +220,8 @@ jobs:
               Tee-Object -Append -FilePath ..\logs\libs.log
             if ($LASTEXITCODE -ne 0) { throw "could not check out lib/windows_x64" }
           }
-
-          # The libraries are git-lfs objects. Materialise them explicitly: a
-          # checkout that skipped the smudge filter leaves pointer files that
-          # look fine to cmake and only fail hours later, at link time.
           & git -C lib\windows_x64 lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
-
-          # Verify instead of hoping. Every earlier version of this step only
-          # checked that lib\ existed, which an empty submodule directory
-          # satisfies perfectly - that is precisely how this got through twice.
-          $probe = "lib\windows_x64\python\311\include\Python.h"
+          $probe = "lib\windows_x64\python\313\include\Python.h"
           if (-not (Test-Path $probe)) {
             Write-Host "::error::lib\windows_x64 was not checked out"
             Get-ChildItem lib -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue |
@@ -345,16 +234,11 @@ jobs:
           }
           Write-Host "libraries present ($probe is $size bytes)"
           Get-ChildItem lib\windows_x64 | Select-Object Name | Format-Table -AutoSize
-
       - name: Measure what the libraries cost
         if: always()
         continue-on-error: true
         shell: pwsh
         run: |
-          # git-lfs keeps every object twice: once under .git/lfs/objects and
-          # once materialised in the working tree. overlay.bat now links lib\
-          # into source\ instead of copying it, so these numbers are what say
-          # whether that was enough to fit in the runner's disk.
           function Get-SizeGB($path) {
             if (-not (Test-Path $path)) { return "absent" }
             $bytes = (Get-ChildItem $path -Recurse -File -Force -ErrorAction SilentlyContinue |
@@ -372,12 +256,10 @@ jobs:
           $free = (Get-PSDrive C).Free / 1GB
           Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after libraries", $free)
           Get-Content logs\disk.log
-
       - name: Apply backend URL override
         if: ${{ inputs.backend_url != '' }}
         shell: pwsh
         run: Add-Content -Path $env:GITHUB_ENV -Value "MIXAR_BACKEND_URL=${{ inputs.backend_url }}"
-
       - name: Prepare .env
         shell: pwsh
         run: |
@@ -385,18 +267,14 @@ jobs:
             Copy-Item .env.example .env
           }
           Write-Host "MIXAR_ENV=$env:MIXAR_ENV BLENDER_VERSION=$env:BLENDER_VERSION BUILD_WITH_NINJA=$env:BUILD_WITH_NINJA BUILD_CORES=$env:BUILD_CORES"
-
       - name: Build Mixar
         shell: pwsh
         run: |
-          # Run through pwsh rather than shell: cmd purely so the output can be
-          # teed to a file the failure report can quote.
           & cmd /c "call scripts\windows\build.bat" 2>&1 | Tee-Object -FilePath logs\build.log
           $code = $LASTEXITCODE
           $free = (Get-PSDrive C).Free / 1GB
           Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after build.bat (exit $code)", $free)
           if ($code -ne 0) { throw "build.bat exited with $code" }
-
       - name: Compiler cache statistics
         if: always()
         continue-on-error: true
@@ -405,24 +283,20 @@ jobs:
           if (Get-Command sccache -ErrorAction SilentlyContinue) {
             sccache --show-stats
           }
-
       - name: Save compiler cache
         if: always()
         uses: actions/cache/save@v4
         with:
           path: ${{ env.SCCACHE_DIR }}
           key: sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-${{ github.sha }}
-
       - name: Overlay Mixar scripts into the bundle
         shell: cmd
         run: call scripts\windows\install.bat
-
       - name: Package installer and portable zip
         shell: cmd
         env:
           PACKAGE_EXTRA: ${{ env.MAKE_INSTALLER == 'true' && ' ' || '--no-installer' }}
         run: call scripts\windows\package.bat --suffix %SHORT_SHA% %PACKAGE_EXTRA%
-
       - name: Summarize artifacts
         shell: pwsh
         run: |
@@ -439,7 +313,6 @@ jobs:
           if (Test-Path dist/SHA256SUMS.txt) {
             Get-Content dist/SHA256SUMS.txt | ForEach-Object { Add-Content -Path $summary -Value "    $_" }
           }
-
       - name: Upload installer and portable build
         uses: actions/upload-artifact@v4
         with:
@@ -451,7 +324,6 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
-
       - name: Publish the failure report
         if: failure()
         continue-on-error: true
@@ -459,17 +331,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # An Actions log can only be read by a human with a browser. A pull
-          # request comment can be read by anything holding a token, which is
-          # the whole point. The previous version filed an issue instead, and
-          # that report was lost: this repository is a fork, and forks are
-          # created with Issues switched off.
           $out = New-Object System.Collections.Generic.List[string]
           $out.Add("Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
           $out.Add("Commit: ${{ github.sha }}")
           $out.Add("Runner: ${{ runner.os }} / ${{ inputs.runner || 'windows-latest' }}")
           $out.Add("")
-
           function Add-Block($title, $path, $tail) {
             $out.Add("")
             $out.Add("## $title")
@@ -482,24 +348,19 @@ jobs:
               $out.Add("not produced - the job died before this file existed")
             }
           }
-
           Add-Block "Free disk after each stage" "logs\disk.log" 40
           Add-Block "Directory sizes" "logs\sizes.log" 40
           Add-Block "Library fetch (tail)" "logs\libs.log" 100
           Add-Block "build.bat (tail)" "logs\build.log" 200
           Add-Block "CMakeError.log (tail)" "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log" 120
-
           $out.Add("")
           $out.Add("## Free space right now")
           $out.Add('```')
           $drive = Get-PSDrive C
           $out.Add(("free {0:N1} GB, used {1:N1} GB" -f ($drive.Free / 1GB), ($drive.Used / 1GB)))
           $out.Add('```')
-
           Set-Content -Path failure-report.md -Value $out -Encoding utf8
-          # Mirrored into the job summary so the same text is one click away.
           Get-Content failure-report.md | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-
           $pr = gh pr list --repo $env:GITHUB_REPOSITORY --head $env:GITHUB_REF_NAME --state open --json number --jq '.[0].number'
           if ($pr) {
             gh pr comment $pr --repo $env:GITHUB_REPOSITORY --body-file failure-report.md
@@ -510,7 +371,6 @@ jobs:
               --title "Windows build failed - run ${{ github.run_id }}" `
               --body-file failure-report.md
           }
-
       - name: Failure diagnostics
         if: failure()
         continue-on-error: true
@@ -526,7 +386,6 @@ jobs:
           if (Test-Path "build\$env:MIXAR_ENV\bin") {
             Get-ChildItem "build\$env:MIXAR_ENV\bin" | Select-Object Name | Format-Table -AutoSize
           }
-
       - name: Upload logs
         if: always()
         continue-on-error: true

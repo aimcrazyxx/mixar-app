@@ -45,7 +45,7 @@ static bool view_rect_to_region(View2D *v2d,
          r_region_rect->ymax > r_region_rect->ymin;
 }
 
-static uiBut *screen_prop_button(uiBlock *block,
+static ::blender::ui::Button *screen_prop_button(::blender::ui::Block *block,
                                  PointerRNA *ptr,
                                  const char *property,
                                  const char *label,
@@ -85,7 +85,7 @@ static void draw_floating_background(const rctf &rect)
   UI_draw_roundbox_4fv(&rect, false, 16.0f, border);
 }
 
-static uiBut *add_parameter_button(uiBlock *block,
+static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
                                    PointerRNA *parameter,
                                    const int x,
                                    const int y,
@@ -148,14 +148,14 @@ static uiBut *add_parameter_button(uiBlock *block,
                             maximum);
 }
 
-static void disable_while_submitted(uiBut *button, const bool submitted)
+static void disable_while_submitted(::blender::ui::Button *button, const bool submitted)
 {
   if (button && submitted) {
-    UI_but_disable(button, "Settings are locked while this generation is running");
+    ::blender::ui::button_disable(button, "Settings are locked while this generation is running");
   }
 }
 
-static void add_action_toolbar(uiBlock *block,
+static void add_action_toolbar(::blender::ui::Block *block,
                                View2D *v2d,
                                ARegion *region,
                                PointerRNA *node,
@@ -251,7 +251,7 @@ static void add_action_toolbar(uiBlock *block,
   if (show_mode) {
     char mode_label[MIXIE_GRAPH_LABEL_BUF];
     mixie_rna_string_get_clamped(node, "service_label", mode_label, sizeof(mode_label));
-    uiBut *mode = screen_prop_button(block,
+    ::blender::ui::Button *mode = screen_prop_button(block,
                                      node,
                                      "service_key",
                                      mode_label[0] ? mode_label : "Mode",
@@ -265,7 +265,7 @@ static void add_action_toolbar(uiBlock *block,
   }
   char model_label[MIXIE_GRAPH_LABEL_BUF];
   mixie_rna_string_get_clamped(node, "model_label", model_label, sizeof(model_label));
-  uiBut *model = screen_prop_button(block,
+  ::blender::ui::Button *model = screen_prop_button(block,
                                     node,
                                     "model",
                                     model_label[0] ? model_label : "Model",
@@ -282,7 +282,7 @@ static void add_action_toolbar(uiBlock *block,
     RNA_property_collection_begin(node, parameters, &iter);
     while (iter.valid) {
       if (RNA_boolean_get(&iter.ptr, "visible")) {
-        uiBut *parameter = add_parameter_button(
+        ::blender::ui::Button *parameter = add_parameter_button(
             block, &iter.ptr, content_x, y, field_width, row_h);
         disable_while_submitted(parameter, generation_running);
         y -= row_h + gap;
@@ -295,7 +295,7 @@ static void add_action_toolbar(uiBlock *block,
   y -= reset_gap - gap;
   char reset_node_id[MIXIE_GRAPH_ID_BUF];
   mixie_rna_string_get_clamped(node, "node_id", reset_node_id, sizeof(reset_node_id));
-  uiBut *reset = uiDefButO(block,
+  ::blender::ui::Button *reset = uiDefButO(block,
                            ButType::But,
                            "MIXIE_OT_moodboard_reset_node_params",
                            blender::wm::OpCallContext::ExecDefault,
@@ -305,7 +305,7 @@ static void add_action_toolbar(uiBlock *block,
                            field_width,
                            row_h,
                            nullptr);
-  RNA_string_set(UI_but_operator_ptr_ensure(reset), "node_id", reset_node_id);
+  RNA_string_set(::blender::ui::button_operator_ptr_ensure(reset), "node_id", reset_node_id);
   disable_while_submitted(reset, generation_running);
 
   if (!has_result || state == 0) {
@@ -329,7 +329,7 @@ static void add_action_toolbar(uiBlock *block,
       const int prompt_bottom = node_region.ymin + prompt_margin + generate_h + 12;
       const int prompt_height = std::max(46, prompt_top - prompt_bottom);
       const int prompt_y = prompt_top - prompt_height;
-      uiBut *prompt = screen_prop_button(block,
+      ::blender::ui::Button *prompt = screen_prop_button(block,
                                          node,
                                          "prompt",
                                          "",
@@ -339,8 +339,8 @@ static void add_action_toolbar(uiBlock *block,
                                          BLI_rcti_size_x(&node_region) - prompt_margin * 2,
                                          prompt_height);
       if (prompt) {
-        UI_but_placeholder_set(prompt, "Describe what you want to create...");
-        UI_but_flag_enable(prompt, UI_BUT_TEXTEDIT_UPDATE);
+        ::blender::ui::button_placeholder_set(prompt, "Describe what you want to create...");
+        ::blender::ui::button_flag_enable(prompt, ::blender::ui::BUT_TEXTEDIT_UPDATE);
         disable_while_submitted(prompt, generation_running);
       }
     }
@@ -348,7 +348,7 @@ static void add_action_toolbar(uiBlock *block,
     char node_id[MIXIE_GRAPH_ID_BUF];
     mixie_rna_string_get_clamped(node, "node_id", node_id, sizeof(node_id));
     const char *button_label = generation_running ? "Generating..." : "Generate";
-    uiBut *generate = uiDefButO(block,
+    ::blender::ui::Button *generate = uiDefButO(block,
                                 ButType::But,
                                 "MIXIE_OT_moodboard_run_action_node",
                                 blender::wm::OpCallContext::ExecDefault,
@@ -358,14 +358,14 @@ static void add_action_toolbar(uiBlock *block,
                                 generate_w,
                                 generate_h,
                                 nullptr);
-    RNA_string_set(UI_but_operator_ptr_ensure(generate), "node_id", node_id);
+    RNA_string_set(::blender::ui::button_operator_ptr_ensure(generate), "node_id", node_id);
     if (generation_running) {
-      UI_but_disable(generate, "Generation is already running");
+      ::blender::ui::button_disable(generate, "Generation is already running");
     }
   }
 }
 
-static void add_selected_media_toolbar(uiBlock *block,
+static void add_selected_media_toolbar(::blender::ui::Block *block,
                                        View2D *v2d,
                                        ARegion *region,
                                        PointerRNA *scene_ptr)
@@ -449,7 +449,7 @@ void mixie_draw_moodboard_graph_controls(const bContext *C, View2D *v2d)
   }
 
   UI_view2d_view_restore(C);
-  uiBlock *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "moodboard_floating_node_controls", blender::ui::EmbossType::Emboss);
   blender::Vector<ObjectPreviewDraw> object_previews;
   CollectionPropertyIterator iter{};
@@ -461,8 +461,8 @@ void mixie_draw_moodboard_graph_controls(const bContext *C, View2D *v2d)
   RNA_property_collection_end(&iter);
   add_selected_media_toolbar(block, v2d, region, &scene_ptr);
 
-  UI_block_end(C, block);
-  UI_block_draw(C, block);
+  ::blender::ui::block_end(C, block);
+  ::blender::ui::block_draw(C, block);
   for (const ObjectPreviewDraw &preview : object_previews) {
     PreviewImage *preview_image = BKE_previewimg_id_ensure(&preview.object->id);
     const int icon_id = BKE_icon_preview_ensure(&preview.object->id, preview_image);

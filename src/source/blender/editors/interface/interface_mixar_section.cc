@@ -40,15 +40,15 @@
 
 #include "UI_interface_layout.hh"
 
-uiLayout *UI_layout_mixar_section(uiLayout *layout)
+::blender::ui::Layout *UI_layout_mixar_section(::blender::ui::Layout *layout)
 {
-  uiLayout &box = layout->box();
-  uiBlock *block = layout->block();
+  ::blender::ui::Layout &box = layout->box();
+  ::blender::ui::Block *block = layout->block();
 
   /* Walk backwards through the block's buttons to find the Roundbox button
    * that was just created by box(). It should be the most recently added. */
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
-    uiBut *but = block->buttons[i].get();
+    ::blender::ui::Button *but = block->buttons[i].get();
     if (but->type == ButType::Roundbox) {
       but->flag2 |= UI_BUT2_MIXAR_SECTION;
       break;
@@ -58,13 +58,13 @@ uiLayout *UI_layout_mixar_section(uiLayout *layout)
   return &box;
 }
 
-void UI_layout_mixar_mark_last_dropdown(uiLayout *layout)
+void UI_layout_mixar_mark_last_dropdown(::blender::ui::Layout *layout)
 {
-  uiBlock *block = layout->block();
+  ::blender::ui::Block *block = layout->block();
 
   /* Walk backwards to find the most recently created Menu button. */
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
-    uiBut *but = block->buttons[i].get();
+    ::blender::ui::Button *but = block->buttons[i].get();
     if (ELEM(but->type, ButType::Menu, ButType::Block, ButType::Popover)) {
       but->flag2 |= UI_BUT2_MIXAR_DROPDOWN;
       break;
@@ -72,12 +72,12 @@ void UI_layout_mixar_mark_last_dropdown(uiLayout *layout)
   }
 }
 
-void UI_layout_mixar_mark_last_action(uiLayout *layout)
+void UI_layout_mixar_mark_last_action(::blender::ui::Layout *layout)
 {
-  uiBlock *block = layout->block();
+  ::blender::ui::Block *block = layout->block();
 
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
-    uiBut *but = block->buttons[i].get();
+    ::blender::ui::Button *but = block->buttons[i].get();
     if (but->type == ButType::But) {
       but->flag2 |= UI_BUT2_MIXAR_ACTION;
       break;
@@ -85,12 +85,12 @@ void UI_layout_mixar_mark_last_action(uiLayout *layout)
   }
 }
 
-void UI_layout_mixar_mark_last_toggle(uiLayout *layout)
+void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout)
 {
-  uiBlock *block = layout->block();
+  ::blender::ui::Block *block = layout->block();
 
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
-    uiBut *but = block->buttons[i].get();
+    ::blender::ui::Button *but = block->buttons[i].get();
     if (ELEM(but->type, ButType::Checkbox, ButType::CheckboxN)) {
       but->flag2 |= UI_BUT2_MIXAR_TOGGLE;
       break;
@@ -98,12 +98,12 @@ void UI_layout_mixar_mark_last_toggle(uiLayout *layout)
   }
 }
 
-void UI_layout_mixar_mark_last_input(uiLayout *layout)
+void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout)
 {
-  uiBlock *block = layout->block();
+  ::blender::ui::Block *block = layout->block();
 
   for (int i = int(block->buttons.size()) - 1; i >= 0; i--) {
-    uiBut *but = block->buttons[i].get();
+    ::blender::ui::Button *but = block->buttons[i].get();
     if (but->type == ButType::Text) {
       but->flag2 |= UI_BUT2_MIXAR_INPUT;
       break;
@@ -138,7 +138,7 @@ void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_a
   float fstyle_points = fstyle->points;
   const float aspect = BLI_listbase_is_empty(&region->runtime->uiblocks) ?
                             1.0f :
-                            ((uiBlock *)region->runtime->uiblocks.first)->aspect;
+                            ((::blender::ui::Block *)region->runtime->uiblocks.first)->aspect;
   const float zoom = 1.0f / aspect;
   const float dpi_fac = UI_SCALE_FAC;
   const int px = U.pixelsize;

@@ -7,6 +7,7 @@ set(INC
   .
   ../asset
   ../include
+  ../../animrig
   ../../makesrna
   ../../python
   ../../../../intern/ghost
@@ -18,6 +19,7 @@ set(INC_SYS
 )
 
 set(SRC
+  buttons/interface_textbox.cc
   eyedroppers/eyedropper_bone.cc
   eyedroppers/eyedropper_color.cc
   eyedroppers/eyedropper_colorband.cc
@@ -43,6 +45,7 @@ set(SRC
   interface_layout.cc
   interface_mixar_section.cc
   interface_ops.cc
+  interface_ops_color.cc
   interface_panel.cc
   interface_query.cc
   regions/interface_region_color_picker.cc
@@ -107,6 +110,7 @@ set(SRC
   views/interface_view.cc
   views/tree_view.cc
 
+  buttons/interface_textbox.hh
   eyedroppers/eyedropper_intern.hh
   interface_mixar_section.hh
   templates/interface_templates_intern.hh
@@ -128,11 +132,11 @@ set(LIB
   PRIVATE bf::draw
   bf_editor_datafiles
   bf_editor_id_management
-  PRIVATE bf::extern::fmtlib
   PRIVATE bf::functions
   PRIVATE bf::gpu
   PRIVATE bf::imbuf
   PRIVATE bf::imbuf::movie
+  PRIVATE bf::imbuf::opencolorio
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig

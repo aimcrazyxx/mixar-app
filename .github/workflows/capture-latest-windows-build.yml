@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Capture latest Blender 5.2 Windows build
+on:
+  push:
+    branches:
+      - migration/blender-5.2
+    paths:
+      - ".github/workflows/capture-latest-windows-build.yml"
+permissions:
+  actions: read
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: migration/blender-5.2
+          fetch-depth: 0
+          submodules: false
+      - name: Find the latest dispatched Windows build
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          for _ in $(seq 1 60); do
+            runs="$(gh run list \
+              --repo aimcrazyxx/mixar-app \
+              --workflow build-windows.yml \
+              --branch migration/blender-5.2 \
+              --limit 20 \
+              --json databaseId,status,conclusion,headSha,createdAt,url)"
+            run_id="$(jq -r '[.[] | select(.databaseId > 31916268680)] | sort_by(.databaseId) | last | .databaseId // empty' <<<"$runs")"
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Monitoring Windows run $run_id"
+      - name: Wait for completion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.find.outputs.run_id }}
+        run: |
+          set +e
+          gh run watch "$RUN_ID" --repo aimcrazyxx/mixar-app --interval 30 --exit-status
+          echo "watch_exit=$?" >> "$GITHUB_ENV"
+          exit 0
+      - name: Capture conclusion and failed log
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.find.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          gh run view "$RUN_ID" \
+            --repo aimcrazyxx/mixar-app \
+            --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt,jobs \
+            > /tmp/windows-summary.json
+          gh run view "$RUN_ID" \
+            --repo aimcrazyxx/mixar-app \
+            --log-failed \
+            > /tmp/windows-failed.log 2>&1 || true
+          {
+            head -n 2 docs/migration/latest-windows-build.md
+            echo
+            echo '# Latest Blender 5.2 Windows build'
+            echo
+            echo '## Result'
+            echo
+            echo '```json'
+            cat /tmp/windows-summary.json
+            echo '```'
+            echo
+            echo '## Failed log'
+            echo
+            echo '```text'
+            tail -n 1200 /tmp/windows-failed.log
+            echo '```'
+          } > /tmp/latest-windows-build.md
+          mv /tmp/latest-windows-build.md docs/migration/latest-windows-build.md
+      - name: Commit captured result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git pull --rebase origin migration/blender-5.2
+          git add docs/migration/latest-windows-build.md
+          git commit -m "ci: capture latest Blender 5.2 Windows result"
+          git push origin HEAD:refs/heads/migration/blender-5.2

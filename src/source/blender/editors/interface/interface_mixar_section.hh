@@ -11,7 +11,9 @@
 
 #pragma once
 
-struct uiLayout;
+namespace blender::ui {
+struct Layout;
+}
 
 /* -------------------------------------------------------------------- */
 /* Custom flag2 bits — checked in interface_widgets.cc widget dispatch.  */
@@ -34,7 +36,7 @@ struct uiLayout;
  * Create a styled section box layout.
  * \return Sub-layout to place items in, identical API to layout.box().
  */
-uiLayout *UI_layout_mixar_section(uiLayout *layout);
+::blender::ui::Layout *UI_layout_mixar_section(::blender::ui::Layout *layout);
 
 /**
  * Mark the most recently created Menu/Block/Popover button in the layout's
@@ -42,25 +44,25 @@ uiLayout *UI_layout_mixar_section(uiLayout *layout);
  *
  * Call this immediately after layout->prop() for an enum property.
  */
-void UI_layout_mixar_mark_last_dropdown(uiLayout *layout);
+void UI_layout_mixar_mark_last_dropdown(::blender::ui::Layout *layout);
 
 /**
  * Mark the most recently created But (operator) button with
  * #UI_BUT2_MIXAR_ACTION so it renders as an accent action button.
  */
-void UI_layout_mixar_mark_last_action(uiLayout *layout);
+void UI_layout_mixar_mark_last_action(::blender::ui::Layout *layout);
 
 /**
  * Mark the most recently created Checkbox button with
  * #UI_BUT2_MIXAR_TOGGLE so it renders as a pill-shaped toggle switch.
  */
-void UI_layout_mixar_mark_last_toggle(uiLayout *layout);
+void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout);
 
 /**
  * Mark the most recently created Text button with
  * #UI_BUT2_MIXAR_INPUT so it renders with visible border and focus glow.
  */
-void UI_layout_mixar_mark_last_input(uiLayout *layout);
+void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout);
 
 /* -------------------------------------------------------------------- */
 /* Custom panel category tab drawing for MIXIE space                     */

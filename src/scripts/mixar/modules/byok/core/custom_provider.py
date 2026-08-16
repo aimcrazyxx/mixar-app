@@ -105,8 +105,11 @@ def validate(model, api_key, base_url):
             "Set the endpoint in the Custom endpoint section below first - "
             "this provider has no default URL."
         )
-    if not normalize_model(model):
+    normalized_model = normalize_model(model)
+    if not normalized_model:
         return "Enter the model name your endpoint serves, e.g. llama3.1:70b."
+    if len(normalized_model) > MODEL_MAX_LENGTH:
+        return "Model name is too long (maximum {0} characters).".format(MODEL_MAX_LENGTH)
     if not (api_key or "").strip():
         return (
             "Enter an API key. Use any placeholder if your endpoint ignores auth."

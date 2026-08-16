@@ -119,7 +119,7 @@ void camera_aspect_label(const Scene *scene, char *label, const int label_size)
 
 }  // namespace
 
-void view3d_director_frame_controls_draw(uiBlock *block,
+void view3d_director_frame_controls_draw(::blender::ui::Block *block,
                                          const bContext *C,
                                          const ARegion *region,
                                          const DirectorViewState &state,
@@ -151,7 +151,7 @@ void view3d_director_frame_controls_draw(uiBlock *block,
   camera_lens_label(CTX_wm_view3d(C), lens_label, sizeof(lens_label));
   camera_aspect_label(CTX_data_scene(C), aspect_label, sizeof(aspect_label));
 
-  uiBut *lens = uiDefBlockBut(block,
+  ::blender::ui::Button *lens = uiDefBlockBut(block,
                               view3d_director_lens_popup_create,
                               nullptr,
                               lens_label,
@@ -164,7 +164,7 @@ void view3d_director_frame_controls_draw(uiBlock *block,
 
   /* Precise stays hidden until its role is clear; Navigate is a plain text
    * action — no icon, so the gate reads as one word. */
-  uiBut *navigate = uiDefButO(block,
+  ::blender::ui::Button *navigate = uiDefButO(block,
                               ButType::But,
                               "MIXAR_OT_director_navigate",
                               blender::wm::OpCallContext::InvokeRegionWin,
@@ -175,11 +175,11 @@ void view3d_director_frame_controls_draw(uiBlock *block,
                               short(button_h),
                               "Navigate with WASD and mouse");
   if (state.navigate_mode) {
-    UI_but_flag_enable(navigate, UI_BUT_ACTIVE_DEFAULT);
+    ::blender::ui::button_flag_enable(navigate, ::blender::ui::BUT_ACTIVE_DEFAULT);
   }
   director_overlay_disable_button(navigate, state.locked);
 
-  uiBut *aspect = uiDefBlockBut(block,
+  ::blender::ui::Button *aspect = uiDefBlockBut(block,
                                 view3d_director_aspect_popup_create,
                                 nullptr,
                                 aspect_label,

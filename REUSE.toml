@@ -13,6 +13,7 @@ path = [
   ".serena/.gitignore",
   "Makefile",
   "VERSION",
+  "scripts/upgrade/resolutions.json",
   "scripts/windows/codesign-tools/.gitignore",
   "scripts/windows/codesign-tools/metadata.json",
   "src/build_files/windows/*.cmd",

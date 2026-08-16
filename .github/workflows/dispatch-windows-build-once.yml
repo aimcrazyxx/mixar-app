@@ -1,0 +1,103 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Fix Blender 5.2 RNA UI and dispatch build
+on:
+  push:
+    branches:
+      - migration/blender-5.2
+    paths:
+      - ".github/workflows/dispatch-windows-build-once.yml"
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+jobs:
+  fix-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/blender-5.2
+          fetch-depth: 0
+          submodules: false
+      - name: Synchronize the branch before editing
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin migration/blender-5.2
+      - name: Port custom RNA property calls to Blender 5.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/source/blender/makesrna/intern/rna_ui_api.cc")
+          source = path.read_text(encoding="utf-8")
+          old = "nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);"
+          new = """nullptr, false, false, -1, false, false, false, true, -1, icon_value, false,
+                        int(TextAlignAnchor::Left));"""
+
+          count = source.count(old)
+          if count != 3:
+              raise SystemExit(f"expected exactly 3 stale 18-argument rna_uiItemR calls, found {count}")
+
+          source = source.replace(old, new)
+          if old in source:
+              raise SystemExit("a stale Blender 5.0 rna_uiItemR call remains")
+          if source.count("int(TextAlignAnchor::Left));") < 3:
+              raise SystemExit("the three custom RNA property wrappers were not migrated")
+          if "bool invert_checkbox,\n                        int align)" not in source:
+              raise SystemExit("Blender 5.2 rna_uiItemR declaration is not present")
+
+          path.write_text(source, encoding="utf-8")
+          print("Migrated all three Mixar rna_uiItemR wrappers to the 19-argument Blender 5.2 API.")
+          PY
+          git diff --check
+          git diff -- src/source/blender/makesrna/intern/rna_ui_api.cc
+      - name: Commit the source fix
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/source/blender/makesrna/intern/rna_ui_api.cc
+          git commit -m "fix: pass Blender 5.2 alignment to RNA UI items"
+          git push origin HEAD:refs/heads/migration/blender-5.2
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Start a full pinned Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ steps.commit.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            remote_sha="$(gh api repos/aimcrazyxx/mixar-app/git/ref/heads/migration/blender-5.2 --jq .object.sha)"
+            if [ "$remote_sha" = "$EXPECTED_SHA" ]; then
+              break
+            fi
+            sleep 2
+          done
+          test "$remote_sha" = "$EXPECTED_SHA"
+          gh workflow run build-windows.yml \
+            --repo aimcrazyxx/mixar-app \
+            --ref migration/blender-5.2 \
+            -f runner=windows-latest \
+            -f blender_ref=v5.2.0 \
+            -f blender_version=5.2 \
+            -f mixar_env=Prod \
+            -f use_ninja=true \
+            -f make_installer=true
+          echo "Dispatched Blender v5.2.0 / Python 3.13 Windows build for $EXPECTED_SHA."
+      - name: Report a fixer failure on the draft pull request
+        if: failure()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh pr comment 2 --repo aimcrazyxx/mixar-app \
+            --body "The automated Blender 5.2 RNA arity fixer failed in run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}."

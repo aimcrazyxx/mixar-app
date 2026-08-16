@@ -4468,7 +4468,7 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
           iuser.tile = tile;
           iuser.framenr = tpage->lastframe;
           if (BKE_image_has_ibuf(tpage, &iuser)) {
-            PrepareImageEntry *e = MEM_callocN<PrepareImageEntry>("PrepareImageEntry");
+            PrepareImageEntry *e = MEM_new_zeroed<PrepareImageEntry>("PrepareImageEntry");
             e->ima = tpage;
             e->iuser = iuser;
             BLI_addtail(&used_images, e);
@@ -6927,7 +6927,7 @@ static wmOperatorStatus texture_paint_add_texture_paint_slot_invoke(bContext *C,
 
 static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
 {
-  uiLayout *layout = op->layout;
+  ::blender::ui::Layout *layout = op->layout;
   layout->use_property_split_set(true);
   layout->use_property_decorate_set(false);
   Object *ob = blender::ed::object::context_active_object(C);
@@ -6942,7 +6942,7 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
 
   switch (slot_type) {
     case PAINT_CANVAS_SOURCE_IMAGE: {
-      uiLayout *col = &layout->column(true);
+      ::blender::ui::Layout *col = &layout->column(true);
       col->prop(op->ptr, "width", UI_ITEM_NONE, std::nullopt, ICON_NONE);
       col->prop(op->ptr, "height", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 

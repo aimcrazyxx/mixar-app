@@ -154,6 +154,9 @@ def _clear_byok_state_on_logout(wm):
         ('byok_form_api_key', ''),
         ('byok_form_openrouter_model', ''),
         ('byok_form_codex_bundle', ''),
+        ('byok_form_custom_model', ''),
+        ('byok_form_custom_model_choice', '__MIXAR_NO_DISCOVERED_MODEL__'),
+        ('byok_custom_models_status', ''),
         ('byok_dialog_state', 'IDLE'),
         ('byok_last_error', ''),
     ):
@@ -168,6 +171,12 @@ def _clear_byok_state_on_logout(wm):
         model_suggestions.clear()
     except Exception as e:
         logger.debug("Failed clearing models-catalog cache on logout: %s", e)
+
+    try:
+        from mixar.modules.byok.ui.operators import byok_custom_models_ops
+        byok_custom_models_ops.clear_discovered_models(wm)
+    except Exception as e:
+        logger.debug("Failed clearing custom model discovery on logout: %s", e)
 
 
 def _schedule_apply_login(user_info: dict, refreshed: bool) -> None:

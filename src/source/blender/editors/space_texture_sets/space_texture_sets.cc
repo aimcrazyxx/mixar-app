@@ -50,7 +50,7 @@ static SpaceLink *texture_sets_create(const ScrArea * /*area*/, const Scene * /*
   ARegion *region;
   SpaceTextureSets *stexture_sets;
 
-  stexture_sets = MEM_callocN<SpaceTextureSets>("inittexturesets");
+  stexture_sets = MEM_new_zeroed<SpaceTextureSets>("inittexturesets");
   stexture_sets->spacetype = SPACE_TEXTURE_SETS;
   stexture_sets->active_texture_set_index = 0;
 
@@ -204,7 +204,7 @@ void ED_spacetype_texture_sets()
   st->blend_write = texture_sets_space_blend_write;
 
   /* regions: main window */
-  art = MEM_callocN<ARegionType>("spacetype texture_sets region");
+  art = MEM_new_zeroed<ARegionType>("spacetype texture_sets region");
   art->regionid = RGN_TYPE_WINDOW;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
 
@@ -216,7 +216,7 @@ void ED_spacetype_texture_sets()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */
-  art = MEM_callocN<ARegionType>("spacetype texture_sets header region");
+  art = MEM_new_zeroed<ARegionType>("spacetype texture_sets header region");
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
 

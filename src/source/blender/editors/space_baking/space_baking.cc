@@ -42,7 +42,7 @@ CLG_LOGREF_DECLARE_GLOBAL(LOG_BAKING, "ed.baking");
 
 static SpaceLink *baking_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
-  SpaceBaking *sbaking = MEM_callocN<SpaceBaking>("initbaking");
+  SpaceBaking *sbaking = MEM_new_zeroed<SpaceBaking>("initbaking");
   sbaking->spacetype = SPACE_BAKING;
 
   /* Header (hosts the editor-type switch dropdown) */
@@ -179,7 +179,7 @@ void ED_spacetype_baking()
   st->blend_write = baking_blend_write;
 
   /* Main region */
-  ARegionType *art = MEM_callocN<ARegionType>("spacetype baking main");
+  ARegionType *art = MEM_new_zeroed<ARegionType>("spacetype baking main");
   art->regionid = RGN_TYPE_WINDOW;
   art->keymapflag = ED_KEYMAP_UI;
   art->init = baking_main_region_init;
@@ -189,7 +189,7 @@ void ED_spacetype_baking()
   BLI_addhead(&st->regiontypes, art);
 
   /* Header region */
-  art = MEM_callocN<ARegionType>("spacetype baking header");
+  art = MEM_new_zeroed<ARegionType>("spacetype baking header");
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_HEADER;

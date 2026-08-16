@@ -8,7 +8,7 @@
  *
  * Floating "agent bubble" popup overlay.
  *
- * Renders a persistent popup block (UI_BLOCK_KEEP_OPEN) on top of every
+ * Renders a persistent popup block (::blender::ui::BLOCK_KEEP_OPEN) on top of every
  * editor in the active window. The popup is window-level, so it doesn't
  * clip at editor region boundaries the way a Python draw_handler would.
  *
@@ -38,20 +38,20 @@
 /** \name Agent Bubble Popup Block
  * \{ */
 
-static uiBlock *mixie_chat_block_agent_bubble_create(bContext *C,
+static ::blender::ui::Block *mixie_chat_block_agent_bubble_create(bContext *C,
                                                      ARegion *region,
                                                      void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
 
-  uiBlock *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "agent_bubble", blender::ui::EmbossType::Emboss);
 
   /* Persistent popup: stays open across redraws until we explicitly
-   * close it. UI_BLOCK_NO_WIN_CLIP keeps the popup intact during
+   * close it. ::blender::ui::BLOCK_NO_WIN_CLIP keeps the popup intact during
    * window-resize transients. */
-  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  ::blender::ui::block_flag_enable(block, ::blender::ui::BLOCK_LOOP | ::blender::ui::BLOCK_KEEP_OPEN | ::blender::ui::BLOCK_NO_WIN_CLIP);
+  ::blender::ui::block_theme_style_set(block, ::blender::ui::BLOCK_THEME_STYLE_POPUP);
 
   /* Width sized off the DPI-aware widget grid so it scales with the
    * user's interface scaling. 42 widget-points is ~30% narrower than
@@ -59,7 +59,7 @@ static uiBlock *mixie_chat_block_agent_bubble_create(bContext *C,
    * across most of the viewport. */
   const int bubble_width = style->widget.points * 42 * UI_SCALE_FAC;
 
-  uiLayout &layout = blender::ui::block_layout(block,
+  ::blender::ui::Layout &layout = blender::ui::block_layout(block,
                                                blender::ui::LayoutDirection::Vertical,
                                                blender::ui::LayoutType::Panel,
                                                0,
@@ -78,13 +78,13 @@ static uiBlock *mixie_chat_block_agent_bubble_create(bContext *C,
   }
   else {
     /* Fallback: render a small placeholder so we see SOMETHING when the
-     * Python menu hasn't loaded yet. Without this, an empty uiBlock
+     * Python menu hasn't loaded yet. Without this, an empty ::blender::ui::Block
      * collapses to zero size and the popup is effectively invisible —
      * which makes the bubble look broken. */
     layout.label("Mixar agent bubble loading…", ICON_INFO);
   }
 
-  UI_block_bounds_set_centered(block, 6 * UI_SCALE_FAC);
+  ::blender::ui::block_bounds_set_centered(block, 6 * UI_SCALE_FAC);
 
   return block;
 }
@@ -99,7 +99,7 @@ static wmOperatorStatus mixie_chat_agent_bubble_show_invoke(bContext *C,
                                                              wmOperator * /*op*/,
                                                              const wmEvent * /*event*/)
 {
-  UI_popup_block_invoke(C, mixie_chat_block_agent_bubble_create, nullptr, nullptr);
+  ::blender::ui::popup_block_invoke(C, mixie_chat_block_agent_bubble_create, nullptr, nullptr);
   return OPERATOR_FINISHED;
 }
 

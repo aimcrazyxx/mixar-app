@@ -35,7 +35,7 @@
 
 static SpaceLink *mixar_assets_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
-  SpaceMixarAssets *sassets = MEM_callocN<SpaceMixarAssets>("initmixarassets");
+  SpaceMixarAssets *sassets = MEM_new_zeroed<SpaceMixarAssets>("initmixarassets");
   sassets->spacetype = SPACE_MIXAR_ASSETS;
 
   /* Header (hosts the editor-type switch dropdown) */
@@ -129,7 +129,7 @@ void ED_spacetype_mixar_assets()
   st->blend_write = mixar_assets_blend_write;
 
   /* Main region */
-  ARegionType *art = MEM_callocN<ARegionType>("spacetype mixar_assets main");
+  ARegionType *art = MEM_new_zeroed<ARegionType>("spacetype mixar_assets main");
   art->regionid = RGN_TYPE_WINDOW;
   art->keymapflag = ED_KEYMAP_UI;
   art->init = mixar_assets_main_region_init;
@@ -139,7 +139,7 @@ void ED_spacetype_mixar_assets()
   BLI_addhead(&st->regiontypes, art);
 
   /* Header region */
-  art = MEM_callocN<ARegionType>("spacetype mixar_assets header");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixar_assets header");
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_HEADER;

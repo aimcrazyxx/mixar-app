@@ -205,7 +205,7 @@ void footer_draw_thumbnails(const bContext *C,
 
   /* Draw remove buttons (separate UI block for z-order) */
   if (pending_count > 0) {
-    uiBlock *remove_block = UI_block_begin(
+    ::blender::ui::Block *remove_block = ::blender::ui::block_begin(
         C, region, "remove_buttons", blender::ui::EmbossType::Emboss);
 
     int thumb_btn_x = pos.side_padding;
@@ -218,7 +218,7 @@ void footer_draw_thumbnails(const bContext *C,
       const int max_buttons = (count < FOOTER_MAX_ATTACHMENTS) ? count : FOOTER_MAX_ATTACHMENTS;
 
       for (int index = 0; index < max_buttons; index++) {
-        uiBut *remove_but = uiDefIconButO(remove_block,
+        ::blender::ui::Button *remove_but = uiDefIconButO(remove_block,
                                           ButType::But,
                                           "MIXIE_CHAT_OT_remove_attachment",
                                           blender::wm::OpCallContext::InvokeDefault,
@@ -228,14 +228,14 @@ void footer_draw_thumbnails(const bContext *C,
                                           remove_btn_size,
                                           remove_btn_size,
                                           std::nullopt);
-        RNA_int_set(UI_but_operator_ptr_ensure(remove_but), "index", index);
+        RNA_int_set(::blender::ui::button_operator_ptr_ensure(remove_but), "index", index);
 
         thumb_btn_x += pos.thumb_size + pos.thumb_spacing;
       }
     }
 
-    UI_block_end(C, remove_block);
-    UI_block_draw(C, remove_block);
+    ::blender::ui::block_end(C, remove_block);
+    ::blender::ui::block_draw(C, remove_block);
   }
 }
 

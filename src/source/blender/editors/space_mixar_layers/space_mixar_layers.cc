@@ -35,7 +35,7 @@
 
 static SpaceLink *mixar_layers_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
-  SpaceMixarLayers *slayers = MEM_callocN<SpaceMixarLayers>("initmixarlayers");
+  SpaceMixarLayers *slayers = MEM_new_zeroed<SpaceMixarLayers>("initmixarlayers");
   slayers->spacetype = SPACE_MIXAR_LAYERS;
 
   /* Top bar region (using RGN_TYPE_TOOL_PROPS for custom height) */
@@ -180,7 +180,7 @@ void ED_spacetype_mixar_layers()
   st->blend_write = mixar_layers_blend_write;
 
   /* Main region */
-  art = MEM_callocN<ARegionType>("spacetype mixar_layers main");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixar_layers main");
   art->regionid = RGN_TYPE_WINDOW;
   art->keymapflag = ED_KEYMAP_UI;
   art->init = mixar_layers_main_region_init;
@@ -190,7 +190,7 @@ void ED_spacetype_mixar_layers()
   BLI_addhead(&st->regiontypes, art);
 
   /* Top bar region - custom height, non-scrollable */
-  art = MEM_callocN<ARegionType>("spacetype mixar_layers topbar");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixar_layers topbar");
   art->regionid = RGN_TYPE_TOOL_PROPS;
   art->prefsizey = 40;  /* Custom height in pixels - adjustable */
   art->keymapflag = ED_KEYMAP_UI;
@@ -200,7 +200,7 @@ void ED_spacetype_mixar_layers()
   BLI_addhead(&st->regiontypes, art);
 
   /* Bottom bar region - custom height, non-scrollable */
-  art = MEM_callocN<ARegionType>("spacetype mixar_layers bottombar");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixar_layers bottombar");
   art->regionid = RGN_TYPE_EXECUTE;
   art->prefsizey = 30;  /* Custom height in pixels - adjustable */
   art->keymapflag = ED_KEYMAP_UI;

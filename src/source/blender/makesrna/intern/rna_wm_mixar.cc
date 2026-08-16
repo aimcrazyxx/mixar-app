@@ -42,32 +42,33 @@
 
 #ifdef RNA_RUNTIME
 
+namespace blender {
+
 static void rna_Window_global_areas_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
-  wmWindow *win = (wmWindow *)ptr->data;
+  wmWindow *win = static_cast<wmWindow *>(ptr->data);
   rna_iterator_listbase_begin(iter, ptr, &win->global_areas.areabase, nullptr);
 }
+
+}  // namespace blender
 
 #else /* RNA_RUNTIME */
 
 #  include "rna_internal_types.hh"
 
-#  include "BLI_ghash.h"
+namespace blender {
 
 void RNA_def_wm_mixar(BlenderRNA *brna)
 {
-  /* This file is part of the ``makesrna`` code generator, not the
-   * runtime Blender binary, so ``RNA_struct_find`` (which queries
-   * the runtime registry) isn't available here. Look up the
-   * Window struct directly in ``brna->structs_map`` — the same
-   * GHash used internally by the RNA define system. */
-  if (brna == nullptr || brna->structs_map == nullptr) {
+  /* `RNA_struct_find` is unavailable to the standalone makesrna executable.
+   * Blender 5.2 stores its registration map as Map<StringRef, StructRNA *>, so use the
+   * exact key type from rna_internal_types.hh rather than the post-5.2 UString API. */
+  if (brna == nullptr) {
     return;
   }
-  StructRNA *srna = static_cast<StructRNA *>(
-      BLI_ghash_lookup(brna->structs_map, "Window"));
+  StructRNA *srna = brna->structs_map.lookup_default(StringRef("Window"), nullptr);
   if (srna == nullptr) {
-    /* Window struct must already be registered; runs after RNA_def_wm. */
+    /* Window must already be registered; this runs immediately after RNA_def_wm. */
     return;
   }
 
@@ -88,5 +89,7 @@ void RNA_def_wm_mixar(BlenderRNA *brna)
                            "Window-global areas (topbar, statusbar). Mixar extension — "
                            "exposed so onboarding can address the topbar for redraw.");
 }
+
+}  // namespace blender
 
 #endif /* RNA_RUNTIME */

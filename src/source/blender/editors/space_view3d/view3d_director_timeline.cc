@@ -90,7 +90,7 @@ void draw_dock_panel(const ARegion *region, const int margin)
       &panel, PANEL_BG, nullptr, 1.0f, PANEL_BORDER, UI_SCALE_FAC, 12.0f * UI_SCALE_FAC);
 }
 
-uiBut *operator_button(uiBlock *block,
+::blender::ui::Button *operator_button(::blender::ui::Block *block,
                        const char *operator_id,
                        const int icon,
                        const char *label,
@@ -137,14 +137,14 @@ uiBut *operator_button(uiBlock *block,
                        tooltip);
 }
 
-void disable_button(uiBut *button, const bool disabled)
+void disable_button(::blender::ui::Button *button, const bool disabled)
 {
   if (button && disabled) {
-    UI_but_flag_enable(button, UI_BUT_DISABLED);
+    ::blender::ui::button_flag_enable(button, ::blender::ui::BUT_DISABLED);
   }
 }
 
-void draw_transport(uiBlock *block,
+void draw_transport(::blender::ui::Block *block,
                     const ARegion *region,
                     const DirectorViewState &state,
                     const bool playing,
@@ -154,7 +154,7 @@ void draw_transport(uiBlock *block,
 {
   const int group_w = size * 3 + gap * 2;
   int x = (region->winx - group_w) / 2;
-  uiBut *previous = operator_button(block,
+  ::blender::ui::Button *previous = operator_button(block,
                                     "MIXAR_OT_director_previous_beat",
                                     ICON_PREV_KEYFRAME,
                                     "",
@@ -164,7 +164,7 @@ void draw_transport(uiBlock *block,
                                     size,
                                     "Previous keyframe");
   x += size + gap;
-  uiBut *play = operator_button(block,
+  ::blender::ui::Button *play = operator_button(block,
                                 "MIXAR_OT_director_preview",
                                 playing ? ICON_PAUSE : ICON_PLAY,
                                 "",
@@ -174,7 +174,7 @@ void draw_transport(uiBlock *block,
                                 size,
                                 playing ? "Pause shot preview" : "Preview this shot");
   x += size + gap;
-  uiBut *next = operator_button(block,
+  ::blender::ui::Button *next = operator_button(block,
                                 "MIXAR_OT_director_next_beat",
                                 ICON_NEXT_KEYFRAME,
                                 "",
@@ -189,7 +189,7 @@ void draw_transport(uiBlock *block,
   disable_button(next, no_beats);
 }
 
-void draw_control_row(uiBlock *block,
+void draw_control_row(::blender::ui::Block *block,
                       const ARegion *region,
                       const DirectorViewState &state,
                       const bool playing,
@@ -250,7 +250,7 @@ void draw_control_row(uiBlock *block,
      * touches no camera, and Add Camera Here starts a fresh shot anyway.
      * That is the escape hatch for huge imported worlds — travel first,
      * then plant a camera where the frame is right. */
-    uiBut *explore = operator_button(block,
+    ::blender::ui::Button *explore = operator_button(block,
                                      "MIXAR_OT_director_explore",
                                      ICON_NONE,
                                      "Explore",
@@ -261,7 +261,7 @@ void draw_control_row(uiBlock *block,
                                      "Fly the scene freely without moving the shot camera; "
                                      "Add Camera Here then starts a new shot at that view");
     if (state.explore_mode) {
-      UI_but_flag_enable(explore, UI_BUT_ACTIVE_DEFAULT);
+      ::blender::ui::button_flag_enable(explore, ::blender::ui::BUT_ACTIVE_DEFAULT);
     }
   }
 
@@ -301,7 +301,7 @@ void draw_control_row(uiBlock *block,
                     "Group this shot's keyframes on the Moodboard");
     right -= (compact ? button_h : unit * 7) + gap;
   }
-  uiBut *capture = operator_button(
+  ::blender::ui::Button *capture = operator_button(
       block,
       state.locked ? "MIXAR_OT_director_new_take" : "MIXAR_OT_director_capture_beat",
       state.locked ? ICON_DUPLICATE : ICON_KEYFRAME_HLT,
@@ -340,15 +340,15 @@ void director_timeline_draw(const bContext *C, ARegion *region)
   playback_redraw_timer_update(C, playing);
   draw_dock_panel(region, margin);
 
-  uiBlock *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "mixar_director_timeline", blender::ui::EmbossType::Emboss);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  ::blender::ui::block_theme_style_set(block, ::blender::ui::BLOCK_THEME_STYLE_POPUP);
   draw_control_row(block, region, state, playing, margin, unit, gap);
   DirectorTimelineRuntime *runtime = view3d_director_timeline_runtime_ensure(region);
   const int content_top = region->winy - margin - unit * 2 - gap * 2;
   view3d_director_timeline_draw_content(region, state, runtime, margin, unit, content_top);
-  UI_block_end(C, block);
-  UI_block_draw(C, block);
+  ::blender::ui::block_end(C, block);
+  ::blender::ui::block_draw(C, block);
   GPU_blend(GPU_BLEND_NONE);
 }
 
@@ -405,7 +405,7 @@ void view3d_director_timeline_region_ensure(ScrArea *area)
 
 void view3d_director_timeline_region_register(SpaceType *st)
 {
-  ARegionType *art = MEM_callocN<ARegionType>("spacetype view3d director timeline region");
+  ARegionType *art = MEM_new_zeroed<ARegionType>("spacetype view3d director timeline region");
   art->regionid = RGN_TYPE_CHANNELS;
   art->prefsizey = VIEW3D_DIRECTOR_TIMELINE_HEIGHT;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
@@ -420,7 +420,7 @@ void view3d_director_timeline_region_register(SpaceType *st)
   /* Keep the old type readable long enough for SpaceType.init to migrate it.
    * Without a registered type, opening a .blend saved by the first Director
    * build would fail before view3d_director_timeline_region_ensure() runs. */
-  art = MEM_callocN<ARegionType>("spacetype view3d legacy director timeline region");
+  art = MEM_new_zeroed<ARegionType>("spacetype view3d legacy director timeline region");
   art->regionid = RGN_TYPE_FOOTER;
   art->poll = director_timeline_poll;
   BLI_addhead(&st->regiontypes, art);
