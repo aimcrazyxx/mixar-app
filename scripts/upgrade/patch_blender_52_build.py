@@ -43,13 +43,14 @@ def replace_counted(text: str, old: str, new: str, expected: int, label: str) ->
 def patch_layout(root: Path) -> None:
     path = root / "source/blender/editors/interface/interface_layout.cc"
     text = path.read_text(encoding="utf-8")
-    old = """  ui::Block *block = layout->block();
+
+    legacy = """  ui::Block *block = layout->block();
   if (!block || block->buttons.is_empty()) {
     return;
   }
   but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);
 """
-    new = """  ui::Block *block = layout->block();
+    intermediate = """  ui::Block *block = layout->block();
   if (!block) {
     return;
   }
@@ -59,7 +60,30 @@ def patch_layout(root: Path) -> None:
   }
   button_drawflag_enable(but, BUT_NO_TOOLTIP);
 """
-    text = replace_once(text, old, new, "interface_layout tooltip helper")
+    canonical = """  ui::Block *block = layout->block();
+  if (!block || block->buttons_ptrs.is_empty()) {
+    return;
+  }
+  block->buttons_ptrs.last()->drawflag |= BUT_NO_TOOLTIP;
+"""
+
+    counts = {
+        "legacy": text.count(legacy),
+        "intermediate": text.count(intermediate),
+        "canonical": text.count(canonical),
+    }
+    if counts == {"legacy": 0, "intermediate": 0, "canonical": 1}:
+        pass
+    elif counts == {"legacy": 1, "intermediate": 0, "canonical": 0}:
+        text = text.replace(legacy, canonical, 1)
+    elif counts == {"legacy": 0, "intermediate": 1, "canonical": 0}:
+        text = text.replace(intermediate, canonical, 1)
+    else:
+        raise RuntimeError(
+            "interface_layout tooltip helper: expected exactly one supported "
+            f"Blender 5.2 fragment, found {counts}"
+        )
+
     path.write_text(text, encoding="utf-8")
 
 
