@@ -145,6 +145,25 @@ def patch_mixar_section(root: Path) -> None:
         "Blender 5.2 theme accessor",
     )
 
+    # Blender 5.2 changed ARegionRuntime::panels_category to a typed ListBaseT.
+    # The old LISTBASE_FOREACH macro no longer parses here; use the native
+    # range-for API used by Blender 5.2 itself. pc_dyn is therefore a reference,
+    # not a pointer, so migrate its member access at the same time.
+    text = replace_counted(
+        text,
+        "LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {",
+        "for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {",
+        3,
+        "Blender 5.2 typed panel category iteration",
+    )
+    text = replace_counted(
+        text,
+        "pc_dyn->",
+        "pc_dyn.",
+        7,
+        "Blender 5.2 panel category reference member access",
+    )
+
     path.write_text(text, encoding="utf-8")
 
 
@@ -213,11 +232,17 @@ def audit(root: Path) -> None:
         "old tooltip drawflag helper": "but_drawflag_enable(",
         "old panel aspect ListBase check": "BLI_listbase_is_empty(&region->runtime->uiblocks)",
         "old theme accessor": "UI_GetTheme()",
+        "legacy panel category LISTBASE_FOREACH": "LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn",
     }
     combined = layout + "\n" + mixar + "\n" + agent_bubble
     for label, token in stale.items():
         if token in combined:
             raise RuntimeError(f"stale Blender 5.2 API remains: {label}: {token}")
+
+    if mixar.count("for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {") != 3:
+        raise RuntimeError("Mixar panel category renderer does not contain all three Blender 5.2 range-for loops")
+    if "pc_dyn->" in mixar:
+        raise RuntimeError("Mixar panel category renderer still treats range-for pc_dyn as a pointer")
 
     malformed_widgets_tail = """        else {
           wt = widget_type(WidgetStyle::Exec);
