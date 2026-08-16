@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Windows build of Mixar v3.3.3 (Blender 5.x fork) triggered manually.
-# Produces build\Prod\bin\ (mixar.exe + embedded python + scripts) as a zip artifact.
+# Windows release build for Mixar v3.3.3 (Blender 5.x fork).
+# Builds the pinned Blender source + pinned Windows dependency gitlink, packages
+# build\Prod\bin, uploads the Actions artifact and publishes/updates v3.3.3.
 
 name: Build Windows (v3.3.3)
 
@@ -13,73 +14,127 @@ on:
     branches:
       - release/v3.3.3
     paths:
+      - "VERSION"
       - "src/**"
+      - "scripts/windows/**"
+      - "cmake/**"
+      - ".gitmodules"
       - ".github/workflows/build-windows.yml"
+
+permissions:
+  contents: write
 
 env:
   MIXAR_ENV: Prod
+  BUILD_CORES: "2"
   ROBOCOPY_THREADS: "16"
 
 jobs:
   build-windows:
     name: Windows Release Build
     runs-on: windows-2022
-    timeout-minutes: 240
+    timeout-minutes: 360
+
     steps:
-      - name: Checkout repository
+      - name: Checkout repository and pinned Blender
         uses: actions/checkout@v4
         with:
           ref: release/v3.3.3
-          submodules: recursive
+          # Only initialize the direct `upstream` gitlink here. Blender marks its
+          # platform library submodules as update=none, so windows_x64 is handled
+          # explicitly in the next step.
+          submodules: true
           fetch-depth: 1
           lfs: false
 
-      - name: Checkout upstream Blender at pinned commit
+      - name: Validate release and upstream pins
         shell: pwsh
         run: |
-          $pinned = git rev-parse HEAD:upstream
-          Write-Host "Pinned upstream commit: $pinned"
-          Set-Location upstream
-          git checkout $pinned --quiet
-          git log --oneline -1
-          Set-Location ..
+          $ErrorActionPreference = "Stop"
 
-      - name: Checkout Windows precompiled libs (LFS) AFTER upstream checkout
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -ne "3.3.3") {
+            throw "VERSION must be 3.3.3 for release/v3.3.3; found '$version'"
+          }
+          Write-Host "Mixar version: $version"
+
+          $expectedUpstream = (git rev-parse HEAD:upstream).Trim()
+          $actualUpstream = (git -C upstream rev-parse HEAD).Trim()
+          Write-Host "Pinned upstream:  $expectedUpstream"
+          Write-Host "Checked upstream: $actualUpstream"
+
+          if ($expectedUpstream -ne $actualUpstream) {
+            git -C upstream fetch origin $expectedUpstream --depth=1
+            if ($LASTEXITCODE -ne 0) { throw "Failed to fetch pinned Blender commit $expectedUpstream" }
+            git -C upstream checkout --detach $expectedUpstream
+            if ($LASTEXITCODE -ne 0) { throw "Failed to checkout pinned Blender commit $expectedUpstream" }
+          }
+
+      - name: Checkout pinned Windows precompiled libraries (LFS)
         shell: pwsh
         run: |
-          # libs must be checked out AFTER the upstream tree is at the pinned
-          # commit (git checkout wipes paths it does not know about), and the
-          # pinned libs commit must be read from the upstream tree itself.
+          $ErrorActionPreference = "Stop"
           Set-Location upstream
-          $pinnedLib = git ls-tree HEAD:lib/windows_x64 2>$null
-          if (-not $pinnedLib) {
-              # lib/windows_x64 is a gitlink in the upstream tree; read its sha.
-              $pinnedLib = git rev-parse HEAD:lib/windows_x64
+
+          # Read the gitlink SHA from Blender's tree. This is the authoritative
+          # dependency pin; do not infer it from the Mixar parent repository.
+          $treeLine = (git ls-tree HEAD -- lib/windows_x64).Trim()
+          if (-not $treeLine) {
+            throw "Blender commit does not contain the lib/windows_x64 gitlink"
           }
-          Write-Host "Pinned libs commit: $pinnedLib"
+          $parts = $treeLine -split '\s+'
+          if ($parts.Count -lt 4 -or $parts[1] -ne "commit" -or $parts[2] -notmatch '^[0-9a-f]{40}$') {
+            throw "Unable to parse lib/windows_x64 gitlink: $treeLine"
+          }
+          $expectedLib = $parts[2]
+          Write-Host "Pinned windows_x64 libs: $expectedLib"
+
+          # Blender's .gitmodules sets update=none for platform libraries.
+          # Override that locally so the exact gitlink can be initialized
+          # non-interactively on GitHub Actions.
+          git config --local submodule.lib/windows_x64.update checkout
+          if ($LASTEXITCODE -ne 0) { throw "Failed to enable windows_x64 submodule checkout" }
+
+          $env:GIT_LFS_SKIP_SMUDGE = "1"
+          git submodule update --init --force --depth=1 lib/windows_x64
+          $submoduleExit = $LASTEXITCODE
+          Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue
+          if ($submoduleExit -ne 0) { throw "Failed to initialize pinned windows_x64 submodule" }
+
+          $actualLib = (git -C lib/windows_x64 rev-parse HEAD).Trim()
+          if ($actualLib -ne $expectedLib) {
+            throw "windows_x64 pin mismatch: expected $expectedLib, got $actualLib"
+          }
+
+          git -C lib/windows_x64 lfs install --local
+          if ($LASTEXITCODE -ne 0) { throw "git lfs install failed for windows_x64" }
+          git -C lib/windows_x64 lfs pull
+          if ($LASTEXITCODE -ne 0) { throw "git lfs pull failed for windows_x64" }
+
+          $libBytes = (Get-ChildItem lib/windows_x64 -Recurse -File | Measure-Object -Property Length -Sum).Sum
+          $libGB = [math]::Round($libBytes / 1GB, 2)
+          Write-Host "Windows libraries ready: $libGB GB"
+          if ($libBytes -lt 1GB) {
+            throw "windows_x64 checkout is unexpectedly small ($libGB GB); LFS content is probably incomplete"
+          }
+
           Set-Location ..
-          if (Test-Path upstream/lib/windows_x64) { Remove-Item -Recurse -Force upstream/lib/windows_x64 }
-          git clone --filter=blob:none https://projects.blender.org/blender/lib-windows_x64.git upstream/lib/windows_x64
-          Set-Location upstream/lib/windows_x64
-          git fetch origin $pinnedLib
-          git checkout $pinnedLib --quiet
-          git lfs pull
-          Set-Location ../../..
-          Write-Host "Libs checkout complete. Total: $([math]::Round((Get-ChildItem upstream/lib/windows_x64 -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1GB, 2)) GB"
 
       - name: Set up Ninja
         uses: seanmiddleditch/gha-setup-ninja@v5
+        with:
+          version: 1.11.1
 
-      - name: Install cmake
+      - name: Verify build tools
+        shell: pwsh
         run: |
-          choco install cmake --version 3.31.6 -y
+          $ErrorActionPreference = "Stop"
           cmake --version
-
-      - name: Prepare environment
-        shell: cmd
-        run: |
-          echo MIXAR_ENV=%MIXAR_ENV%
+          if ($LASTEXITCODE -ne 0) { throw "CMake is unavailable" }
           ninja --version
+          if ($LASTEXITCODE -ne 0) { throw "Ninja is unavailable" }
+          git lfs version
+          if ($LASTEXITCODE -ne 0) { throw "Git LFS is unavailable" }
 
       - name: Build Mixar
         shell: cmd
@@ -90,18 +145,64 @@ jobs:
             exit /b 1
           )
 
-      - name: Package artifact
+      - name: Validate build output
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $dir = "build\Prod\bin"
-          if (-not (Test-Path $dir)) { throw "build\Prod\bin not found" }
-          $zip = "mixar-windows-v3.3.3.zip"
-          Compress-Archive -Path "$dir\*" -DestinationPath $zip -Force
-          Write-Host "Artifact: $zip ($(Get-Item $zip).Length bytes)"
+          if (-not (Test-Path $dir)) { throw "$dir not found" }
 
-      - name: Upload artifact
+          $exe = Get-ChildItem $dir -Recurse -Filter mixar.exe -File | Select-Object -First 1
+          if (-not $exe) { throw "mixar.exe was not produced" }
+          if ($exe.Length -le 0) { throw "mixar.exe is empty" }
+
+          Write-Host "Built executable: $($exe.FullName)"
+          Write-Host "Executable size: $([math]::Round($exe.Length / 1MB, 2)) MB"
+
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = "build\Prod\bin"
+          $zip = "mixar-windows-v3.3.3.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+
+          # 7-Zip is preinstalled on the GitHub Windows runner and handles large
+          # release trees more reliably than Compress-Archive.
+          & "C:\Program Files\7-Zip\7z.exe" a -tzip -mx=5 $zip "$dir\*"
+          if ($LASTEXITCODE -ne 0) { throw "7-Zip packaging failed" }
+          if (-not (Test-Path $zip)) { throw "$zip was not created" }
+          Write-Host "Artifact: $zip ($([math]::Round((Get-Item $zip).Length / 1GB, 2)) GB)"
+
+      - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
           name: mixar-windows-v3.3.3
           path: mixar-windows-v3.3.3.zip
+          if-no-files-found: error
+          compression-level: 0
           retention-days: 90
+
+      - name: Deploy GitHub Release v3.3.3
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $zip = "mixar-windows-v3.3.3.zip"
+          if (-not (Test-Path $zip)) { throw "$zip not found before release deployment" }
+
+          gh release view v3.3.3 --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release v3.3.3 already exists; replacing Windows asset."
+            gh release upload v3.3.3 $zip --clobber --repo "${{ github.repository }}"
+          }
+          else {
+            Write-Host "Creating release v3.3.3."
+            gh release create v3.3.3 $zip `
+              --target "${{ github.sha }}" `
+              --title "Mixar v3.3.3" `
+              --notes "Windows x64 release build for Mixar v3.3.3." `
+              --repo "${{ github.repository }}"
+          }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub Release deployment failed" }
