@@ -139,6 +139,12 @@ def patch_mixar_section(root: Path) -> None:
                        (BLI_rcti_size_y(&region->v2d.mask) + 1);
 """
     text = replace_once(text, old_aspect, new_aspect, "Blender 5.2 panel aspect calculation")
+    text = replace_once(
+        text,
+        "const bTheme *btheme = UI_GetTheme();",
+        "const bTheme *btheme = ::blender::ui::theme::theme_get();",
+        "Blender 5.2 theme accessor",
+    )
 
     path.write_text(text, encoding="utf-8")
 
@@ -159,6 +165,7 @@ def audit(root: Path) -> None:
         "Block::buttons indexed access": "block->buttons[",
         "old tooltip drawflag helper": "but_drawflag_enable(",
         "old panel aspect ListBase check": "BLI_listbase_is_empty(&region->runtime->uiblocks)",
+        "old theme accessor": "UI_GetTheme()",
     }
     combined = layout + "\n" + mixar
     for label, token in stale.items():
