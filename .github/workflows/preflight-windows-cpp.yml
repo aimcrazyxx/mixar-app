@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: Preflight Windows C++
 
@@ -44,7 +44,7 @@ jobs:
           git config --global core.autocrlf false
 
       - name: Checkout fork
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: false
           fetch-depth: 1
