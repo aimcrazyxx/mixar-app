@@ -1,0 +1,84 @@
+# SPDX-FileCopyrightText: 2026 Mixar Team
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Windows build of Mixar v3.3.3 (Blender 5.x fork) triggered manually.
+# Produces build\Prod\bin\ (mixar.exe + embedded python + scripts) as a zip artifact.
+
+name: Build Windows (v3.3.3)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release/v3.3.3
+    paths:
+      - "src/**"
+      - ".github/workflows/build-windows.yml"
+
+env:
+  MIXAR_ENV: Prod
+  ROBOCOPY_THREADS: "16"
+
+jobs:
+  build-windows:
+    name: Windows Release Build
+    runs-on: windows-2022
+    timeout-minutes: 240
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: release/v3.3.3
+          submodules: recursive
+          fetch-depth: 1
+          lfs: false
+
+      - name: Checkout upstream Blender at pinned commit
+        shell: pwsh
+        run: |
+          $pinned = git rev-parse HEAD:upstream
+          Write-Host "Pinned upstream commit: $pinned"
+          Set-Location upstream
+          git checkout $pinned --quiet
+          git log --oneline -1
+          Set-Location ..
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install cmake
+        run: |
+          choco install cmake --version 3.31.6 -y
+          cmake --version
+
+      - name: Prepare environment
+        shell: cmd
+        run: |
+          echo MIXAR_ENV=%MIXAR_ENV%
+          ninja --version
+
+      - name: Build Mixar
+        shell: cmd
+        run: |
+          call "scripts\windows\build.bat"
+          if %ERRORLEVEL% neq 0 (
+            echo Build failed
+            exit /b 1
+          )
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          $dir = "build\Prod\bin"
+          if (-not (Test-Path $dir)) { throw "build\Prod\bin not found" }
+          $zip = "mixar-windows-v3.3.3.zip"
+          Compress-Archive -Path "$dir\*" -DestinationPath $zip -Force
+          Write-Host "Artifact: $zip ($(Get-Item $zip).Length bytes)"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mixar-windows-v3.3.3
+          path: mixar-windows-v3.3.3.zip
+          retention-days: 90
