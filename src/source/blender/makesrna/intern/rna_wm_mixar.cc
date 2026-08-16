@@ -61,12 +61,12 @@ namespace blender {
 void RNA_def_wm_mixar(BlenderRNA *brna)
 {
   /* `RNA_struct_find` is unavailable to the standalone makesrna executable.
-   * Blender 5.2 stores its registration map in a C++ Map, so use the same
-   * lookup form as rna_define.cc rather than the removed BLI_ghash API. */
+   * Blender 5.2 stores its registration map as Map<StringRef, StructRNA *>, so use the
+   * exact key type from rna_internal_types.hh rather than the post-5.2 UString API. */
   if (brna == nullptr) {
     return;
   }
-  StructRNA *srna = brna->structs_map.lookup_default(UString("Window"), nullptr);
+  StructRNA *srna = brna->structs_map.lookup_default(StringRef("Window"), nullptr);
   if (srna == nullptr) {
     /* Window must already be registered; this runs immediately after RNA_def_wm. */
     return;

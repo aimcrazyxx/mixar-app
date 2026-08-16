@@ -29,4 +29,4 @@ jobs:
             -f use_ninja=true \
             -f make_installer=true
           echo "Dispatched the latest Blender v5.2.0 / Python 3.13 Windows build."
-          echo "This retry includes the complete API sweep and the Blender 5.2 Window RNA-map port."
+          echo "This retry includes the Blender 5.2 StringRef RNA-map lookup fix."
