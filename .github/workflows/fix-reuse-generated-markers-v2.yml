@@ -1,0 +1,101 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Fix generated SPDX marker parsing
+
+on:
+  push:
+    branches:
+      - automation/blender-52-compile-repair-v2
+    paths:
+      - ".github/workflows/fix-reuse-generated-markers-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/blender-52-compile-repair-v2
+          fetch-depth: 0
+          submodules: false
+
+      - name: Prevent generated markers from being parsed as source metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin automation/blender-52-compile-repair-v2
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path(".github/workflows/capture-latest-windows-build.yml"): (
+                  "echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'",
+                  "echo '<!-- SPDX-''License-Identifier: GPL-3.0-or-later -->'",
+              ),
+              Path(".github/workflows/migrate-blender.yml"): (
+                  "echo 'SPDX-License-Identifier: GPL-2.0-or-later'",
+                  "echo 'SPDX-''License-Identifier: GPL-2.0-or-later'",
+              ),
+              Path(".github/workflows/scan-blender-52-apis.yml"): (
+                  '"<!-- SPDX-License-Identifier: GPL-3.0-or-later -->",',
+                  '"<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->",',
+              ),
+              Path("scripts/upgrade/conflicts.py"): (
+                  '"<!-- SPDX-License-Identifier: GPL-3.0-or-later -->\\n\\n",',
+                  '"<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->\\n\\n",',
+              ),
+          }
+
+          for path, (old, new) in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count > 1:
+                  raise SystemExit(f"unexpected duplicate marker in {path}: {count}")
+              if count == 1:
+                  text = text.replace(old, new, 1)
+                  path.write_text(text, encoding="utf-8")
+              elif new not in text:
+                  raise SystemExit(f"missing both old and fixed marker in {path}")
+          PY
+          git diff --check
+
+      - name: Validate REUSE compliance
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check reuse
+          reuse lint
+
+      - name: Commit REUSE fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            .github/workflows/capture-latest-windows-build.yml \
+            .github/workflows/migrate-blender.yml \
+            .github/workflows/scan-blender-52-apis.yml \
+            scripts/upgrade/conflicts.py
+          if git diff --cached --quiet; then
+            echo "Generated SPDX markers were already fixed."
+          else
+            git commit -m "fix: keep generated SPDX markers out of REUSE parsing"
+            git push origin HEAD:refs/heads/automation/blender-52-compile-repair-v2
+          fi
+
+      - name: Report failure
+        if: failure()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh pr comment 5 --repo aimcrazyxx/mixar-app \
+            --body "The generated-SPDX repair failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
