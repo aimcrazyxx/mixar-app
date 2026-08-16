@@ -3,7 +3,7 @@
 
 # Blender 5.2 API scan
 
-Scanned commit: `a5fd2e3fc6ec0415ff1664aeaad7c6c943f4b35c`
+Scanned commit: `af6ace48554b1eae53ea4489d1b70c8185fb0a01`
 
 The audit is report-only; it never rewrites source files.
 
