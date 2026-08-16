@@ -28,5 +28,5 @@ jobs:
             -f mixar_env=Prod \
             -f use_ninja=true \
             -f make_installer=true
-          echo "Dispatched Blender v5.2.0 / Python 3.13 Windows build."
-          echo "Retry 4 includes the complete UI, window runtime, allocator, CMake and layout API sweep."
+          echo "Dispatched the latest Blender v5.2.0 / Python 3.13 Windows build."
+          echo "This retry includes the complete API sweep and the Blender 5.2 Window RNA-map port."
