@@ -1,0 +1,70 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Monitor Windows build 31955273900
+
+on:
+  push:
+    branches:
+      - automation/monitor-windows-build-31955273900
+    paths:
+      - ".github/workflows/monitor-windows-build-31955273900.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Wait for build and report diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: "31955273900"
+        shell: bash
+        run: |
+          set +e
+          gh run watch "$RUN_ID" --repo aimcrazyxx/mixar-app --exit-status
+          watch_code=$?
+          conclusion="$(gh run view "$RUN_ID" --repo aimcrazyxx/mixar-app --json conclusion --jq .conclusion)"
+
+          if [ "$conclusion" = "success" ]; then
+            gh pr comment 5 --repo aimcrazyxx/mixar-app \
+              --body "Windows build $RUN_ID completed successfully for commit 8aadba39c99f0575aa0f469edb980b2f21877e00."
+            exit 0
+          fi
+
+          gh run view "$RUN_ID" --repo aimcrazyxx/mixar-app --log-failed > failed.log 2>&1 || true
+          python3 - <<'PY' > diagnostics.txt
+          from pathlib import Path
+          import re
+
+          text = Path("failed.log").read_text(encoding="utf-8", errors="replace")
+          keep = re.compile(
+              r"(?:FAILED:|fatal error|\berror C\d+|\berror:|ninja: build stopped|"
+              r"build\.bat exited|Process completed with exit code|Exception:|"
+              r"CMake Error|Traceback \(most recent call last\))",
+              re.IGNORECASE,
+          )
+          lines = [line for line in text.splitlines() if keep.search(line)]
+          if not lines:
+              lines = text.splitlines()[-250:]
+          digest = "\n".join(lines[-500:])
+          print(digest[-55000:])
+          PY
+
+          {
+            echo "Windows build $RUN_ID finished with conclusion: $conclusion (watch exit $watch_code)."
+            echo
+            echo '<details><summary>Compiler/build diagnostics</summary>'
+            echo
+            echo '```text'
+            cat diagnostics.txt
+            echo '```'
+            echo '</details>'
+          } > comment.md
+          gh pr comment 5 --repo aimcrazyxx/mixar-app --body-file comment.md
