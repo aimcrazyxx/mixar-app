@@ -1,0 +1,97 @@
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Repair current Blender 5.2 Windows failures
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/blender-52-build-20260816
+          fetch-depth: 0
+          submodules: false
+
+      - name: Repair Blender 5.2 interface API drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('src/source/blender/editors/interface')
+
+          p = root / 'interface_mixar_section.cc'
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r'block->buttons(?:_ptrs)*', 'block->buttons_ptrs', s)
+          s = s.replace('const bTheme *btheme = UI_GetTheme();',
+                        'const bTheme *btheme = ::blender::ui::theme::theme_get();')
+          marker = '#include "UI_interface_layout.hh"\n'
+          using_line = 'using namespace blender;  // Blender 5.2 DNA/BLF/GPU types live in blender.\n'
+          if using_line not in s:
+              if marker not in s:
+                  raise RuntimeError('interface_mixar_section include marker not found')
+              s = s.replace(marker, marker + '\n' + using_line, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = root / 'interface_mixar_section.hh'
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('namespace blender::ui {\nstruct Layout;\n}\n',
+                        'namespace blender {\nstruct ARegion;\nnamespace ui {\nstruct Layout;\n}\n}\n')
+          s = s.replace('\nstruct ARegion;\n\n/**\n * Draw a custom styled panel category tab bar for the MIXIE space.',
+                        '\n/**\n * Draw a custom styled panel category tab bar for the MIXIE space.')
+          s = s.replace('void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);',
+                        'void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *category_id_active);')
+          p.write_text(s, encoding='utf-8')
+
+          p = root / 'interface_layout.cc'
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r'block->buttons(?:_ptrs)*\.is_empty\(\)',
+                     'block->buttons_ptrs.is_empty()', s)
+          s = re.sub(r'but_drawflag_enable\(block->buttons(?:_ptrs)*\.last\(\)\.get\(\), BUT_NO_TOOLTIP\);',
+                     'block->buttons_ptrs.last()->drawflag |= BUT_NO_TOOLTIP;', s)
+          p.write_text(s, encoding='utf-8')
+
+          checks = {
+              root / 'interface_mixar_section.cc': [
+                  'block->buttons.', 'block->buttons[', 'buttons_ptrs_ptrs', 'UI_GetTheme()'
+              ],
+              root / 'interface_layout.cc': [
+                  'block->buttons.is_empty()', 'buttons_ptrs_ptrs',
+                  'but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP)'
+              ],
+          }
+          for path, stale in checks.items():
+              text = path.read_text(encoding='utf-8')
+              for token in stale:
+                  if token in text:
+                      raise RuntimeError(f'stale or non-idempotent Blender 5.2 API remains in {path}: {token}')
+          PY
+
+          git diff --check
+          git diff -- src/source/blender/editors/interface/interface_mixar_section.cc \
+                       src/source/blender/editors/interface/interface_mixar_section.hh \
+                       src/source/blender/editors/interface/interface_layout.cc
+
+      - name: Commit repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/source/blender/editors/interface/interface_mixar_section.cc \
+                  src/source/blender/editors/interface/interface_mixar_section.hh \
+                  src/source/blender/editors/interface/interface_layout.cc
+          if git diff --cached --quiet; then
+            echo 'No repair changes needed.'
+            exit 0
+          fi
+          git commit -m 'fix: normalize Blender 5.2 interface APIs'
+          git push origin HEAD:fix/blender-52-build-20260816

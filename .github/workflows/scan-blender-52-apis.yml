@@ -1,159 +1,78 @@
 # SPDX-FileCopyrightText: 2026 Mixar fork contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Scan Blender 5.2 API remnants
+name: Scan Blender 5.2 compatibility
+
 on:
   workflow_dispatch:
     inputs:
       build_after_scan:
-        description: "Dispatch the full Windows build when the audit is clean"
+        description: "Start the Windows build when the fast audit is clean"
         required: true
         type: boolean
-        default: true
+        default: false
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/upgrade/**"
+      - "scripts/windows/**"
+      - ".github/workflows/build-windows.yml"
+      - ".github/workflows/scan-blender-52-apis.yml"
+  push:
+    branches:
+      - main
+      - ci/build-windows
+    paths:
+      - "src/**"
+      - "scripts/upgrade/**"
+      - "scripts/windows/**"
+      - ".github/workflows/build-windows.yml"
+      - ".github/workflows/scan-blender-52-apis.yml"
+
+concurrency:
+  group: blender-52-scan-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: write
-  contents: write
+  contents: read
+
 jobs:
   scan:
+    name: Fast source audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout the exact revision being validated
+        uses: actions/checkout@v4
         with:
-          ref: main
-          fetch-depth: 0
           submodules: false
-      - name: Scan main without rewriting source
-        id: scan
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import os
-          import re
+          fetch-depth: 1
 
-          root = Path("src")
-          suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
-          files = sorted(
-              p for p in root.rglob("*")
-              if p.is_file() and (p.suffix in suffixes or p.name == "CMakeLists.txt")
-          )
+      - name: Python version
+        run: python3 --version
 
-          # These are report-only checks. Every source change is reviewed separately.
-          patterns = [
-              ("legacy uiLayout type", re.compile(r"\buiLayout\b"), None),
-              ("legacy uiBut type", re.compile(r"\buiBut\b"), None),
-              ("legacy uiBlock type", re.compile(r"\buiBlock\b"), None),
-              ("legacy ButType enum", re.compile(r"\bButType::"), None),
-              ("legacy uiTextEdit type", re.compile(r"\buiTextEdit\b"), None),
-              ("legacy uiWidgetStateInfo type", re.compile(r"\buiWidgetStateInfo\b"), None),
-              ("legacy but_placeholder_get", re.compile(r"\bbut_placeholder_get\b"), None),
-              ("legacy UI_style_get", re.compile(r"\bUI_style_get\b"), None),
-              ("legacy ui_fontscale", re.compile(r"\bui_fontscale\b"), None),
-              ("legacy UI_fontstyle_set", re.compile(r"\bUI_fontstyle_set\b"), None),
-              ("legacy ui_block_to_window", re.compile(r"\bui_block_to_window(?:_fl)?\b"), None),
-              ("legacy ui_window_to_block", re.compile(r"\bui_window_to_block(?:_fl)?\b"), None),
-              ("legacy ui_but_text_password_hide", re.compile(r"\bui_but_text_password_hide\b"), None),
-              ("legacy UI_draw_roundbox_corner_set", re.compile(r"\bUI_draw_roundbox_corner_set\b"), None),
-              ("legacy UI_draw_roundbox_4fv", re.compile(r"\bUI_draw_roundbox_4fv\b"), None),
-              ("legacy UI_widgetbase_draw_cache_flush", re.compile(r"\bUI_widgetbase_draw_cache_flush\b"), None),
-              ("legacy UI_CNR constant", re.compile(r"\bUI_CNR_[A-Z0-9_]+\b"), None),
-              ("old WM_operator_properties_create_ptr arity", re.compile(r"WM_operator_properties_create_ptr\s*\(\s*&"), None),
-              ("removed absolute_block call", re.compile(r"absolute_block\s*\("), None),
-              ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib"), None),
-              ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b"), None),
-              ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<"), None),
-              ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b"), None),
-              ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b"), None),
-              ("remaining uppercase UI block/button/popup API", re.compile(r"\bUI_(?:block|but|popup)_[A-Za-z0-9_]+\b"), None),
-              ("remaining old UI button constant", re.compile(r"\bUI_BUT_[A-Z0-9_]+\b"), None),
-              ("remaining old UI block constant", re.compile(r"\bUI_BLOCK_[A-Z0-9_]+\b"), None),
-              ("UString in Mixar Window RNA", re.compile(r"\bUString\b"), lambda p: p.name == "rna_wm_mixar.cc"),
-              ("merge conflict marker", re.compile(r"^(?:<<<<<<< .+|=======|>>>>>>> .+)$"), None),
-          ]
-
-          sections = []
-          blocking_hits = 0
-          for label, pattern, path_filter in patterns:
-              hits = []
-              for path in files:
-                  if path_filter is not None and not path_filter(path):
-                      continue
-                  for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
-                      if pattern.search(line):
-                          hits.append(f"- `{path}:{number}` — `{line.strip()}`")
-              blocking_hits += len(hits)
-              sections.extend([f"## {label}", "", f"Count: **{len(hits)}**", ""])
-              sections.extend(hits[:500] or ["- None"])
-              if len(hits) > 500:
-                  sections.append(f"- … {len(hits) - 500} more")
-              sections.append("")
-
-          anim_path = Path("src/source/blender/editors/animation/anim_filter.cc")
-          anim = anim_path.read_text(encoding="utf-8", errors="replace")
-          explicit_agent_case = "case SPACE_AGENT_BUBBLE:" in anim
-          if not explicit_agent_case:
-              blocking_hits += 1
-          sections.extend([
-              "## Custom-space switch coverage",
-              "",
-              f"`anim_filter.cc` explicitly handles `SPACE_AGENT_BUBBLE`: **{explicit_agent_case}**",
-              "",
-              "## Intentional compatibility symbol",
-              "",
-              "`UI_layout_disable_last_button_tooltip` is retained with the Blender 5.2 `blender::ui::Layout *` signature.",
-              "",
-          ])
-
-          report = [
-              "<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->",
-              "<!-- SPDX-License-Identifier: GPL-3.0-or-later -->",
-              "",
-              "# Blender 5.2 API scan",
-              "",
-              f"Scanned commit: `{os.environ['GITHUB_SHA']}`",
-              "",
-              "The audit is report-only; it never rewrites source files.",
-              "",
-              *sections,
-              "## Summary",
-              "",
-              f"Blocking stale-pattern hits: **{blocking_hits}**",
-              "",
-          ]
-          Path("docs/migration/blender-52-api-scan.md").write_text("\n".join(report), encoding="utf-8")
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"blocking_hits={blocking_hits}\n")
-          print(f"Blocking stale-pattern hits: {blocking_hits}")
-          PY
-          git diff --check
-      - name: Commit the audit report
-        id: report
+      - name: Audit Mixar source before expensive compilation
         run: |
           set -euo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/migration/blender-52-api-scan.md
-          if git diff --cached --quiet; then
-            echo "Audit report is unchanged."
-          else
-            git commit -m "ci: refresh Blender 5.2 API audit"
-          fi
-          git pull --rebase origin main
-          git push origin HEAD:refs/heads/main
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - name: Fail on stale APIs
-        if: ${{ steps.scan.outputs.blocking_hits != '0' }}
-        run: |
-          echo "::error::${{ steps.scan.outputs.blocking_hits }} blocking Blender 5.2 API remnants remain"
-          exit 1
-      - name: Dispatch full Windows validation and exact result capture
-        if: ${{ steps.scan.outputs.blocking_hits == '0' && inputs.build_after_scan }}
+          python3 scripts/upgrade/audit_blender_52_tree.py src --repository-mode | tee blender-52-preflight.log
+
+      - name: Upload audit log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-52-preflight-${{ github.run_id }}
+          path: blender-52-preflight.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Start full Windows validation
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_after_scan }}
         env:
           GH_TOKEN: ${{ github.token }}
-          TARGET_SHA: ${{ steps.report.outputs.sha }}
         run: |
-          set -euo pipefail
           gh workflow run build-windows.yml \
             --repo "$GITHUB_REPOSITORY" \
-            --ref main \
+            --ref "$GITHUB_REF_NAME" \
             -f runner=windows-latest \
             -f blender_ref=v5.2.0 \
             -f blender_version=5.2 \
@@ -161,8 +80,3 @@ jobs:
             -f backend_url= \
             -f use_ninja=true \
             -f make_installer=true
-          gh workflow run capture-latest-windows-build.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref main \
-            -f target_sha="$TARGET_SHA"
-          echo "Queued full Windows validation for $TARGET_SHA"

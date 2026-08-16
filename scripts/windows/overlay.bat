@@ -75,5 +75,27 @@ if %errorlevel% geq 8 (
     exit /b 1
 )
 
+REM Keep Mixar-owned UI extensions synchronized with the pinned Blender 5.2 API.
+REM This is deliberately applied after the overlay because source\ is the tree
+REM CMake compiles. The patch script is idempotent and audits the exact stale APIs
+REM that previously produced 100+ cascading compiler errors.
+echo Applying Blender 5.2 Mixar compatibility patch...
+python "%ROOT_DIR%\scripts\upgrade\patch_blender_52_build.py" "%SOURCE_DIR%"
+if %errorlevel% neq 0 (
+    echo Error: Blender 5.2 compatibility patch failed
+    exit /b 1
+)
+
+REM Scan every Mixar-owned file in the exact final source tree before CMake sees it.
+REM This catches unbalanced #if/#else/#endif blocks, stale Blender 5.2 APIs,
+REM merge-conflict markers and Python syntax errors in seconds instead of after
+REM thousands of C/C++ objects have already compiled.
+echo Auditing final Blender 5.2 overlay...
+python "%ROOT_DIR%\scripts\upgrade\audit_blender_52_tree.py" "%SOURCE_DIR%" --manifest-root "%SRC_DIR%"
+if %errorlevel% neq 0 (
+    echo Error: Blender 5.2 source preflight failed
+    exit /b 1
+)
+
 echo Overlay complete.
 exit /b 0

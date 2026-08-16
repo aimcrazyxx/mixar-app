@@ -1,0 +1,337 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+"""Apply the small Mixar source migrations required by Blender 5.2.
+
+The Windows build overlays ``src`` on top of the pinned Blender checkout in
+``source``. This script runs immediately after that overlay and updates only
+compatibility fragments in the generated tree. Every transformation is
+idempotent and validated so an upstream API change fails here with a useful
+message instead of producing hundreds of compiler errors later.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from fix_python_invalid_escapes import fix_tree as fix_python_escape_tree
+
+
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    count = text.count(old)
+    if count == 1:
+        return text.replace(old, new)
+    if count == 0 and new in text:
+        return text
+    raise RuntimeError(
+        f"{label}: expected one old fragment (or existing replacement), found {count}"
+    )
+
+
+def replace_counted(text: str, old: str, new: str, expected: int, label: str) -> str:
+    count = text.count(old)
+    if count == expected:
+        return text.replace(old, new)
+    if count == 0 and text.count(new) >= expected:
+        return text
+    raise RuntimeError(
+        f"{label}: expected {expected} old fragment(s) (or an already-patched file), found {count}"
+    )
+
+
+def patch_layout(root: Path) -> None:
+    path = root / "source/blender/editors/interface/interface_layout.cc"
+    text = path.read_text(encoding="utf-8")
+
+    legacy = """  ui::Block *block = layout->block();
+  if (!block || block->buttons.is_empty()) {
+    return;
+  }
+  but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);
+"""
+    intermediate = """  ui::Block *block = layout->block();
+  if (!block) {
+    return;
+  }
+  ui::Button *but = block->last_but();
+  if (!but) {
+    return;
+  }
+  button_drawflag_enable(but, BUT_NO_TOOLTIP);
+"""
+    canonical = """  ui::Block *block = layout->block();
+  if (!block || block->buttons_ptrs.is_empty()) {
+    return;
+  }
+  block->buttons_ptrs.last()->drawflag |= BUT_NO_TOOLTIP;
+"""
+
+    counts = {
+        "legacy": text.count(legacy),
+        "intermediate": text.count(intermediate),
+        "canonical": text.count(canonical),
+    }
+    if counts == {"legacy": 0, "intermediate": 0, "canonical": 1}:
+        pass
+    elif counts == {"legacy": 1, "intermediate": 0, "canonical": 0}:
+        text = text.replace(legacy, canonical, 1)
+    elif counts == {"legacy": 0, "intermediate": 1, "canonical": 0}:
+        text = text.replace(intermediate, canonical, 1)
+    else:
+        raise RuntimeError(
+            "interface_layout tooltip helper: expected exactly one supported "
+            f"Blender 5.2 fragment, found {counts}"
+        )
+
+    path.write_text(text, encoding="utf-8")
+
+
+def patch_mixar_header(root: Path) -> None:
+    path = root / "source/blender/editors/interface/interface_mixar_section.hh"
+    text = path.read_text(encoding="utf-8")
+
+    global_forward = """/* Custom panel category tab drawing for MIXIE space                     */
+
+struct ARegion;
+
+/**
+"""
+    namespaced_section = """/* Custom panel category tab drawing for MIXIE space                     */
+
+/**
+"""
+    if global_forward in text:
+        text = text.replace(global_forward, namespaced_section, 1)
+
+    legacy_namespace = """namespace blender::ui {
+struct Layout;
+}
+"""
+    current_namespace = """namespace blender {
+struct ARegion;
+namespace ui {
+struct Layout;
+}
+}
+"""
+    canonical_namespace = """namespace blender {
+struct ARegion;
+namespace ui {
+struct Layout;
+}
+}  // namespace blender
+"""
+    namespace_counts = {
+        "legacy": text.count(legacy_namespace),
+        "current": text.count(current_namespace),
+        "canonical": text.count(canonical_namespace),
+    }
+    if namespace_counts == {"legacy": 0, "current": 0, "canonical": 1}:
+        pass
+    elif namespace_counts == {"legacy": 1, "current": 0, "canonical": 0}:
+        text = text.replace(legacy_namespace, canonical_namespace, 1)
+    elif namespace_counts == {"legacy": 0, "current": 1, "canonical": 0}:
+        text = text.replace(current_namespace, canonical_namespace, 1)
+    else:
+        raise RuntimeError(
+            "Mixar header Blender namespace: expected exactly one supported "
+            f"namespace fragment, found {namespace_counts}"
+        )
+
+    text = replace_once(
+        text,
+        "void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);",
+        "void UI_panel_category_draw_all_mixar(::blender::ARegion *region, const char *category_id_active);",
+        "Mixar panel ARegion signature",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def patch_mixar_section(root: Path) -> None:
+    path = root / "source/blender/editors/interface/interface_mixar_section.cc"
+    text = path.read_text(encoding="utf-8")
+
+    anchor = '#include "UI_interface_layout.hh"\n'
+    namespace_anchor = anchor + "\nusing namespace blender;\n"
+    if namespace_anchor not in text:
+        text = replace_once(
+            text,
+            anchor,
+            namespace_anchor,
+            "Mixar implementation Blender namespace lookup",
+        )
+
+    text = replace_counted(
+        text,
+        "block->buttons.size()",
+        "block->buttons_ptrs.size()",
+        5,
+        "Blender 5.2 Block button count",
+    )
+    text = replace_counted(
+        text,
+        "block->buttons[i].get()",
+        "block->buttons_ptrs[i].get()",
+        5,
+        "Blender 5.2 Block button indexing",
+    )
+
+    old_aspect = """  const float aspect = BLI_listbase_is_empty(&region->runtime->uiblocks) ?
+                            1.0f :
+                            ((::blender::ui::Block *)region->runtime->uiblocks.first)->aspect;
+"""
+    new_aspect = """  const float aspect = BLI_rctf_size_y(&region->v2d.cur) /
+                       (BLI_rcti_size_y(&region->v2d.mask) + 1);
+"""
+    text = replace_once(text, old_aspect, new_aspect, "Blender 5.2 panel aspect calculation")
+    text = replace_once(
+        text,
+        "const bTheme *btheme = UI_GetTheme();",
+        "const bTheme *btheme = ::blender::ui::theme::theme_get();",
+        "Blender 5.2 theme accessor",
+    )
+
+    # Blender 5.2 changed ARegionRuntime::panels_category to a typed ListBaseT.
+    # The old LISTBASE_FOREACH macro no longer parses here; use the native
+    # range-for API used by Blender 5.2 itself. pc_dyn is therefore a reference,
+    # not a pointer, so migrate its member access at the same time.
+    text = replace_counted(
+        text,
+        "LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->runtime->panels_category) {",
+        "for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {",
+        3,
+        "Blender 5.2 typed panel category iteration",
+    )
+    text = replace_counted(
+        text,
+        "pc_dyn->",
+        "pc_dyn.",
+        7,
+        "Blender 5.2 panel category reference member access",
+    )
+
+    path.write_text(text, encoding="utf-8")
+
+
+def patch_widgets(root: Path) -> None:
+    path = root / "source/blender/editors/interface/interface_widgets.cc"
+    text = path.read_text(encoding="utf-8")
+
+    malformed = """#ifdef USE_UI_TOOLBAR_HACK
+        else if ((but->icon != ICON_NONE) && but_is_tool(but)) {
+          wt = widget_type(WidgetStyle::ToolbarItem);
+        }
+#endif
+        else {
+          wt = widget_type(WidgetStyle::Exec);
+        }
+#else
+        wt = widget_type(WidgetStyle::Exec);
+#endif
+"""
+    corrected = """#ifdef USE_UI_TOOLBAR_HACK
+        else if ((but->icon != ICON_NONE) && but_is_tool(but)) {
+          wt = widget_type(WidgetStyle::ToolbarItem);
+        }
+#endif
+        else {
+          wt = widget_type(WidgetStyle::Exec);
+        }
+"""
+    text = replace_once(text, malformed, corrected, "interface_widgets toolbar preprocessor block")
+    path.write_text(text, encoding="utf-8")
+
+
+def patch_agent_bubble(root: Path) -> None:
+    path = root / "source/blender/editors/space_agent_bubble/space_agent_bubble.cc"
+    text = path.read_text(encoding="utf-8")
+    text = replace_counted(
+        text,
+        "bTheme *btheme = UI_GetTheme();",
+        "bTheme *btheme = ::blender::ui::theme::theme_get();",
+        2,
+        "Blender 5.2 agent bubble theme accessor",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def audit(root: Path) -> None:
+    layout = (root / "source/blender/editors/interface/interface_layout.cc").read_text(
+        encoding="utf-8"
+    )
+    mixar = (root / "source/blender/editors/interface/interface_mixar_section.cc").read_text(
+        encoding="utf-8"
+    )
+    widgets = (root / "source/blender/editors/interface/interface_widgets.cc").read_text(
+        encoding="utf-8"
+    )
+    header = (root / "source/blender/editors/interface/interface_mixar_section.hh").read_text(
+        encoding="utf-8"
+    )
+    agent_bubble = (
+        root / "source/blender/editors/space_agent_bubble/space_agent_bubble.cc"
+    ).read_text(encoding="utf-8")
+
+    stale = {
+        "Block::buttons member access": "block->buttons.",
+        "Block::buttons indexed access": "block->buttons[",
+        "old tooltip drawflag helper": "but_drawflag_enable(",
+        "old panel aspect ListBase check": "BLI_listbase_is_empty(&region->runtime->uiblocks)",
+        "old theme accessor": "UI_GetTheme()",
+        "legacy panel category LISTBASE_FOREACH": "LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn",
+    }
+    combined = layout + "\n" + mixar + "\n" + agent_bubble
+    for label, token in stale.items():
+        if token in combined:
+            raise RuntimeError(f"stale Blender 5.2 API remains: {label}: {token}")
+
+    if mixar.count("for (PanelCategoryDyn &pc_dyn : region->runtime->panels_category) {") != 3:
+        raise RuntimeError("Mixar panel category renderer does not contain all three Blender 5.2 range-for loops")
+    if "pc_dyn->" in mixar:
+        raise RuntimeError("Mixar panel category renderer still treats range-for pc_dyn as a pointer")
+
+    malformed_widgets_tail = """        else {
+          wt = widget_type(WidgetStyle::Exec);
+        }
+#else
+        wt = widget_type(WidgetStyle::Exec);
+#endif
+"""
+    if malformed_widgets_tail in widgets:
+        raise RuntimeError("interface_widgets.cc still contains the orphaned #else/#endif block")
+
+    if "namespace blender {\nstruct ARegion;" not in header:
+        raise RuntimeError("Mixar header is missing blender::ARegion forward declaration")
+    if "void UI_panel_category_draw_all_mixar(::blender::ARegion *region" not in header:
+        raise RuntimeError("Mixar panel header still exposes the pre-5.2 global ARegion type")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "root",
+        type=Path,
+        help="Blender overlay root (normally the repository source directory)",
+    )
+    args = parser.parse_args()
+    root = args.root.resolve()
+
+    patch_layout(root)
+    patch_mixar_header(root)
+    patch_mixar_section(root)
+    patch_widgets(root)
+    patch_agent_bubble(root)
+
+    files, literals, escapes = fix_python_escape_tree(root)
+    print(
+        "Python escape cleanup: "
+        f"{files} files, {literals} literals, {escapes} invalid escapes fixed"
+    )
+
+    audit(root)
+    print(f"Blender 5.2 Mixar compatibility patch is clean: {root}")
+
+
+if __name__ == "__main__":
+    main()

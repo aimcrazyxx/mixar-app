@@ -7,6 +7,8 @@ that tests can be run outside of Blender without import errors."""
 import sys
 from unittest.mock import MagicMock
 
+import pytest
+
 
 def _install_bpy_stubs():
     """Install minimal bpy stub hierarchy into sys.modules."""
@@ -29,3 +31,26 @@ def _install_bpy_stubs():
 
 
 _install_bpy_stubs()
+
+
+@pytest.fixture(autouse=True)
+def _deterministic_download_watchdog_clock(request, monkeypatch):
+    """Keep the stranded-download regression independent of runner uptime.
+
+    ``time.monotonic()`` starts at boot. On a freshly provisioned CI runner it
+    can be younger than the watchdog deadline, so that test's synthetic
+    ``now - age`` timestamp would otherwise clamp to almost zero and stop
+    representing an actually stranded download. Pin the clock only for this
+    one regression; production code and every other timing test keep the real
+    monotonic clock.
+    """
+    if request.node.name != "test_watchdog_fails_a_stranded_download":
+        yield
+        return
+
+    from mixar.modules.common.job_queue import constants as constants
+    from mixar.modules.common.job_queue.core import queue_manager
+
+    fake_now = float(constants.DOWNLOAD_WATCHDOG_DEADLINE_S) + 3600.0
+    monkeypatch.setattr(queue_manager.time, "monotonic", lambda: fake_now)
+    yield

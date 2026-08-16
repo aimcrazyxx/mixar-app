@@ -7,26 +7,24 @@ on:
       - "installer/**"
       - "scripts/packaging/**"
       - "scripts/upgrade/**"
+      - "scripts/python_requirements.txt"
       - "src/scripts/mixar/modules/byok/**"
+      - "src/scripts/mixar/modules/testing/mock_bpy.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py"
-      - "tests/test_byok_base_url.py"
-      - "tests/test_byok_custom_provider.py"
-      - "tests/test_byok_openai_models.py"
-      - "tests/test_provider_errors.py"
+      - "tests/**"
       - ".github/workflows/validate-packaging.yml"
   pull_request:
     paths:
       - "installer/**"
       - "scripts/packaging/**"
       - "scripts/upgrade/**"
+      - "scripts/python_requirements.txt"
       - "src/scripts/mixar/modules/byok/**"
+      - "src/scripts/mixar/modules/testing/mock_bpy.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/provider_errors.py"
       - "src/scripts/mixar/modules/space_mixie_chat/core/steps_format.py"
-      - "tests/test_byok_base_url.py"
-      - "tests/test_byok_custom_provider.py"
-      - "tests/test_byok_openai_models.py"
-      - "tests/test_provider_errors.py"
+      - "tests/**"
       - ".github/workflows/validate-packaging.yml"
   workflow_dispatch:
 concurrency:
@@ -98,9 +96,12 @@ jobs:
           path: ${{ runner.temp }}/pkgcheck/*-setup.exe
           if-no-files-found: error
           retention-days: 7
+      - name: Install standalone test dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check pytest numpy
+          python3 -m pip install --disable-pip-version-check -r scripts/python_requirements.txt
       - name: Test the modules this fork owns
         run: |
-          python3 -m pip install --disable-pip-version-check pytest
           for t in tests/test_byok_base_url.py tests/test_byok_custom_provider.py tests/test_byok_openai_models.py tests/test_provider_errors.py; do
             test -f "$t" || { echo "::error::$t is missing"; exit 1; }
           done
@@ -109,9 +110,21 @@ jobs:
             tests/test_byok_openai_models.py tests/test_provider_errors.py
       - name: Full test suite (informational)
         continue-on-error: true
+        shell: bash
         run: |
-          python3 -m pip install --disable-pip-version-check \
-            -r scripts/python_requirements.txt || echo "::warning::app requirements did not install cleanly"
+          set -o pipefail
           python3 -m pytest -q -p no:cacheprovider \
             --continue-on-collection-errors tests \
-            | tail -40 | tee -a "$GITHUB_STEP_SUMMARY"
+            2>&1 | tee full-test-suite.log
+          status=${PIPESTATUS[0]}
+          tail -80 full-test-suite.log | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - name: Upload full-suite diagnostics
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: full-test-suite-${{ github.run_id }}
+          path: full-test-suite.log
+          if-no-files-found: warn
+          retention-days: 7
