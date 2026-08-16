@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Audit PR 5 REUSE compliance
+
+on:
+  push:
+    branches:
+      - automation/monitor-windows-build-31955273900
+    paths:
+      - ".github/workflows/audit-reuse-pr5.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/blender-52-compile-repair-v2
+          submodules: false
+
+      - name: Run REUSE lint and report exact failures
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set +e
+          python3 -m pip install --disable-pip-version-check reuse
+          reuse lint > reuse.log 2>&1
+          code=$?
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("reuse.log").read_text(encoding="utf-8", errors="replace")
+          Path("reuse-tail.log").write_text(text[-55000:], encoding="utf-8")
+          PY
+          {
+            echo "REUSE audit for PR #5 exited with code $code."
+            echo
+            echo '<details><summary>REUSE diagnostics</summary>'
+            echo
+            echo '```text'
+            cat reuse-tail.log
+            echo '```'
+            echo '</details>'
+          } > comment.md
+          gh pr comment 5 --repo aimcrazyxx/mixar-app --body-file comment.md
