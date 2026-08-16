@@ -25,14 +25,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          run_id="$(gh run list \
-            --repo "$GITHUB_REPOSITORY" \
-            --workflow fix-blender-52-interface-handlers.yml \
-            --branch main \
-            --event workflow_dispatch \
-            --limit 10 \
-            --json databaseId,createdAt,status,conclusion,url \
-            --jq 'sort_by(.databaseId) | last | .databaseId')"
+          run_id=""
+          for _ in $(seq 1 120); do
+            run_id="$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow fix-blender-52-interface-handlers.yml \
+              --branch main \
+              --event workflow_dispatch \
+              --limit 20 \
+              --json databaseId,createdAt,status,conclusion,url \
+              --jq '[.[] | select(.databaseId > 31945573705)] | sort_by(.databaseId) | last | .databaseId // empty')"
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            sleep 5
+          done
           test -n "$run_id"
           set +e
           gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 5 --exit-status
