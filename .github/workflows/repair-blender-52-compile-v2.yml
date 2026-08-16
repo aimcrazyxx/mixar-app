@@ -1,0 +1,171 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Repair Blender 5.2 compile blockers
+
+on:
+  push:
+    branches:
+      - automation/blender-52-compile-repair-v2
+    paths:
+      - ".github/workflows/repair-blender-52-compile-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  repair-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/blender-52-compile-repair-v2
+          fetch-depth: 0
+          submodules: false
+
+      - name: Synchronize branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin automation/blender-52-compile-repair-v2
+
+      - name: Port the remaining interface code to Blender 5.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          layout_path = Path("src/source/blender/editors/interface/interface_layout.cc")
+          layout = layout_path.read_text(encoding="utf-8")
+          old_layout = """void UI_layout_disable_last_button_tooltip(ui::Layout *layout)
+          {
+            if (!layout) {
+              return;
+            }
+            ui::Block *block = layout->block();
+            if (!block || block->buttons.is_empty()) {
+              return;
+            }
+            but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);
+          }"""
+          new_layout = """void UI_layout_disable_last_button_tooltip(ui::Layout *layout)
+          {
+            if (!layout) {
+              return;
+            }
+            ui::Block *block = layout->block();
+            if (!block || block->buttons_ptrs.is_empty()) {
+              return;
+            }
+            button_drawflag_enable(block->buttons_ptrs.last().get(), BUT_NO_TOOLTIP);
+          }"""
+          if old_layout in layout:
+              layout = layout.replace(old_layout, new_layout, 1)
+          elif new_layout not in layout:
+              raise SystemExit("unexpected UI_layout_disable_last_button_tooltip implementation")
+          layout_path.write_text(layout, encoding="utf-8")
+
+          section_path = Path("src/source/blender/editors/interface/interface_mixar_section.cc")
+          section = section_path.read_text(encoding="utf-8")
+          old_sizes = section.count("block->buttons.size()")
+          old_indexes = section.count("block->buttons[i].get()")
+          if old_sizes not in (0, 5) or old_indexes not in (0, 5):
+              raise SystemExit(
+                  f"unexpected stale Block button access counts: size={old_sizes}, index={old_indexes}"
+              )
+          section = section.replace("block->buttons.size()", "block->buttons_ptrs.size()")
+          section = section.replace("block->buttons[i].get()", "block->buttons_ptrs[i].get()")
+
+          # Blender 5.2 replaced PanelCategoryDyn rectangles with real UI buttons and
+          # panel_category_tabs_draw_all(). This old standalone renderer is not called by
+          # Mixie's ED_region_panels path and cannot be ported by renaming fields; remove it.
+          category_marker = "\n/* -------------------------------------------------------------------- */\n/* Mixar Custom Panel Category Tabs"
+          if category_marker in section:
+              section = section.split(category_marker, 1)[0].rstrip() + "\n"
+          if "UI_panel_category_draw_all_mixar" in section:
+              raise SystemExit("obsolete Mixar panel-category renderer remains in implementation")
+          section_path.write_text(section, encoding="utf-8")
+
+          header_path = Path("src/source/blender/editors/interface/interface_mixar_section.hh")
+          header = header_path.read_text(encoding="utf-8")
+          header_marker = "\n/* -------------------------------------------------------------------- */\n/* Custom panel category tab drawing for MIXIE space"
+          if header_marker in header:
+              header = header.split(header_marker, 1)[0].rstrip() + "\n"
+          if "struct ARegion;" in header or "UI_panel_category_draw_all_mixar" in header:
+              raise SystemExit("obsolete global ARegion/category declaration remains")
+          header_path.write_text(header, encoding="utf-8")
+
+          checks = {
+              "legacy Block::buttons member access": re.compile(r"->buttons(?:\.|\[)"),
+              "legacy but_drawflag helper": re.compile(r"\bbut_drawflag_(?:enable|disable)\b"),
+              "removed UI_GetTheme": re.compile(r"\bUI_GetTheme\b"),
+              "obsolete Mixar category renderer": re.compile(r"\bUI_panel_category_draw_all_mixar\b"),
+          }
+          source_files = [
+              p for p in Path("src").rglob("*")
+              if p.is_file() and p.suffix in {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp"}
+          ]
+          failures = []
+          for label, pattern in checks.items():
+              for path in source_files:
+                  for number, line in enumerate(
+                      path.read_text(encoding="utf-8", errors="replace").splitlines(), 1
+                  ):
+                      if pattern.search(line):
+                          failures.append(f"{label}: {path}:{number}: {line.strip()}")
+          if failures:
+              raise SystemExit("\n".join(failures))
+          PY
+          git diff --check
+          git diff --stat
+
+      - name: Commit repairs
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            src/source/blender/editors/interface/interface_layout.cc \
+            src/source/blender/editors/interface/interface_mixar_section.cc \
+            src/source/blender/editors/interface/interface_mixar_section.hh
+          if git diff --cached --quiet; then
+            echo "Repairs were already applied."
+          else
+            git commit -m "fix: port remaining Blender 5.2 interface accessors"
+            git push origin HEAD:refs/heads/automation/blender-52-compile-repair-v2
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch full Windows validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ steps.commit.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            remote_sha="$(gh api repos/aimcrazyxx/mixar-app/git/ref/heads/automation/blender-52-compile-repair-v2 --jq .object.sha)"
+            if [ "$remote_sha" = "$EXPECTED_SHA" ]; then
+              break
+            fi
+            sleep 2
+          done
+          test "$remote_sha" = "$EXPECTED_SHA"
+          gh workflow run build-windows.yml \
+            --repo aimcrazyxx/mixar-app \
+            --ref automation/blender-52-compile-repair-v2 \
+            -f runner=windows-latest \
+            -f blender_ref=v5.2.0 \
+            -f blender_version=5.2 \
+            -f mixar_env=Prod \
+            -f backend_url= \
+            -f use_ninja=true \
+            -f make_installer=true
+          echo "Dispatched Blender 5.2 Windows build for $EXPECTED_SHA."
