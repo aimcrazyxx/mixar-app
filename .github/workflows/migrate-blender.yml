@@ -151,7 +151,7 @@ jobs:
           {
             echo '<!--'
             echo 'SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited'
-            echo 'SPDX-License-Identifier: GPL-2.0-or-later'
+            echo 'SPDX-''License-Identifier: GPL-2.0-or-later'
             echo '-->'
             echo
             echo "# Overlay migration: ${BASE_REF} to ${TARGET_REF}"

@@ -63,15 +63,3 @@ void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout);
  * #UI_BUT2_MIXAR_INPUT so it renders with visible border and focus glow.
  */
 void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout);
-
-/* -------------------------------------------------------------------- */
-/* Custom panel category tab drawing for MIXIE space                     */
-
-struct ARegion;
-
-/**
- * Draw a custom styled panel category tab bar for the MIXIE space.
- * Replaces the default Blender vertical tab strip with a modern design:
- * dark background, accent-blue active pill with glow, subtle inactive tabs.
- */
-void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);
