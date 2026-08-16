@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Mixar fork contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Remove Python invalid-escape SyntaxWarnings from the generated build tree.
+r"""Remove Python invalid-escape SyntaxWarnings from the generated build tree.
 
 Python historically preserved unknown escapes such as ``\]`` and ``\.`` in
 ordinary string literals, but modern Python emits ``SyntaxWarning`` for them
