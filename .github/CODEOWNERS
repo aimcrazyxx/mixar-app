@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Default owner: every change in the official repository should be reviewed
+# by the repository owner unless a more specific ownership rule is added later.
+* @aimcrazyxx
+
+# Repository governance, CI, release and security-sensitive configuration.
+/.github/ @aimcrazyxx
+/scripts/ @aimcrazyxx
+/CMakeLists.txt @aimcrazyxx
+/cmake/ @aimcrazyxx
+/SECURITY.md @aimcrazyxx
+/CONTRIBUTING.md @aimcrazyxx
+/REUSE.toml @aimcrazyxx
+
+# Authentication, provider/BYOK, networking and update paths.
+/src/scripts/mixar/modules/byok/ @aimcrazyxx
+/src/scripts/mixar/modules/common/api/ @aimcrazyxx
+/src/scripts/mixar/modules/auth/ @aimcrazyxx
+/src/scripts/mixar/modules/update/ @aimcrazyxx
+
+# Native Blender/Mixar integration and packaging-critical code.
+/src/source/ @aimcrazyxx
+/src/scripts/mixar/ @aimcrazyxx
