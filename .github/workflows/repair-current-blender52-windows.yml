@@ -4,19 +4,12 @@ name: Repair current Blender 5.2 Windows failures
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - fix/blender-52-build-20260816
-    paths:
-      - "src/source/blender/editors/interface/**"
-      - ".github/workflows/repair-current-blender52-windows.yml"
 
 permissions:
   contents: write
 
 jobs:
   repair:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
