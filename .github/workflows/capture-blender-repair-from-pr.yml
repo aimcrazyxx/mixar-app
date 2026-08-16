@@ -6,7 +6,8 @@ on:
     types: [synchronize]
 permissions:
   actions: read
-  contents: write
+  contents: read
+  pull-requests: write
 jobs:
   capture:
     if: >-
@@ -15,60 +16,72 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          submodules: false
-      - name: Capture latest repair run
+      - name: Capture repair and audit workflow results
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          run_id=""
-          for _ in $(seq 1 120); do
-            run_id="$(gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow fix-blender-52-interface-handlers.yml \
-              --branch main \
-              --event workflow_dispatch \
-              --limit 20 \
-              --json databaseId,createdAt,status,conclusion,url \
-              --jq '[.[] | select(.databaseId > 31945573705)] | sort_by(.databaseId) | last | .databaseId // empty')"
-            if [ -n "$run_id" ]; then
-              break
+          sleep 10
+
+          capture_workflow() {
+            local workflow="$1"
+            local label="$2"
+            local run_id=""
+            for _ in $(seq 1 120); do
+              run_id="$(gh run list \
+                --repo "$GITHUB_REPOSITORY" \
+                --workflow "$workflow" \
+                --branch main \
+                --event workflow_dispatch \
+                --limit 20 \
+                --json databaseId,createdAt,status,conclusion,url \
+                --jq 'sort_by(.databaseId) | last | .databaseId // empty')"
+              if [ -n "$run_id" ]; then
+                break
+              fi
+              sleep 2
+            done
+            if [ -z "$run_id" ]; then
+              {
+                echo "## $label"
+                echo
+                echo "No run found for \`$workflow\`."
+                echo
+              } >> /tmp/diagnostic.md
+              return 0
             fi
-            sleep 5
-          done
-          test -n "$run_id"
-          set +e
-          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 5 --exit-status
-          set -e
-          gh run view "$run_id" \
-            --repo "$GITHUB_REPOSITORY" \
-            --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt,jobs \
-            > /tmp/repair-summary.json
-          gh run view "$run_id" \
-            --repo "$GITHUB_REPOSITORY" \
-            --log-failed \
-            > /tmp/repair-failed.log 2>&1 || true
+            set +e
+            gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 5 --exit-status
+            set -e
+            gh run view "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt,jobs \
+              > "/tmp/${label}-summary.json"
+            gh run view "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --log-failed \
+              > "/tmp/${label}-failed.log" 2>&1 || true
+            {
+              echo "## $label"
+              echo
+              echo '```json'
+              cat "/tmp/${label}-summary.json"
+              echo '```'
+              echo
+              echo '```text'
+              tail -n 400 "/tmp/${label}-failed.log"
+              echo '```'
+              echo
+            } >> /tmp/diagnostic.md
+          }
+
           {
-            echo '<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->'
-            echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'
+            echo 'Automation diagnostics for the Blender 5.2 repair and expanded stale-API audit.'
             echo
-            echo '# Latest Blender 5.2 repair workflow'
-            echo
-            echo '```json'
-            cat /tmp/repair-summary.json
-            echo '```'
-            echo
-            echo '```text'
-            tail -n 1200 /tmp/repair-failed.log
-            echo '```'
-          } > docs/migration/latest-blender-52-repair.md
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git pull --rebase origin main
-          git add docs/migration/latest-blender-52-repair.md
-          git commit -m "ci: capture Blender 5.2 repair result"
-          git push origin HEAD:refs/heads/main
+          } > /tmp/diagnostic.md
+          capture_workflow fix-blender-52-interface-handlers.yml repair
+          capture_workflow scan-blender-52-apis.yml audit
+          gh pr comment "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body-file /tmp/diagnostic.md
