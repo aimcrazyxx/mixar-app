@@ -45,7 +45,7 @@ static bool view_rect_to_region(View2D *v2d,
          r_region_rect->ymax > r_region_rect->ymin;
 }
 
-static uiBut *screen_prop_button(uiBlock *block,
+static ::blender::ui::Button *screen_prop_button(::blender::ui::Block *block,
                                  PointerRNA *ptr,
                                  const char *property,
                                  const char *label,
@@ -85,7 +85,7 @@ static void draw_floating_background(const rctf &rect)
   UI_draw_roundbox_4fv(&rect, false, 16.0f, border);
 }
 
-static uiBut *add_parameter_button(uiBlock *block,
+static ::blender::ui::Button *add_parameter_button(::blender::ui::Block *block,
                                    PointerRNA *parameter,
                                    const int x,
                                    const int y,
@@ -148,14 +148,14 @@ static uiBut *add_parameter_button(uiBlock *block,
                             maximum);
 }
 
-static void disable_while_submitted(uiBut *button, const bool submitted)
+static void disable_while_submitted(::blender::ui::Button *button, const bool submitted)
 {
   if (button && submitted) {
     UI_but_disable(button, "Settings are locked while this generation is running");
   }
 }
 
-static void add_action_toolbar(uiBlock *block,
+static void add_action_toolbar(::blender::ui::Block *block,
                                View2D *v2d,
                                ARegion *region,
                                PointerRNA *node,
@@ -251,7 +251,7 @@ static void add_action_toolbar(uiBlock *block,
   if (show_mode) {
     char mode_label[MIXIE_GRAPH_LABEL_BUF];
     mixie_rna_string_get_clamped(node, "service_label", mode_label, sizeof(mode_label));
-    uiBut *mode = screen_prop_button(block,
+    ::blender::ui::Button *mode = screen_prop_button(block,
                                      node,
                                      "service_key",
                                      mode_label[0] ? mode_label : "Mode",
@@ -265,7 +265,7 @@ static void add_action_toolbar(uiBlock *block,
   }
   char model_label[MIXIE_GRAPH_LABEL_BUF];
   mixie_rna_string_get_clamped(node, "model_label", model_label, sizeof(model_label));
-  uiBut *model = screen_prop_button(block,
+  ::blender::ui::Button *model = screen_prop_button(block,
                                     node,
                                     "model",
                                     model_label[0] ? model_label : "Model",
@@ -282,7 +282,7 @@ static void add_action_toolbar(uiBlock *block,
     RNA_property_collection_begin(node, parameters, &iter);
     while (iter.valid) {
       if (RNA_boolean_get(&iter.ptr, "visible")) {
-        uiBut *parameter = add_parameter_button(
+        ::blender::ui::Button *parameter = add_parameter_button(
             block, &iter.ptr, content_x, y, field_width, row_h);
         disable_while_submitted(parameter, generation_running);
         y -= row_h + gap;
@@ -295,7 +295,7 @@ static void add_action_toolbar(uiBlock *block,
   y -= reset_gap - gap;
   char reset_node_id[MIXIE_GRAPH_ID_BUF];
   mixie_rna_string_get_clamped(node, "node_id", reset_node_id, sizeof(reset_node_id));
-  uiBut *reset = uiDefButO(block,
+  ::blender::ui::Button *reset = uiDefButO(block,
                            ButType::But,
                            "MIXIE_OT_moodboard_reset_node_params",
                            blender::wm::OpCallContext::ExecDefault,
@@ -329,7 +329,7 @@ static void add_action_toolbar(uiBlock *block,
       const int prompt_bottom = node_region.ymin + prompt_margin + generate_h + 12;
       const int prompt_height = std::max(46, prompt_top - prompt_bottom);
       const int prompt_y = prompt_top - prompt_height;
-      uiBut *prompt = screen_prop_button(block,
+      ::blender::ui::Button *prompt = screen_prop_button(block,
                                          node,
                                          "prompt",
                                          "",
@@ -348,7 +348,7 @@ static void add_action_toolbar(uiBlock *block,
     char node_id[MIXIE_GRAPH_ID_BUF];
     mixie_rna_string_get_clamped(node, "node_id", node_id, sizeof(node_id));
     const char *button_label = generation_running ? "Generating..." : "Generate";
-    uiBut *generate = uiDefButO(block,
+    ::blender::ui::Button *generate = uiDefButO(block,
                                 ButType::But,
                                 "MIXIE_OT_moodboard_run_action_node",
                                 blender::wm::OpCallContext::ExecDefault,
@@ -365,7 +365,7 @@ static void add_action_toolbar(uiBlock *block,
   }
 }
 
-static void add_selected_media_toolbar(uiBlock *block,
+static void add_selected_media_toolbar(::blender::ui::Block *block,
                                        View2D *v2d,
                                        ARegion *region,
                                        PointerRNA *scene_ptr)
@@ -449,7 +449,7 @@ void mixie_draw_moodboard_graph_controls(const bContext *C, View2D *v2d)
   }
 
   UI_view2d_view_restore(C);
-  uiBlock *block = UI_block_begin(
+  ::blender::ui::Block *block = UI_block_begin(
       C, region, "moodboard_floating_node_controls", blender::ui::EmbossType::Emboss);
   blender::Vector<ObjectPreviewDraw> object_previews;
   CollectionPropertyIterator iter{};

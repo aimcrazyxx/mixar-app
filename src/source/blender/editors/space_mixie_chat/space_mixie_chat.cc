@@ -313,7 +313,7 @@ void ED_spacetype_mixie_chat()
   art->regionid = RGN_TYPE_WINDOW;
   /* NO keymapflag here: most of the region uses custom GPU drawing. ED_KEYMAP_UI
    * would also add the broad "User Interface" keymap, which can consume LEFTMOUSE
-   * before the chat handler. main_region_init installs only the uiBlock handler
+   * before the chat handler. main_region_init installs only the ::blender::ui::Block handler
    * needed by the embedded feedback text field, then adds chat-specific handlers. */
   art->keymapflag = 0;
 

@@ -158,7 +158,7 @@ static void mixar_uv_redo_panel_draw(const bContext *C, Panel *panel)
     panel->layout->enabled_set(false);
   }
 
-  uiBlock *block = panel->layout->block();
+  ::blender::ui::Block *block = panel->layout->block();
   UI_block_func_handle_set(block, mixar_uv_redo_cb, op);
 
   /* Switch region for property drawing */
@@ -333,10 +333,10 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     /* ---- Row 1: Move | X | Y ---- */
     ::blender::ui::Layout *move_wrapper = &xform_col->column(false);
     move_wrapper->active_set(has_selection);
-    uiBlock *move_block = move_wrapper->absolute_block();
+    ::blender::ui::Block *move_block = move_wrapper->absolute(false).block();
     UI_block_func_handle_set(move_block, do_mixar_uvedit_transform, nullptr);
 
-    uiBut *but;
+    ::blender::ui::Button *but;
     int y = -UI_UNIT_Y;
     uiDefBut(move_block, ButType::Label, 0, IFACE_("Move"),
              0, y, row_label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
@@ -375,14 +375,14 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     xform_col->separator(0.5f);
     ::blender::ui::Layout *angle_wrapper = &xform_col->column(false);
     angle_wrapper->active_set(has_selection);
-    uiBlock *angle_block = angle_wrapper->absolute_block();
+    ::blender::ui::Block *angle_block = angle_wrapper->absolute(false).block();
     UI_block_func_handle_set(angle_block, do_mixar_uvedit_transform, nullptr);
 
     const int angle_input_w = control_width - row_label_w;
     uiDefBut(angle_block, ButType::Label, 0, IFACE_("Rotation Angle"),
              0, -UI_UNIT_Y, row_label_w, UI_UNIT_Y,
              nullptr, 0.0f, 0.0f, "");
-    uiBut *angle_but = uiDefButF(angle_block, ButType::Num,
+    ::blender::ui::Button *angle_but = uiDefButF(angle_block, ButType::Num,
                                  B_MIXAR_UVEDIT_ROTATE, "",
                                  row_label_w, -UI_UNIT_Y,
                                  angle_input_w, UI_UNIT_Y,
@@ -395,7 +395,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     xform_col->separator(0.5f);
     ::blender::ui::Layout *scale_wrapper = &xform_col->column(false);
     scale_wrapper->active_set(has_bounds);
-    uiBlock *scale_block = scale_wrapper->absolute_block();
+    ::blender::ui::Block *scale_block = scale_wrapper->absolute(false).block();
     UI_block_func_handle_set(scale_block, do_mixar_uvedit_transform, nullptr);
 
     y = -UI_UNIT_Y;
@@ -453,7 +453,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
       ::blender::ui::Layout *row = &axis_col->row(false);
       row->scale_y_set(1.3f);
-      uiBlock *apply_move_block = row->absolute_block();
+      ::blender::ui::Block *apply_move_block = row->absolute(false).block();
       UI_block_func_handle_set(apply_move_block, do_mixar_uvedit_transform, nullptr);
       uiDefBut(apply_move_block, ButType::But, B_MIXAR_UVEDIT_MOVE_AXIS,
                IFACE_("Apply Move"), 0, 0, control_width, UI_UNIT_Y * 1.3f,
@@ -476,7 +476,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
       mixar_uv_cursor_edit[1] = sima->cursor[1] * float(imy);
     }
 
-    uiBlock *cursor_block = cursor_col->absolute_block();
+    ::blender::ui::Block *cursor_block = cursor_col->absolute(false).block();
     UI_block_func_handle_set(cursor_block, do_mixar_uvedit_transform, nullptr);
 
     /* X and Y on one row with external labels. A horizontal gutter
@@ -487,7 +487,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     const int label_w = int(UI_UNIT_X * 0.8f);
     const int input_w = half_w - label_w;
 
-    uiBut *but;
+    ::blender::ui::Button *but;
     int y = -UI_UNIT_Y;
     uiDefBut(cursor_block, ButType::Label, 0, IFACE_("X"),
              0, y, label_w, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");

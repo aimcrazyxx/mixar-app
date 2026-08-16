@@ -239,7 +239,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   const float scale = UI_SCALE_FAC;
 
   /* ===== CREATE UI BLOCK FOR BUTTONS ===== */
-  uiBlock *block = UI_block_begin(C, region, __func__, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = UI_block_begin(C, region, __func__, blender::ui::EmbossType::Emboss);
 
   /* ===== ROW 1 (TOP): INPUT FIELD ===== */
   if (pos.input_w > 0) {
@@ -248,7 +248,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
      * inside ui_but_string_get_ex). Same pattern as mixie_chat_is_busy above. */
     PropertyRNA *input_prop = RNA_struct_find_property(&scene_ptr, "mixie_chat_input");
     if (input_prop) {
-      uiBut *input_but = uiDefButR(block,
+      ::blender::ui::Button *input_but = uiDefButR(block,
                                    ButType::Text,
                                    0,
                                    "",  /* Empty label - placeholder will be set below */

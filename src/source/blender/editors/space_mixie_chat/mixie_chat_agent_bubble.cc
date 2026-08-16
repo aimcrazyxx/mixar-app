@@ -38,13 +38,13 @@
 /** \name Agent Bubble Popup Block
  * \{ */
 
-static uiBlock *mixie_chat_block_agent_bubble_create(bContext *C,
+static ::blender::ui::Block *mixie_chat_block_agent_bubble_create(bContext *C,
                                                      ARegion *region,
                                                      void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
 
-  uiBlock *block = UI_block_begin(
+  ::blender::ui::Block *block = UI_block_begin(
       C, region, "agent_bubble", blender::ui::EmbossType::Emboss);
 
   /* Persistent popup: stays open across redraws until we explicitly
@@ -78,7 +78,7 @@ static uiBlock *mixie_chat_block_agent_bubble_create(bContext *C,
   }
   else {
     /* Fallback: render a small placeholder so we see SOMETHING when the
-     * Python menu hasn't loaded yet. Without this, an empty uiBlock
+     * Python menu hasn't loaded yet. Without this, an empty ::blender::ui::Block
      * collapses to zero size and the popup is effectively invisible —
      * which makes the bubble look broken. */
     layout.label("Mixar agent bubble loading…", ICON_INFO);

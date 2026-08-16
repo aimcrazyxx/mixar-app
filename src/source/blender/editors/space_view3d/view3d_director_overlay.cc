@@ -50,7 +50,7 @@ void draw_centered_text(const char *text,
   BLF_draw(font_id, text, strlen(text));
 }
 
-void draw_tool_rail(uiBlock *block,
+void draw_tool_rail(::blender::ui::Block *block,
                     const bContext *C,
                     const ARegion *region,
                     const DirectorViewState &state,
@@ -105,7 +105,7 @@ void draw_tool_rail(uiBlock *block,
     if (tools[index].group_above) {
       y -= group_gap;
     }
-    uiBut *button = uiDefIconBlockBut(block,
+    ::blender::ui::Button *button = uiDefIconBlockBut(block,
                                       tools[index].block_func,
                                       nullptr,
                                       0,
@@ -122,7 +122,7 @@ void draw_tool_rail(uiBlock *block,
   }
 }
 
-void draw_empty_state(uiBlock *block, const ARegion *region, const int unit, const int gap)
+void draw_empty_state(::blender::ui::Block *block, const ARegion *region, const int unit, const int gap)
 {
   const int panel_w = std::min(unit * 22, region->winx - gap * 12);
   const int panel_h = unit * 8;
@@ -155,7 +155,7 @@ void draw_empty_state(uiBlock *block, const ARegion *region, const int unit, con
                                    "Create a camera aligned to this view and start directing");
 }
 
-void draw_context_actions(uiBlock *block,
+void draw_context_actions(::blender::ui::Block *block,
                           const ARegion *region,
                           const DirectorViewState &state,
                           const int unit,
@@ -210,7 +210,7 @@ void draw_context_actions(uiBlock *block,
     if (!state.locked) {
       /* Blender's timeline auto-key flips RECORD_OFF to RECORD_ON when armed
        * (rna_scene.cc ui_icon); mirror that instead of a static REC glyph. */
-      uiBut *auto_key = director_overlay_operator_button(
+      ::blender::ui::Button *auto_key = director_overlay_operator_button(
           block,
           "MIXAR_OT_director_toggle_auto_key",
           state.auto_key ? ICON_RECORD_ON : ICON_RECORD_OFF,
@@ -265,7 +265,7 @@ void director_overlay_panel_draw(const rctf &rect, const float radius)
   UI_draw_roundbox_4fv_ex(&rect, PANEL_COLOR, nullptr, 1.0f, PANEL_BORDER, UI_SCALE_FAC, radius);
 }
 
-uiBut *director_overlay_operator_button(uiBlock *block,
+::blender::ui::Button *director_overlay_operator_button(::blender::ui::Block *block,
                                         const char *operator_id,
                                         const int icon,
                                         const char *label,
@@ -300,7 +300,7 @@ uiBut *director_overlay_operator_button(uiBlock *block,
                        tooltip);
 }
 
-void director_overlay_disable_button(uiBut *button, const bool disabled)
+void director_overlay_disable_button(::blender::ui::Button *button, const bool disabled)
 {
   if (disabled && button) {
     UI_but_flag_enable(button, UI_BUT_DISABLED);
@@ -319,7 +319,7 @@ void view3d_director_overlay_draw(const bContext *C, ARegion *region)
 
   const int unit = std::max(18, int(20.0f * UI_SCALE_FAC));
   const int gap = std::max(4, int(6.0f * UI_SCALE_FAC));
-  uiBlock *block = UI_block_begin(
+  ::blender::ui::Block *block = UI_block_begin(
       C, region, "mixar_director_overlay", blender::ui::EmbossType::Emboss);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 

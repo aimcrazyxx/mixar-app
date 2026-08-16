@@ -52,20 +52,20 @@ bool director_popup_data_get(bContext *C, DirectorPopupData *r_data)
   return true;
 }
 
-uiBlock *director_popup_block_begin(bContext *C, ARegion *region, const char *name)
+::blender::ui::Block *director_popup_block_begin(bContext *C, ARegion *region, const char *name)
 {
-  uiBlock *block = UI_block_begin(C, region, name, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = UI_block_begin(C, region, name, blender::ui::EmbossType::Emboss);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
   return block;
 }
 
-void director_popup_block_end(uiBlock *block)
+void director_popup_block_end(::blender::ui::Block *block)
 {
   UI_block_direction_set(block, UI_DIR_DOWN);
   UI_block_bounds_set_normal(block, int(0.4f * UI_UNIT_X));
 }
 
-void director_popup_state(uiBut *but, const bool active, const bool enabled)
+void director_popup_state(::blender::ui::Button *but, const bool active, const bool enabled)
 {
   if (active) {
     UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
@@ -75,7 +75,7 @@ void director_popup_state(uiBut *but, const bool active, const bool enabled)
   }
 }
 
-void director_popup_section_label(uiBlock *block,
+void director_popup_section_label(::blender::ui::Block *block,
                                   const char *text,
                                   const int y,
                                   const int width)
@@ -96,7 +96,7 @@ void director_popup_section_label(uiBlock *block,
 
 namespace {
 
-uiBut *popup_op_button(uiBlock *block,
+::blender::ui::Button *popup_op_button(::blender::ui::Block *block,
                        const char *operator_id,
                        const int icon,
                        const char *label,
@@ -113,9 +113,9 @@ uiBut *popup_op_button(uiBlock *block,
 /* -------------------------------------------------------------------- */
 /* Lens: projection type plus photographic focal-length presets. */
 
-uiBlock *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
+::blender::ui::Block *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 {
-  uiBlock *block = director_popup_block_begin(C, region, __func__);
+  ::blender::ui::Block *block = director_popup_block_begin(C, region, __func__);
   DirectorPopupData data;
   if (!director_popup_data_get(C, &data) || !data.camera) {
     director_popup_section_label(block, "No active shot camera", 0, UI_UNIT_X * 10);
@@ -141,7 +141,7 @@ uiBlock *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
   const int segment_w = width / 3;
   y -= row_h;
   for (int index = 0; index < 3; index++) {
-    uiBut *but = popup_op_button(block,
+    ::blender::ui::Button *but = popup_op_button(block,
                                  "MIXAR_OT_director_set_lens_type",
                                  ICON_NONE,
                                  types[index].label,
@@ -171,7 +171,7 @@ uiBlock *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
     };
     for (const LensPreset &preset : presets) {
       y -= row_h;
-      uiBut *but = popup_op_button(block,
+      ::blender::ui::Button *but = popup_op_button(block,
                                    "MIXAR_OT_director_set_lens",
                                    ICON_NONE,
                                    preset.label,
@@ -184,7 +184,7 @@ uiBlock *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
       director_popup_state(but, std::abs(data.camera->lens - float(preset.mm)) < 0.5f, data.editable);
     }
     y -= gap + row_h;
-    uiBut *slider = uiDefButR(block,
+    ::blender::ui::Button *slider = uiDefButR(block,
                               ButType::NumSlider,
                               0,
                               "Focal Length",
@@ -205,7 +205,7 @@ uiBlock *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
     const bool ortho = data.camera->type == CAM_ORTHO;
     const std::optional<blender::StringRef> value_label =
         ortho ? std::optional<blender::StringRef>("Scale") : std::nullopt;
-    uiBut *value = uiDefButR(block,
+    ::blender::ui::Button *value = uiDefButR(block,
                              ortho ? ButType::NumSlider : ButType::Menu,
                              0,
                              value_label,
@@ -229,9 +229,9 @@ uiBlock *lens_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 /* -------------------------------------------------------------------- */
 /* Aspect: named output formats. */
 
-uiBlock *aspect_popup_create(bContext *C, ARegion *region, void * /*arg*/)
+::blender::ui::Block *aspect_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 {
-  uiBlock *block = director_popup_block_begin(C, region, __func__);
+  ::blender::ui::Block *block = director_popup_block_begin(C, region, __func__);
   DirectorPopupData data;
   if (!director_popup_data_get(C, &data) || !data.camera) {
     director_popup_section_label(block, "No active shot camera", 0, UI_UNIT_X * 10);
@@ -260,7 +260,7 @@ uiBlock *aspect_popup_create(bContext *C, ARegion *region, void * /*arg*/)
   int y = 0;
   for (const AspectPreset &preset : presets) {
     y -= row_h;
-    uiBut *but = popup_op_button(block,
+    ::blender::ui::Button *but = popup_op_button(block,
                                  "MIXAR_OT_director_set_aspect",
                                  ICON_NONE,
                                  preset.label,
@@ -283,9 +283,9 @@ uiBlock *aspect_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 /* -------------------------------------------------------------------- */
 /* Moves: one-click cinematic camera moves, timing, and handheld. */
 
-uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
+::blender::ui::Block *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 {
-  uiBlock *block = director_popup_block_begin(C, region, __func__);
+  ::blender::ui::Block *block = director_popup_block_begin(C, region, __func__);
   DirectorPopupData data;
   if (!director_popup_data_get(C, &data) || !data.camera) {
     director_popup_section_label(block, "No active shot camera", 0, UI_UNIT_X * 10);
@@ -319,7 +319,7 @@ uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
     y -= label_h;
     director_popup_section_label(block, pair.section, y, width);
     y -= row_h;
-    uiBut *left = popup_op_button(block,
+    ::blender::ui::Button *left = popup_op_button(block,
                                   "MIXAR_OT_director_camera_move",
                                   pair.left_icon,
                                   pair.left_label,
@@ -331,7 +331,7 @@ uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
     RNA_enum_set_identifier(
         C, UI_but_operator_ptr_ensure(left), "move", pair.left_identifier);
     director_popup_state(left, false, data.editable);
-    uiBut *right = popup_op_button(block,
+    ::blender::ui::Button *right = popup_op_button(block,
                                    "MIXAR_OT_director_camera_move",
                                    pair.right_icon,
                                    pair.right_label,
@@ -347,7 +347,7 @@ uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
   }
 
   y -= gap + row_h;
-  uiBut *spacing = uiDefButR(block,
+  ::blender::ui::Button *spacing = uiDefButR(block,
                              ButType::NumSlider,
                              0,
                              "Keyframe Spacing",
@@ -364,7 +364,7 @@ uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
   director_popup_state(spacing, false, data.editable);
 
   y -= gap + row_h;
-  uiBut *handheld = uiDefIconTextButR(block,
+  ::blender::ui::Button *handheld = uiDefIconTextButR(block,
                                       ButType::Toggle,
                                       0,
                                       ICON_FORCE_TURBULENCE,
@@ -378,7 +378,7 @@ uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
                                       0,
                                       std::nullopt);
   director_popup_state(handheld, false, data.editable);
-  uiBut *intensity = uiDefButR(block,
+  ::blender::ui::Button *intensity = uiDefButR(block,
                                ButType::NumSlider,
                                0,
                                "",
@@ -400,17 +400,17 @@ uiBlock *moves_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 
 }  // namespace
 
-uiBlock *view3d_director_lens_popup_create(bContext *C, ARegion *region, void *arg)
+::blender::ui::Block *view3d_director_lens_popup_create(bContext *C, ARegion *region, void *arg)
 {
   return lens_popup_create(C, region, arg);
 }
 
-uiBlock *view3d_director_aspect_popup_create(bContext *C, ARegion *region, void *arg)
+::blender::ui::Block *view3d_director_aspect_popup_create(bContext *C, ARegion *region, void *arg)
 {
   return aspect_popup_create(C, region, arg);
 }
 
-uiBlock *view3d_director_moves_popup_create(bContext *C, ARegion *region, void *arg)
+::blender::ui::Block *view3d_director_moves_popup_create(bContext *C, ARegion *region, void *arg)
 {
   return moves_popup_create(C, region, arg);
 }

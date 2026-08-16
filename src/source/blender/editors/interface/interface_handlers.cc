@@ -3289,7 +3289,7 @@ static bool textedit_delete_selection(Button *but, TextEdit &text_edit)
  * Detect whether a text button should use multi-line rendering.
  * Same logic as the matching function in interface_widgets.cc.
  */
-static bool ui_but_is_multiline_text(const uiBut *but)
+static bool ui_but_is_multiline_text(const ::blender::ui::Button *but)
 {
   if (but->type != ButType::Text) {
     return false;
@@ -3307,7 +3307,7 @@ static bool ui_but_is_multiline_text(const uiBut *but)
  * \param out_byte_offsets: Filled with byte offset of each line start
  * \return The font ID used
  */
-static int ui_multiline_get_lines(uiBut *but,
+static int ui_multiline_get_lines(::blender::ui::Button *but,
                                   blender::Vector<StringRef> &out_lines,
                                   blender::Vector<int> &out_byte_offsets)
 {
@@ -3385,7 +3385,7 @@ static int ui_multiline_get_lines(uiBut *but,
  * \param direction: -1 for up, +1 for down
  * \param select: If true, extend selection
  */
-static void ui_textedit_move_vertical(uiBut *but,
+static void ui_textedit_move_vertical(::blender::ui::Button *but,
                                       uiTextEdit &text_edit,
                                       int direction,
                                       bool select)
@@ -3537,7 +3537,7 @@ static void textedit_set_cursor_pos(Button *but, const ARegion *region, const fl
 
       /* Determine scroll offset (read from widget state) */
       /* Use extern scroll offset from widgets side */
-      extern const uiBut *g_multiline_scroll_but;
+      extern const ::blender::ui::Button *g_multiline_scroll_but;
       extern int g_multiline_scroll_offset;
       const int scroll_offset = (but == g_multiline_scroll_but) ? g_multiline_scroll_offset : 0;
 
@@ -13596,7 +13596,7 @@ static int popup_handler(bContext *C, const wmEvent *event, void *userdata)
    * always returns BREAK regardless of rect, which makes the popup steal
    * every click. Scoped by block name so other popups are unaffected. */
   {
-    uiBlock *agent_block = static_cast<uiBlock *>(menu->region->runtime->uiblocks.first);
+    ::blender::ui::Block *agent_block = static_cast<::blender::ui::Block *>(menu->region->runtime->uiblocks.first);
     if (agent_block && agent_block->name == "agent_bubble") {
       int mx = event->xy[0];
       int my = event->xy[1];

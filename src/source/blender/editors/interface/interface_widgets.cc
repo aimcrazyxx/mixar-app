@@ -5568,7 +5568,7 @@ static void widget_box(Button *but,
 
 /* -- Mixar Section Widget ------------------------------------------------ */
 
-static void widget_mixar_section(uiBut *but,
+static void widget_mixar_section(::blender::ui::Button *but,
                                  uiWidgetColors *wcol,
                                  rcti *rect,
                                  const uiWidgetStateInfo * /*state*/,
@@ -5754,7 +5754,7 @@ static void mixar_draw_gradient_hbar(const rctf *rect, float rad)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void widget_mixar_action_button(uiBut * /*but*/,
+static void widget_mixar_action_button(::blender::ui::Button * /*but*/,
                                        uiWidgetColors *wcol,
                                        rcti *rect,
                                        const uiWidgetStateInfo *state,

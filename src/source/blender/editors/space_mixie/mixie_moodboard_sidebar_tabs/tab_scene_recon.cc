@@ -70,7 +70,7 @@ static bool get_tab_properties(Scene *scene, PointerRNA &tab_ptr)
  * Shows filename if set, or a pick button.
  * Returns the total height used.
  */
-static int draw_file_picker_image_section(uiBlock *block,
+static int draw_file_picker_image_section(::blender::ui::Block *block,
                                           PointerRNA *tab_ptr,
                                           int x,
                                           int y,
@@ -168,7 +168,7 @@ static int draw_file_picker_image_section(uiBlock *block,
  * Shows the first selected moodboard image (max 1).
  * Returns the total height used.
  */
-static int draw_selected_moodboard_image(uiBlock *block,
+static int draw_selected_moodboard_image(::blender::ui::Block *block,
                                          Scene *scene,
                                          int x,
                                          int y,
@@ -305,7 +305,7 @@ static int draw_selected_moodboard_image(uiBlock *block,
  * Handles both Phase 1 (GPU stages) and Phase 2 (3D model generation).
  * Returns the total height used.
  */
-static int draw_status_section(uiBlock *block,
+static int draw_status_section(::blender::ui::Block *block,
                                PointerRNA *tab_ptr,
                                int x,
                                int y,
@@ -474,7 +474,7 @@ static int draw_status_section(uiBlock *block,
  * Draw the completion section showing scene complete status.
  * Returns the total height used.
  */
-static int draw_completion_section(uiBlock *block,
+static int draw_completion_section(::blender::ui::Block *block,
                                    PointerRNA *tab_ptr,
                                    int x,
                                    int y,
@@ -546,7 +546,7 @@ static int draw_completion_section(uiBlock *block,
  * Draw the error section if an error occurred.
  * Returns the total height used.
  */
-static int draw_error_section(uiBlock *block,
+static int draw_error_section(::blender::ui::Block *block,
                               PointerRNA *tab_ptr,
                               int x,
                               int y,
@@ -599,7 +599,7 @@ static int draw_error_section(uiBlock *block,
  * TAB CONTENT DRAWING
  * ============================================================================ */
 
-void draw_tab_scene_recon(const bContext *C, uiBlock *block, const TabContentLayout &layout)
+void draw_tab_scene_recon(const bContext *C, ::blender::ui::Block *block, const TabContentLayout &layout)
 {
   Scene *scene = CTX_data_scene(C);
   if (!scene) {

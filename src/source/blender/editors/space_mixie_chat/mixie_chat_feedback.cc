@@ -329,7 +329,7 @@ void mixie_chat_render_feedback(const bContext *C,
   }
   const float input_y_bot = input_y_top - layout.feedback_comment_input_height;
 
-  /* uiBlock buttons use region pixel coordinates for rendering and hit testing. */
+  /* ::blender::ui::Block buttons use region pixel coordinates for rendering and hit testing. */
   int rx1, ry1, rx2, ry2;
   UI_view2d_view_to_region(v2d, layout.bubble_x, input_y_bot, &rx1, &ry1);
   UI_view2d_view_to_region(
@@ -341,9 +341,9 @@ void mixie_chat_render_feedback(const bContext *C,
 
   char block_name[64];
   BLI_snprintf(block_name, sizeof(block_name), "fb_comment_%d", layout.message_index);
-  uiBlock *block = UI_block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = UI_block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
 
-  uiBut *comment_but = uiDefButR(block,
+  ::blender::ui::Button *comment_but = uiDefButR(block,
                                  ButType::Text,
                                  0,
                                  "",

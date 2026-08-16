@@ -1498,7 +1498,7 @@ PointerRNA Layout::op(wmOperatorType *ot,
 }
 
 /* Mixar: helper exposed via UI_interface_layout.hh so rna_ui_api.cc
- * (where uiBlock is opaque) can suppress tooltips on a button it
+ * (where ::blender::ui::Block is opaque) can suppress tooltips on a button it
  * just emitted via the public PointerRNA-returning op() path. Used
  * by the new `no_tooltip` kwarg on bpy.types.UILayout.operator(). */
 void UI_layout_disable_last_button_tooltip(ui::Layout *layout)

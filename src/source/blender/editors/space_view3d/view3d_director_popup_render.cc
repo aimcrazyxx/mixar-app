@@ -54,14 +54,14 @@ int render_kind_icon(const char *identifier)
  * prevents. */
 void render_popup_close(bContext * /*C*/, void *arg_block, void * /*arg2*/)
 {
-  UI_popup_menu_retval_set(static_cast<uiBlock *>(arg_block), UI_RETURN_OK, true);
+  UI_popup_menu_retval_set(static_cast<::blender::ui::Block *>(arg_block), UI_RETURN_OK, true);
 }
 
 /* Enum-flag rows bound straight to `render_output_types`: a Row button whose
  * value is one flag bit draws pushed while the bit is set and XORs it on
  * click (native PROP_ENUM_FLAG behavior), so selection needs no operator. */
 int draw_kind_toggles(bContext *C,
-                      uiBlock *block,
+                      ::blender::ui::Block *block,
                       DirectorPopupData &data,
                       const bool running,
                       const int y,
@@ -86,7 +86,7 @@ int draw_kind_toggles(bContext *C,
     if (!items[index].identifier || !items[index].identifier[0]) {
       continue;
     }
-    uiBut *toggle = uiDefIconTextButR_prop(block,
+    ::blender::ui::Button *toggle = uiDefIconTextButR_prop(block,
                                            ButType::Row,
                                            0,
                                            render_kind_icon(items[index].identifier),
@@ -113,9 +113,9 @@ int draw_kind_toggles(bContext *C,
   return enabled_count;
 }
 
-uiBlock *render_popup_create(bContext *C, ARegion *region, void * /*arg*/)
+::blender::ui::Block *render_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 {
-  uiBlock *block = director_popup_block_begin(C, region, __func__);
+  ::blender::ui::Block *block = director_popup_block_begin(C, region, __func__);
   /* Multi-select: picking Beauty/Clay/Depth must not dismiss the popup —
    * it closes on click-outside, Esc, or the Export/Render actions below. */
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN);
@@ -158,7 +158,7 @@ uiBlock *render_popup_create(bContext *C, ARegion *region, void * /*arg*/)
                "Export %d Keyframe%s",
                beat_count,
                beat_count == 1 ? "" : "s");
-  uiBut *export_stills = director_overlay_operator_button(
+  ::blender::ui::Button *export_stills = director_overlay_operator_button(
       block,
       "MIXAR_OT_director_send_keyframes",
       ICON_EXPORT,
@@ -178,7 +178,7 @@ uiBlock *render_popup_create(bContext *C, ARegion *region, void * /*arg*/)
   const int enabled_count = draw_kind_toggles(C, block, data, running, y, width, gap);
 
   y -= gap + row_h;
-  uiBut *resolution = uiDefButR(block,
+  ::blender::ui::Button *resolution = uiDefButR(block,
                                 ButType::NumSlider,
                                 0,
                                 "Resolution",
@@ -231,7 +231,7 @@ uiBlock *render_popup_create(bContext *C, ARegion *region, void * /*arg*/)
                  "Render %d Video%s to Moodboard",
                  enabled_count,
                  enabled_count == 1 ? "" : "s");
-    uiBut *render = director_overlay_operator_button(
+    ::blender::ui::Button *render = director_overlay_operator_button(
         block,
         "MIXAR_OT_director_render_videos",
         ICON_RENDER_ANIMATION,
@@ -282,7 +282,7 @@ uiBlock *render_popup_create(bContext *C, ARegion *region, void * /*arg*/)
 
 }  // namespace
 
-uiBlock *view3d_director_render_popup_create(bContext *C, ARegion *region, void *arg)
+::blender::ui::Block *view3d_director_render_popup_create(bContext *C, ARegion *region, void *arg)
 {
   return render_popup_create(C, region, arg);
 }

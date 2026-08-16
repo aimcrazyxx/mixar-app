@@ -902,7 +902,7 @@ void block_layout_free(Block *block);
  * bpy.types.UILayout.operator() to handle the agent bubble's
  * traffic-light + pill buttons whose host NSWindow is too small
  * for the tooltip popup to fit without clipping. Implemented in
- * interface_layout.cc where uiBlock is fully visible. */
+ * interface_layout.cc where ::blender::ui::Block is fully visible. */
 void UI_layout_disable_last_button_tooltip(Layout *layout);
 
 enum eUI_Item_Flag : uint16_t {
