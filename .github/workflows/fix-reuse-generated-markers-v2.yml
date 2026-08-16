@@ -34,21 +34,22 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
+          marker = "SPDX-" + "License-Identifier"
           replacements = {
               Path(".github/workflows/capture-latest-windows-build.yml"): (
-                  "echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'",
+                  f"echo '<!-- {marker}: GPL-3.0-or-later -->'",
                   "echo '<!-- SPDX-''License-Identifier: GPL-3.0-or-later -->'",
               ),
               Path(".github/workflows/migrate-blender.yml"): (
-                  "echo 'SPDX-License-Identifier: GPL-2.0-or-later'",
+                  f"echo '{marker}: GPL-2.0-or-later'",
                   "echo 'SPDX-''License-Identifier: GPL-2.0-or-later'",
               ),
               Path(".github/workflows/scan-blender-52-apis.yml"): (
-                  '"<!-- SPDX-License-Identifier: GPL-3.0-or-later -->",',
+                  f'"<!-- {marker}: GPL-3.0-or-later -->",',
                   '"<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->",',
               ),
               Path("scripts/upgrade/conflicts.py"): (
-                  '"<!-- SPDX-License-Identifier: GPL-3.0-or-later -->\\n\\n",',
+                  f'"<!-- {marker}: GPL-3.0-or-later -->\\n\\n",',
                   '"<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->\\n\\n",',
               ),
           }
