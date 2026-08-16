@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Dispatch Blender repair from automation PR
+on:
+  pull_request:
+    types: [opened]
+permissions:
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'automation/blender-52-repair'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the reviewed repair on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run fix-blender-52-interface-handlers.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main
