@@ -5,7 +5,7 @@
 """Close the client-side transport loop for Custom (OpenAI-compatible).
 
 The other BYOK tests validate the form rules, base-URL store and /models
-parsing separately.  These tests pin the seam that matters in production:
+parsing separately. These tests pin the seam that matters in production:
 ``byok_client.save_credentials('custom', ...)`` must reach ``PUT /agent/byok``
 with the resolved custom ``base_url`` in the JSON payload.
 
@@ -37,39 +37,39 @@ OPS = (
 )
 
 
-def _package(name: str, path: Path | None = None):
+def _package(monkeypatch, name: str, path: Path | None = None):
     module = types.ModuleType(name)
     if path is not None:
         module.__path__ = [str(path)]
-    sys.modules[name] = module
+    monkeypatch.setitem(sys.modules, name, module)
     return module
 
 
-def _load(name: str, path: Path):
+def _load(monkeypatch, name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
+    monkeypatch.setitem(sys.modules, name, module)
     spec.loader.exec_module(module)
     return module
 
 
 def test_custom_save_reaches_byok_put_with_resolved_base_url(monkeypatch, tmp_path):
     """BYOK client -> AgentService patch -> PUT payload, without Blender/network."""
-    # Isolated package tree so importing these two production modules cannot
-    # pull the rest of Blender/Mixar into the bare pytest process.
-    _package("mixar", ROOT / "src" / "scripts" / "mixar")
-    _package("mixar.config")
+    # Every synthetic module is installed through pytest's monkeypatch so the
+    # real Mixar package tree is restored before the next test starts.
+    _package(monkeypatch, "mixar", ROOT / "src" / "scripts" / "mixar")
+    _package(monkeypatch, "mixar.config")
     logging_config = types.ModuleType("mixar.config.logging_config")
     logging_config.get_logger = logging.getLogger
-    sys.modules[logging_config.__name__] = logging_config
+    monkeypatch.setitem(sys.modules, logging_config.__name__, logging_config)
 
-    _package("mixar.modules")
-    _package("mixar.modules.byok")
-    _package("mixar.modules.byok.core", CORE)
-    _package("mixar.modules.common")
-    api = _package("mixar.modules.common.api")
-    services = _package("mixar.modules.common.api.services")
+    _package(monkeypatch, "mixar.modules")
+    _package(monkeypatch, "mixar.modules.byok")
+    _package(monkeypatch, "mixar.modules.byok.core", CORE)
+    _package(monkeypatch, "mixar.modules.common")
+    api = _package(monkeypatch, "mixar.modules.common.api")
+    services = _package(monkeypatch, "mixar.modules.common.api.services")
 
     class APIResponse:
         def __init__(self, success=True, data=None, status_code=200):
@@ -81,7 +81,6 @@ def test_custom_save_reaches_byok_put_with_resolved_base_url(monkeypatch, tmp_pa
         def __init__(self):
             self.calls = []
 
-        # This upstream-looking method must be replaced by base_url.install_patches.
         def save_credentials_all(self, provider, model, api_key):
             raise AssertionError("base_url payload patch was not installed")
 
@@ -97,7 +96,7 @@ def test_custom_save_reaches_byok_put_with_resolved_base_url(monkeypatch, tmp_pa
         "mixar.modules.common.api.services.agent_service"
     )
     agent_service_module.AgentService = AgentService
-    sys.modules[agent_service_module.__name__] = agent_service_module
+    monkeypatch.setitem(sys.modules, agent_service_module.__name__, agent_service_module)
     services.agent_service = agent_service_module
 
     service = AgentService()
@@ -105,6 +104,7 @@ def test_custom_save_reaches_byok_put_with_resolved_base_url(monkeypatch, tmp_pa
     api.get_agent_service = lambda: service
 
     base_url = _load(
+        monkeypatch,
         "mixar.modules.byok.core.base_url",
         CORE / "base_url.py",
     )
@@ -115,6 +115,7 @@ def test_custom_save_reaches_byok_put_with_resolved_base_url(monkeypatch, tmp_pa
     base_url.install_patches()
 
     byok_client = _load(
+        monkeypatch,
         "mixar.modules.byok.core.byok_client",
         CORE / "byok_client.py",
     )
