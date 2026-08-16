@@ -1,137 +1,50 @@
 # SPDX-FileCopyrightText: 2026 Mixar fork contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
-name: Build Windows installer
+
+name: Build Windows (v3.3.3)
+
 on:
   workflow_dispatch:
-    inputs:
-      runner:
-        description: "Runner label (self-hosted or a larger runner recommended; windows-latest usually runs out of disk)"
-        required: true
-        default: "windows-latest"
-      blender_ref:
-        description: "Blender tag or commit to pin upstream/ to"
-        required: true
-        default: "v5.2.0"
-      blender_version:
-        description: "Blender X.Y resource directory version (must match the tag)"
-        required: true
-        default: "5.2"
-      mixar_env:
-        description: "Build environment"
-        type: choice
-        options:
-          - Prod
-          - UAT
-          - Dev
-        default: Prod
-      backend_url:
-        description: "Optional MIXAR_BACKEND_URL to bake into this build"
-        required: false
-        default: ""
-      use_ninja:
-        description: "Build with Ninja instead of MSBuild"
-        type: boolean
-        default: true
-      make_installer:
-        description: "Run NSIS to produce the .exe installer"
-        type: boolean
-        default: true
   push:
     branches:
-      - ci/build-windows
+      - release/v3.3.3
+    paths:
+      - "VERSION"
+      - "src/**"
+      - "scripts/windows/**"
+      - "cmake/**"
+      - ".gitmodules"
+      - ".github/workflows/build-windows.yml"
+
 concurrency:
-  group: build-windows-${{ github.ref }}
-  cancel-in-progress: false
+  group: mixar-v3.3.3-windows
+  cancel-in-progress: true
+
 permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+  contents: write
+
+env:
+  MIXAR_ENV: Prod
+  BUILD_WITH_NINJA: "1"
+  BUILD_CORES: "2"
+  ROBOCOPY_THREADS: "16"
+
 jobs:
-  build:
-    name: ${{ inputs.mixar_env || 'Prod' }} / Blender ${{ inputs.blender_version || '5.2' }}
-    runs-on: ${{ inputs.runner || 'windows-latest' }}
+  build-windows:
+    name: Windows Release Build
+    runs-on: windows-2022
     timeout-minutes: 600
-    env:
-      MIXAR_ENV: ${{ inputs.mixar_env || 'Prod' }}
-      BLENDER_VERSION: ${{ inputs.blender_version || '5.2' }}
-      BLENDER_REF: ${{ inputs.blender_ref || 'v5.2.0' }}
-      BUILD_WITH_NINJA: ${{ github.event_name == 'workflow_dispatch' && (inputs.use_ninja && '1' || '0') || '1' }}
-      MAKE_INSTALLER: ${{ github.event_name == 'workflow_dispatch' && (inputs.make_installer && 'true' || 'false') || 'true' }}
-      SCCACHE_DIR: ${{ github.workspace }}\.sccache
-      SCCACHE_CACHE_SIZE: 5G
+
     steps:
-      - name: Configure git and derive short sha
+      - name: Configure Git for large Blender trees
         shell: pwsh
         run: |
           git config --global core.longpaths true
           git config --global core.autocrlf false
-          Add-Content -Path $env:GITHUB_ENV -Value "SHORT_SHA=$($env:GITHUB_SHA.Substring(0, 7))"
-      - name: Checkout fork
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 1
-      - name: Verify batch files use CRLF
+
+      - name: Reclaim runner disk space
         shell: pwsh
-        run: |
-          $files = Get-ChildItem -Recurse -File |
-            Where-Object {
-              @('.bat', '.cmd') -contains $_.Extension -and
-              $_.FullName -notmatch '\\upstream\\'
-            }
-          $rewritten = @()
-          foreach ($file in $files) {
-            $raw = [System.IO.File]::ReadAllText($file.FullName)
-            $crlf = ($raw -replace "`r`n", "`n") -replace "`n", "`r`n"
-            if ($crlf -ne $raw) {
-              [System.IO.File]::WriteAllText($file.FullName, $crlf)
-              $rewritten += $file.FullName.Substring($PWD.Path.Length + 1)
-            }
-          }
-          Write-Host "checked $($files.Count) batch file(s)"
-          if ($rewritten.Count -eq 0) {
-            Write-Host "all of them already use CRLF"
-          } else {
-            Write-Host "::warning::rewrote $($rewritten.Count) batch file(s) checked out with LF endings"
-            $rewritten | ForEach-Object { Write-Host "  $_" }
-          }
-      - name: Start the disk ledger
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path logs | Out-Null
-          $free = (Get-PSDrive C).Free / 1GB
-          Set-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after checkout", $free)
-          Get-Content logs\disk.log
-      - name: Report runner state
-        shell: pwsh
-        run: |
-          Get-PSDrive C | Select-Object Used, Free | Format-List
-          cmake --version
-          git --version
-          git lfs version
-          if (Get-Command ninja -ErrorAction SilentlyContinue) {
-            ninja --version
-          } else {
-            Write-Host "ninja: not on PATH (build.bat can still use the VS-bundled one)"
-          }
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          if (Test-Path $vswhere) {
-            & $vswhere -latest -products * -property installationPath
-            & $vswhere -latest -products * -property catalog_productDisplayVersion
-          } else {
-            Write-Host "vswhere not found - is Visual Studio installed?"
-          }
-      - name: Tune build parallelism
-        shell: pwsh
-        run: |
-          $cores = [int]$env:NUMBER_OF_PROCESSORS
-          if ($cores -lt 2) { $cores = 2 }
-          Write-Host "BUILD_CORES=$cores (detected $env:NUMBER_OF_PROCESSORS logical processors)"
-          Add-Content -Path $env:GITHUB_ENV -Value "BUILD_CORES=$cores"
-      - name: Reclaim disk space (hosted runners only)
-        if: ${{ !contains(inputs.runner || 'windows-latest', 'self-hosted') }}
         continue-on-error: true
-        shell: pwsh
         run: |
           $targets = @(
             "C:\Android",
@@ -151,247 +64,193 @@ jobs:
           )
           foreach ($target in $targets) {
             if (Test-Path $target) {
-              Write-Host "removing $target"
+              Write-Host "Removing $target"
               Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
             }
           }
-          $free = (Get-PSDrive C).Free / 1GB
-          Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after reclaim", $free)
-          Get-Content logs\disk.log
-      - name: Install NSIS, Ninja and sccache if missing
-        shell: pwsh
-        run: |
-          $choco = Get-Command choco -ErrorAction SilentlyContinue
-          if (-not $choco) {
-            Write-Host "chocolatey not available - skipping tool install"
-          } else {
-            if ('${{ env.MAKE_INSTALLER }}' -eq 'true' -and -not (Get-Command makensis -ErrorAction SilentlyContinue)) {
-              choco install nsis -y --no-progress
-            }
-            if ('${{ env.BUILD_WITH_NINJA }}' -eq '1' -and -not (Get-Command ninja -ErrorAction SilentlyContinue)) {
-              choco install ninja -y --no-progress
-            }
-            if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
-              choco install sccache -y --no-progress
-            }
-          }
-          $nsis = "${env:ProgramFiles(x86)}\NSIS"
-          if (Test-Path $nsis) {
-            Add-Content -Path $env:GITHUB_PATH -Value $nsis
-          }
-      - name: Restore compiler cache
-        uses: actions/cache/restore@v4
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+
+      - name: Checkout repository and pinned Blender
+        uses: actions/checkout@v4
         with:
-          path: ${{ env.SCCACHE_DIR }}
-          key: sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-${{ github.sha }}
-          restore-keys: |
-            sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-
-            sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-
-      - name: Pin upstream to the requested Blender revision
-        shell: bash
-        run: |
-          set -euo pipefail
-          git submodule sync --recursive
-          git submodule update --init --force --depth 1 upstream
-          git -C upstream fetch --tags --depth 1 origin "$BLENDER_REF"
-          git -C upstream checkout --force --detach FETCH_HEAD
-          git -C upstream log -1 --format='upstream pinned to %H%d'
-      - name: Check the resource version matches the pinned tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -n "BLENDER_VERSION=" scripts/windows/settings.bat scripts/unix/settings.sh || true
-          if ! grep -q "BLENDER_VERSION=${BLENDER_VERSION}" scripts/windows/settings.bat; then
-            echo "::warning::scripts/windows/settings.bat does not pin BLENDER_VERSION=${BLENDER_VERSION};" \
-                 "run scripts/upgrade/set_blender_version.sh ${BLENDER_VERSION} ${BLENDER_REF}"
-          fi
-      - name: Fetch Blender precompiled libraries
+          ref: release/v3.3.3
+          submodules: true
+          fetch-depth: 1
+          lfs: false
+
+      - name: Validate release and upstream pins
         shell: pwsh
-        working-directory: upstream
         run: |
           $ErrorActionPreference = "Stop"
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -ne "3.3.3") {
+            throw "VERSION must be 3.3.3; found '$version'"
+          }
+          $expectedUpstream = (git rev-parse HEAD:upstream).Trim()
+          $actualUpstream = (git -C upstream rev-parse HEAD).Trim()
+          Write-Host "Mixar version: $version"
+          Write-Host "Pinned upstream:  $expectedUpstream"
+          Write-Host "Checked upstream: $actualUpstream"
+          if ($expectedUpstream -ne $actualUpstream) {
+            git -C upstream fetch origin $expectedUpstream --depth=1
+            if ($LASTEXITCODE -ne 0) { throw "Failed to fetch Blender $expectedUpstream" }
+            git -C upstream checkout --detach $expectedUpstream
+            if ($LASTEXITCODE -ne 0) { throw "Failed to checkout Blender $expectedUpstream" }
+          }
+
+      - name: Checkout pinned Windows precompiled libraries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location upstream
           git lfs install --local
+          if ($LASTEXITCODE -ne 0) { throw "Git LFS initialization failed" }
+
+          $treeLine = (git ls-tree HEAD -- lib/windows_x64).Trim()
+          if (-not $treeLine) { throw "Blender tree has no lib/windows_x64 gitlink" }
+          $parts = $treeLine -split '\s+'
+          if ($parts.Count -lt 4 -or $parts[1] -ne "commit" -or $parts[2] -notmatch '^[0-9a-f]{40}$') {
+            throw "Unable to parse windows_x64 gitlink: $treeLine"
+          }
+          $expectedLib = $parts[2]
+          Write-Host "Pinned windows_x64: $expectedLib"
+
+          git config --local submodule.lib/windows_x64.update checkout
+          if ($LASTEXITCODE -ne 0) { throw "Failed to enable windows_x64 checkout" }
           git submodule sync -- lib/windows_x64
-          & git submodule update --init --force --checkout --depth 1 -- lib/windows_x64 2>&1 |
-            Tee-Object -FilePath ..\logs\libs.log
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::warning::shallow fetch of lib/windows_x64 failed, retrying at full depth"
-            & git submodule update --init --force --checkout -- lib/windows_x64 2>&1 |
-              Tee-Object -Append -FilePath ..\logs\libs.log
-            if ($LASTEXITCODE -ne 0) { throw "could not check out lib/windows_x64" }
-          }
-          & git -C lib\windows_x64 lfs pull 2>&1 | Tee-Object -Append -FilePath ..\logs\libs.log
-          $probe = "lib\windows_x64\python\313\include\Python.h"
-          if (-not (Test-Path $probe)) {
-            Write-Host "::error::lib\windows_x64 was not checked out"
-            Get-ChildItem lib -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue |
-              Select-Object FullName | Format-Table -AutoSize
-            throw "precompiled libraries missing: $probe"
-          }
-          $size = (Get-Item $probe).Length
-          if ($size -lt 1kb) {
-            throw "precompiled libraries are git-lfs pointers, not real files ($probe is $size bytes)"
-          }
-          Write-Host "libraries present ($probe is $size bytes)"
-          Get-ChildItem lib\windows_x64 | Select-Object Name | Format-Table -AutoSize
-      - name: Measure what the libraries cost
-        if: always()
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          function Get-SizeGB($path) {
-            if (-not (Test-Path $path)) { return "absent" }
-            $bytes = (Get-ChildItem $path -Recurse -File -Force -ErrorAction SilentlyContinue |
-              Measure-Object -Property Length -Sum).Sum
-            return ("{0:N1} GB" -f ($bytes / 1GB))
-          }
-          $rows = @(
-            [pscustomobject]@{ Path = "upstream\lib";        Size = Get-SizeGB "upstream\lib" }
-            [pscustomobject]@{ Path = "upstream\.git";       Size = Get-SizeGB "upstream\.git" }
-            [pscustomobject]@{ Path = "source";              Size = Get-SizeGB "source" }
-            [pscustomobject]@{ Path = "build";               Size = Get-SizeGB "build" }
-          )
-          $rows | Format-Table -AutoSize
-          $rows | ForEach-Object { Add-Content -Path logs\sizes.log -Value ("{0,-24} {1}" -f $_.Path, $_.Size) }
-          $free = (Get-PSDrive C).Free / 1GB
-          Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after libraries", $free)
-          Get-Content logs\disk.log
-      - name: Apply backend URL override
-        if: ${{ inputs.backend_url != '' }}
-        shell: pwsh
-        run: Add-Content -Path $env:GITHUB_ENV -Value "MIXAR_BACKEND_URL=${{ inputs.backend_url }}"
-      - name: Prepare .env
-        shell: pwsh
-        run: |
-          if (-not (Test-Path .env)) {
-            Copy-Item .env.example .env
-          }
-          Write-Host "MIXAR_ENV=$env:MIXAR_ENV BLENDER_VERSION=$env:BLENDER_VERSION BUILD_WITH_NINJA=$env:BUILD_WITH_NINJA BUILD_CORES=$env:BUILD_CORES"
-      - name: Build Mixar
-        shell: pwsh
-        run: |
-          & cmd /c "call scripts\windows\build.bat" 2>&1 | Tee-Object -FilePath logs\build.log
+
+          $env:GIT_LFS_SKIP_SMUDGE = "1"
+          git submodule update --init --force --checkout --depth=1 -- lib/windows_x64
           $code = $LASTEXITCODE
-          $free = (Get-PSDrive C).Free / 1GB
-          Add-Content -Path logs\disk.log -Value ("{0,-34} {1,8:N1} GB free" -f "after build.bat (exit $code)", $free)
-          if ($code -ne 0) { throw "build.bat exited with $code" }
-      - name: Compiler cache statistics
-        if: always()
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          if (Get-Command sccache -ErrorAction SilentlyContinue) {
-            sccache --show-stats
+          Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue
+          if ($code -ne 0) {
+            Write-Host "Shallow windows_x64 checkout failed; retrying full-depth."
+            git submodule update --init --force --checkout -- lib/windows_x64
+            if ($LASTEXITCODE -ne 0) { throw "Failed to initialize windows_x64" }
           }
-      - name: Save compiler cache
-        if: always()
-        uses: actions/cache/save@v4
+
+          $actualLib = (git -C lib/windows_x64 rev-parse HEAD).Trim()
+          if ($actualLib -ne $expectedLib) {
+            throw "windows_x64 pin mismatch: expected $expectedLib, got $actualLib"
+          }
+
+          git -C lib/windows_x64 lfs pull
+          if ($LASTEXITCODE -ne 0) { throw "git lfs pull failed for windows_x64" }
+
+          $probe = "lib/windows_x64/python/313/include/Python.h"
+          if (-not (Test-Path $probe)) { throw "Missing library probe: $probe" }
+          if ((Get-Item $probe).Length -lt 1KB) { throw "$probe is still an LFS pointer" }
+
+          $bytes = (Get-ChildItem lib/windows_x64 -Recurse -File | Measure-Object Length -Sum).Sum
+          Write-Host "Windows libraries: $([math]::Round($bytes / 1GB, 2)) GB"
+          if ($bytes -lt 1GB) { throw "windows_x64 checkout is unexpectedly small" }
+          Set-Location ..
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
         with:
-          path: ${{ env.SCCACHE_DIR }}
-          key: sccache-${{ runner.os }}-${{ env.MIXAR_ENV }}-${{ env.BLENDER_REF }}-${{ github.sha }}
-      - name: Overlay Mixar scripts into the bundle
-        shell: cmd
-        run: call scripts\windows\install.bat
-      - name: Package installer and portable zip
-        shell: cmd
-        env:
-          PACKAGE_EXTRA: ${{ env.MAKE_INSTALLER == 'true' && ' ' || '--no-installer' }}
-        run: call scripts\windows\package.bat --suffix %SHORT_SHA% %PACKAGE_EXTRA%
-      - name: Summarize artifacts
+          version: 1.12.1
+
+      - name: Verify build tools
         shell: pwsh
         run: |
-          Get-ChildItem dist -File |
-            Select-Object Name, @{ Name = 'MiB'; Expression = { [math]::Round($_.Length / 1MB, 1) } } |
-            Format-Table -AutoSize
-          $summary = $env:GITHUB_STEP_SUMMARY
-          Add-Content -Path $summary -Value "## Mixar Windows build"
-          Add-Content -Path $summary -Value "- Blender: $env:BLENDER_REF (resources $env:BLENDER_VERSION)"
-          Add-Content -Path $summary -Value "- Environment: $env:MIXAR_ENV"
-          Add-Content -Path $summary -Value "- Commit: $env:SHORT_SHA"
-          Add-Content -Path $summary -Value ""
-          Add-Content -Path $summary -Value "SHA-256:"
-          if (Test-Path dist/SHA256SUMS.txt) {
-            Get-Content dist/SHA256SUMS.txt | ForEach-Object { Add-Content -Path $summary -Value "    $_" }
-          }
-      - name: Upload installer and portable build
+          $ErrorActionPreference = "Stop"
+          cmake --version
+          if ($LASTEXITCODE -ne 0) { throw "CMake unavailable" }
+          ninja --version
+          if ($LASTEXITCODE -ne 0) { throw "Ninja unavailable" }
+          git lfs version
+          if ($LASTEXITCODE -ne 0) { throw "Git LFS unavailable" }
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+
+      - name: Prepare environment
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+          Write-Host "MIXAR_ENV=$env:MIXAR_ENV"
+          Write-Host "BUILD_CORES=$env:BUILD_CORES"
+
+      - name: Build Mixar
+        shell: cmd
+        run: |
+          call "scripts\windows\build.bat"
+          if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
+
+      - name: Overlay bundled Mixar scripts
+        shell: cmd
+        run: |
+          call "scripts\windows\install.bat"
+          if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
+
+      - name: Validate build output
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = "build\Prod\bin"
+          if (-not (Test-Path $dir)) { throw "$dir not found" }
+          $exe = Get-ChildItem $dir -Recurse -Filter mixar.exe -File | Select-Object -First 1
+          if (-not $exe) { throw "mixar.exe was not produced" }
+          if ($exe.Length -le 0) { throw "mixar.exe is empty" }
+          Write-Host "Built: $($exe.FullName)"
+          Write-Host "Size: $([math]::Round($exe.Length / 1MB, 2)) MB"
+
+      - name: Package portable Windows release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = "build\Prod\bin"
+          $zip = "mixar-windows-v3.3.3.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          & "C:\Program Files\7-Zip\7z.exe" a -tzip -mx=5 $zip "$dir\*"
+          if ($LASTEXITCODE -ne 0) { throw "7-Zip packaging failed" }
+          if (-not (Test-Path $zip)) { throw "$zip was not created" }
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $zip" | Set-Content SHA256SUMS.txt
+          Write-Host "Artifact: $zip"
+          Get-Content SHA256SUMS.txt
+
+      - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Mixar-${{ env.MIXAR_ENV }}-blender${{ env.BLENDER_VERSION }}-${{ env.SHORT_SHA }}
+          name: mixar-windows-v3.3.3
           path: |
-            dist/*.exe
-            dist/*.zip
-            dist/SHA256SUMS.txt
+            mixar-windows-v3.3.3.zip
+            SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 14
           compression-level: 0
-      - name: Publish the failure report
-        if: failure()
-        continue-on-error: true
+          retention-days: 90
+
+      - name: Deploy GitHub Release v3.3.3
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $out = New-Object System.Collections.Generic.List[string]
-          $out.Add("Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
-          $out.Add("Commit: ${{ github.sha }}")
-          $out.Add("Runner: ${{ runner.os }} / ${{ inputs.runner || 'windows-latest' }}")
-          $out.Add("")
-          function Add-Block($title, $path, $tail) {
-            $out.Add("")
-            $out.Add("## $title")
-            if (Test-Path $path) {
-              $out.Add('```')
-              Get-Content $path -Tail $tail -ErrorAction SilentlyContinue |
-                ForEach-Object { $out.Add($_) }
-              $out.Add('```')
-            } else {
-              $out.Add("not produced - the job died before this file existed")
-            }
+          $ErrorActionPreference = "Stop"
+          $zip = "mixar-windows-v3.3.3.zip"
+          if (-not (Test-Path $zip)) { throw "$zip missing before deploy" }
+
+          gh release view v3.3.3 --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload v3.3.3 $zip SHA256SUMS.txt --clobber --repo "${{ github.repository }}"
           }
-          Add-Block "Free disk after each stage" "logs\disk.log" 40
-          Add-Block "Directory sizes" "logs\sizes.log" 40
-          Add-Block "Library fetch (tail)" "logs\libs.log" 100
-          Add-Block "build.bat (tail)" "logs\build.log" 200
-          Add-Block "CMakeError.log (tail)" "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log" 120
-          $out.Add("")
-          $out.Add("## Free space right now")
-          $out.Add('```')
-          $drive = Get-PSDrive C
-          $out.Add(("free {0:N1} GB, used {1:N1} GB" -f ($drive.Free / 1GB), ($drive.Used / 1GB)))
-          $out.Add('```')
-          Set-Content -Path failure-report.md -Value $out -Encoding utf8
-          Get-Content failure-report.md | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-          $pr = gh pr list --repo $env:GITHUB_REPOSITORY --head $env:GITHUB_REF_NAME --state open --json number --jq '.[0].number'
-          if ($pr) {
-            gh pr comment $pr --repo $env:GITHUB_REPOSITORY --body-file failure-report.md
-            Write-Host "reported on pull request #$pr"
-          } else {
-            Write-Host "no open pull request for $env:GITHUB_REF_NAME - trying Issues"
-            gh issue create --repo $env:GITHUB_REPOSITORY `
-              --title "Windows build failed - run ${{ github.run_id }}" `
-              --body-file failure-report.md
+          else {
+            gh release create v3.3.3 $zip SHA256SUMS.txt `
+              --target "${{ github.sha }}" `
+              --title "Mixar v3.3.3" `
+              --notes "Windows x64 portable release for Mixar v3.3.3, based on Blender 5.2." `
+              --repo "${{ github.repository }}"
           }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub release deploy failed" }
+
       - name: Failure diagnostics
         if: failure()
         continue-on-error: true
         shell: pwsh
         run: |
           Get-PSDrive C | Select-Object Used, Free | Format-List
-          if (Test-Path logs\disk.log) { Get-Content logs\disk.log }
-          $errorLog = "build\$env:MIXAR_ENV\CMakeFiles\CMakeError.log"
-          if (Test-Path $errorLog) {
-            Write-Host "--- tail of $errorLog ---"
-            Get-Content $errorLog -Tail 200
+          if (Test-Path "build\Prod\CMakeFiles\CMakeError.log") {
+            Get-Content "build\Prod\CMakeFiles\CMakeError.log" -Tail 200
           }
-          if (Test-Path "build\$env:MIXAR_ENV\bin") {
-            Get-ChildItem "build\$env:MIXAR_ENV\bin" | Select-Object Name | Format-Table -AutoSize
+          if (Test-Path "build\Prod\bin") {
+            Get-ChildItem "build\Prod\bin" -Force | Select-Object Name, Length | Format-Table -AutoSize
           }
-      - name: Upload logs
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs-${{ github.run_id }}
-          path: logs/
-          if-no-files-found: warn
-          retention-days: 14
