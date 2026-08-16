@@ -65,9 +65,6 @@ def patch_mixar_header(root: Path) -> None:
     path = root / "source/blender/editors/interface/interface_mixar_section.hh"
     text = path.read_text(encoding="utf-8")
 
-    # Remove only the obsolete *global* forward declaration before adding the
-    # Blender 5.2 namespaced one. Doing this after adding the new declaration
-    # would accidentally delete the correct declaration as well.
     global_forward = """/* Custom panel category tab drawing for MIXIE space                     */
 
 struct ARegion;
@@ -153,11 +150,6 @@ def patch_widgets(root: Path) -> None:
     path = root / "source/blender/editors/interface/interface_widgets.cc"
     text = path.read_text(encoding="utf-8")
 
-    # Mixar inserted an action-button branch into Blender's ButtonType::But
-    # dispatch, but an obsolete fallback #else/#endif from an older toolbar
-    # conditional was left behind. MSVC stops immediately with C1019
-    # (unexpected #else). Keep the Blender 5.2 structure: the toolbar special
-    # case is conditional, while the Exec fallback is an ordinary C++ else.
     malformed = """#ifdef USE_UI_TOOLBAR_HACK
         else if ((but->icon != ICON_NONE) && but_is_tool(but)) {
           wt = widget_type(WidgetStyle::ToolbarItem);
