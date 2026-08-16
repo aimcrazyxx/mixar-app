@@ -11,11 +11,11 @@ Two modes are supported:
 
 * normal (default): scan the final, already-patched ``source`` tree and require
   every compatibility migration to be complete.
-* ``--repository-mode``: scan ``src`` immediately after checkout. The four
+* ``--repository-mode``: scan ``src`` immediately after checkout. The known
   compatibility fragments intentionally rewritten by patch_blender_52_build.py
-  are treated as known migration debt; everything else is held to the same
-  rules. The known malformed toolbar block is normalized in memory so the
-  structural checker can continue looking for unrelated preprocessor damage.
+  are treated as migration debt; everything else is held to the same rules.
+  The known malformed toolbar block is normalized in memory so the structural
+  checker can continue looking for unrelated preprocessor damage.
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ KNOWN_MIGRATION_FILES = {
     "source/blender/editors/interface/interface_mixar_section.cc",
     "source/blender/editors/interface/interface_mixar_section.hh",
     "source/blender/editors/interface/interface_widgets.cc",
+    "source/blender/editors/space_agent_bubble/space_agent_bubble.cc",
 }
 
 # Patterns already encountered during the 5.2 migration plus the broader API
