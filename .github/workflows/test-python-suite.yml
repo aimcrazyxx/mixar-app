@@ -33,7 +33,9 @@ jobs:
           python -m pip install --disable-pip-version-check pytest numpy
           python -m pip install --disable-pip-version-check -r scripts/python_requirements.txt
       - name: Run complete suite with actionable tracebacks
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pytest -ra --tb=short -p no:cacheprovider tests | tee pytest-full.log
       - name: Upload full pytest log
         if: always()
