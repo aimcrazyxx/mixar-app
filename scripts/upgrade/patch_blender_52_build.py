@@ -149,11 +149,48 @@ def patch_mixar_section(root: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_widgets(root: Path) -> None:
+    path = root / "source/blender/editors/interface/interface_widgets.cc"
+    text = path.read_text(encoding="utf-8")
+
+    # Mixar inserted an action-button branch into Blender's ButtonType::But
+    # dispatch, but an obsolete fallback #else/#endif from an older toolbar
+    # conditional was left behind. MSVC stops immediately with C1019
+    # (unexpected #else). Keep the Blender 5.2 structure: the toolbar special
+    # case is conditional, while the Exec fallback is an ordinary C++ else.
+    malformed = """#ifdef USE_UI_TOOLBAR_HACK
+        else if ((but->icon != ICON_NONE) && but_is_tool(but)) {
+          wt = widget_type(WidgetStyle::ToolbarItem);
+        }
+#endif
+        else {
+          wt = widget_type(WidgetStyle::Exec);
+        }
+#else
+        wt = widget_type(WidgetStyle::Exec);
+#endif
+"""
+    corrected = """#ifdef USE_UI_TOOLBAR_HACK
+        else if ((but->icon != ICON_NONE) && but_is_tool(but)) {
+          wt = widget_type(WidgetStyle::ToolbarItem);
+        }
+#endif
+        else {
+          wt = widget_type(WidgetStyle::Exec);
+        }
+"""
+    text = replace_once(text, malformed, corrected, "interface_widgets toolbar preprocessor block")
+    path.write_text(text, encoding="utf-8")
+
+
 def audit(root: Path) -> None:
     layout = (root / "source/blender/editors/interface/interface_layout.cc").read_text(
         encoding="utf-8"
     )
     mixar = (root / "source/blender/editors/interface/interface_mixar_section.cc").read_text(
+        encoding="utf-8"
+    )
+    widgets = (root / "source/blender/editors/interface/interface_widgets.cc").read_text(
         encoding="utf-8"
     )
     header = (root / "source/blender/editors/interface/interface_mixar_section.hh").read_text(
@@ -171,6 +208,16 @@ def audit(root: Path) -> None:
     for label, token in stale.items():
         if token in combined:
             raise RuntimeError(f"stale Blender 5.2 API remains: {label}: {token}")
+
+    malformed_widgets_tail = """        else {
+          wt = widget_type(WidgetStyle::Exec);
+        }
+#else
+        wt = widget_type(WidgetStyle::Exec);
+#endif
+"""
+    if malformed_widgets_tail in widgets:
+        raise RuntimeError("interface_widgets.cc still contains the orphaned #else/#endif block")
 
     if "namespace blender {\nstruct ARegion;" not in header:
         raise RuntimeError("Mixar header is missing blender::ARegion forward declaration")
@@ -191,6 +238,7 @@ def main() -> None:
     patch_layout(root)
     patch_mixar_header(root)
     patch_mixar_section(root)
+    patch_widgets(root)
     audit(root)
     print(f"Blender 5.2 Mixar compatibility patch is clean: {root}")
 
