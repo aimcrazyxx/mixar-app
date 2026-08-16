@@ -175,6 +175,19 @@ def patch_widgets(root: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_agent_bubble(root: Path) -> None:
+    path = root / "source/blender/editors/space_agent_bubble/space_agent_bubble.cc"
+    text = path.read_text(encoding="utf-8")
+    text = replace_counted(
+        text,
+        "bTheme *btheme = UI_GetTheme();",
+        "bTheme *btheme = ::blender::ui::theme::theme_get();",
+        2,
+        "Blender 5.2 agent bubble theme accessor",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
 def audit(root: Path) -> None:
     layout = (root / "source/blender/editors/interface/interface_layout.cc").read_text(
         encoding="utf-8"
@@ -188,6 +201,9 @@ def audit(root: Path) -> None:
     header = (root / "source/blender/editors/interface/interface_mixar_section.hh").read_text(
         encoding="utf-8"
     )
+    agent_bubble = (
+        root / "source/blender/editors/space_agent_bubble/space_agent_bubble.cc"
+    ).read_text(encoding="utf-8")
 
     stale = {
         "Block::buttons member access": "block->buttons.",
@@ -196,7 +212,7 @@ def audit(root: Path) -> None:
         "old panel aspect ListBase check": "BLI_listbase_is_empty(&region->runtime->uiblocks)",
         "old theme accessor": "UI_GetTheme()",
     }
-    combined = layout + "\n" + mixar
+    combined = layout + "\n" + mixar + "\n" + agent_bubble
     for label, token in stale.items():
         if token in combined:
             raise RuntimeError(f"stale Blender 5.2 API remains: {label}: {token}")
@@ -231,6 +247,7 @@ def main() -> None:
     patch_mixar_header(root)
     patch_mixar_section(root)
     patch_widgets(root)
+    patch_agent_bubble(root)
     audit(root)
     print(f"Blender 5.2 Mixar compatibility patch is clean: {root}")
 
