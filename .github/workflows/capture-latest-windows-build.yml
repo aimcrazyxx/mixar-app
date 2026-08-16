@@ -74,8 +74,8 @@ jobs:
             --log-failed \
             > /tmp/windows-failed.log 2>&1 || true
           {
-            echo '<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->'
-            echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'
+            printf '<!-- SPDX-%s: %s -->\n' 'FileCopyrightText' '2026 Mixar fork contributors'
+            printf '<!-- SPDX-%s: %s -->\n' 'License-Identifier' 'GPL-3.0-or-later'
             echo
             echo '# Latest Blender 5.2 Windows build'
             echo
