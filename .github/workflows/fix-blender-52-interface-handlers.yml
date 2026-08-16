@@ -1,124 +1,177 @@
-name: Fix Blender 5.2 interface handlers
-
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Repair remaining Blender 5.2 UI migration
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - .github/workflows/fix-blender-52-interface-handlers.yml
-
+      - ".github/workflows/fix-blender-52-interface-handlers.yml"
+  workflow_dispatch:
 permissions:
-  contents: write
   actions: write
-
+  contents: write
 concurrency:
-  group: fix-blender-52-interface-handlers
+  group: repair-blender-52-ui-main
   cancel-in-progress: false
-
 jobs:
-  fix:
+  repair:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-
-      - name: Port custom text handling to Blender 5.2
+          submodules: false
+      - name: Synchronize main before editing
+        run: git pull --ff-only origin main
+      - name: Port Mixar widgets and explicit custom-space handling
         run: |
-          set -euo pipefail
-          git pull --ff-only origin main
-          python3 <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
-          from urllib.request import urlopen
+          import re
 
-          path = Path("src/source/blender/editors/interface/interface_handlers.cc")
-          text = path.read_text()
-          upstream = urlopen(
-              "https://raw.githubusercontent.com/blender/blender/"
-              "fbe6228777e7d9afefcd61a413844e790ae75db7/"
-              "source/blender/editors/interface/interface_handlers.cc",
-              timeout=60,
-          ).read().decode()
+          widgets_path = Path("src/source/blender/editors/interface/interface_widgets.cc")
+          widgets = widgets_path.read_text(encoding="utf-8")
 
-          replacements = [
-              ("but->type != ButType::Text", "but->type != ButtonType::Text"),
-              ("ELEM(but->type, ButType::Text, ButType::SearchMenu)",
-               "ELEM(but->type, ButtonType::Text, ButtonType::SearchMenu)"),
-              ("UI_style_get()->widget", "style_get()->widget"),
-              ("ui_fontscale(&fstyle.points, but->block->aspect)",
-               "fontscale(&fstyle.points, but->block->aspect)"),
-              ("UI_fontstyle_set(&fstyle)", "fontstyle_set(&fstyle)"),
-              ("uiTextEdit &text_edit", "TextEdit &text_edit"),
-              ("ui_block_to_window_fl(region, but->block, &dummy_x, &btn_top_win)",
-               "block_to_window_fl(region, but->block, &dummy_x, &btn_top_win)"),
-              ("(btn_top_win - y) / (line_height_f / aspect)",
-               "(btn_top_win - xy.y) / (line_height_f / aspect)"),
-              ("int(x - startx)", "int(xy.x - startx)"),
-              ("ui_but_text_password_hide(password_str, but, true)",
-               "button_text_password_hide(password_str, but, true)"),
-              ("ui_textedit_move_vertical(but, text_edit, +1, event->modifier & KM_SHIFT)",
-               "ui_textedit_move_vertical(but, text_edit, +1, (event->modifier & KM_SHIFT) != 0)"),
-              ("ui_textedit_move_vertical(but, text_edit, -1, event->modifier & KM_SHIFT)",
-               "ui_textedit_move_vertical(but, text_edit, -1, (event->modifier & KM_SHIFT) != 0)"),
-              ("PointerRNA run_props;\n            WM_operator_properties_create_ptr(&run_props, run_ot);",
-               "PointerRNA run_props = WM_operator_properties_create_ptr(run_ot);"),
-              ("ui_window_to_block(menu->region, agent_block, &mx, &my)",
-               "window_to_block(menu->region, agent_block, &mx, &my)"),
-          ]
-          for old, new in replacements:
-              count = text.count(old)
-              if count != 1:
-                  raise RuntimeError(f"Expected one occurrence, found {count}: {old}")
-              text = text.replace(old, new)
+          def replace_counted(old: str, new: str, expected: int) -> None:
+              global widgets
+              count = widgets.count(old)
+              if count == expected:
+                  widgets = widgets.replace(old, new)
+                  return
+              if count == 0:
+                  return
+              raise RuntimeError(f"expected {expected} or 0 occurrence(s) of {old!r}, found {count}")
 
-          getter = "std::optional<StringRef> button_edit_unit_hint_get(const Button &but)"
-          if getter not in text:
-              start = upstream.index(getter)
-              end = upstream.index("static void textedit_begin(", start)
-              marker = "/* -------------------------------------------------------------------- */\n/** \\name Mixar: '@' Mention Autocomplete Bridge"
-              if text.count(marker) != 1:
-                  raise RuntimeError("Mention bridge marker is not unique")
-              text = text.replace(marker, upstream[start:end] + marker, 1)
+          def replace_once(old: str, new: str) -> None:
+              global widgets
+              count = widgets.count(old)
+              if count == 1:
+                  widgets = widgets.replace(old, new)
+                  return
+              if count == 0 and new in widgets:
+                  return
+              raise RuntimeError(f"expected one old fragment or an existing replacement; found {count}")
 
-          bad = [
-              "ButType::", "uiTextEdit", "UI_style_get", "ui_fontscale",
-              "UI_fontstyle_set", "ui_block_to_window_fl", "ui_but_text_password_hide",
-              "ui_window_to_block", "WM_operator_properties_create_ptr(&run_props",
-          ]
-          for token in bad:
-              if token in text:
-                  raise RuntimeError(f"Stale Blender API remains: {token}")
-          if text.count(getter) != 1 or text.count("static void button_edit_unit_hint_refresh") != 1:
-              raise RuntimeError("Blender 5.2 unit-hint functions were not restored exactly once")
-          path.write_text(text)
+          # Blender 5.2 names used by Mixar-only widget code.
+          replace_counted("but_placeholder_get(but)", "button_placeholder_get(but)", 1)
+          replace_counted("uiWidgetStateInfo", "WidgetStateInfo", 5)
+          replace_counted("UI_draw_roundbox_corner_set", "draw_roundbox_corner_set", 5)
+          replace_counted("UI_draw_roundbox_4fv", "draw_roundbox_4fv", 8)
+          replace_counted("UI_widgetbase_draw_cache_flush()", "widgetbase_draw_cache_flush()", 1)
+          replace_counted("UI_CNR_ALL", "CNR_ALL", 5)
+          replace_once(
+              "BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit))",
+              "BLFWrapMode::Typographical | BLFWrapMode::HardLimit",
+          )
+
+          # Keep upstream icon geometry while suppressing the search clear icon in multiline chat.
+          old_icon = (
+              "  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper */\n"
+              "  widget_draw_extra_icons(wcol, but, rect, alpha);\n"
+          )
+          new_icon = (
+              "  /* Extra icons, e.g. 'x' to clear text or the eyedropper.\n"
+              "   * Multiline chat input owns the full text rectangle and must not draw them. */\n"
+              "  if (!ui_but_is_multiline_text(but)) {\n"
+              "    widget_draw_extra_icons(wcol, but, rect, alpha);\n"
+              "  }\n"
+          )
+          replace_once(old_icon, new_icon)
+
+          old_duplicate_icon = (
+              "\n"
+              "  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper.\n"
+              "   * For multiline text buttons, skip extra icons (the VALUE_CLEAR 'x' icon\n"
+              "   * is auto-added by TEXTEDIT_UPDATE for search fields, not wanted here). */\n"
+              "  if (!ui_but_is_multiline_text(but)) {\n"
+              "    widget_draw_extra_icons(wcol, but, rect, alpha);\n"
+              "  }\n"
+              "\n"
+              "  /* Multi-line text buttons handle their own wrapping and drawing */\n"
+          )
+          new_multiline_comment = (
+              "\n"
+              "  /* Multi-line text buttons handle their own wrapping and drawing. */\n"
+          )
+          replace_once(old_duplicate_icon, new_multiline_comment)
+
+          # Preserve Blender 5.2's vertical-text clipping bypass.
+          old_clipping = (
+              "  else {\n"
+              "    /* clip but->drawstr to fit in available space */\n"
+              "    if (but->editstr && but->pos >= 0) {\n"
+          )
+          new_clipping = (
+              "  else {\n"
+              "    if (but->text_direction != TextDirection::Default) {\n"
+              "      /* Do not clip vertical text. */\n"
+              "    }\n"
+              "    else if (but->editstr && but->pos >= 0) {\n"
+          )
+          replace_once(old_clipping, new_clipping)
+
+          stale_widget_patterns = {
+              "but_placeholder_get": r"\bbut_placeholder_get\b",
+              "uiWidgetStateInfo": r"\buiWidgetStateInfo\b",
+              "UI_draw_roundbox_corner_set": r"\bUI_draw_roundbox_corner_set\b",
+              "UI_draw_roundbox_4fv": r"\bUI_draw_roundbox_4fv\b",
+              "UI_widgetbase_draw_cache_flush": r"\bUI_widgetbase_draw_cache_flush\b",
+              "UI_CNR_*": r"\bUI_CNR_[A-Z0-9_]+\b",
+          }
+          for label, pattern in stale_widget_patterns.items():
+              if re.search(pattern, widgets):
+                  raise RuntimeError(f"stale Blender 5.0 widget API remains: {label}")
+          if widgets.count("widget_draw_extra_icons(wcol, but, rect, alpha);") != 1:
+              raise RuntimeError("widget_draw_extra_icons must have exactly one call")
+          widgets_path.write_text(widgets, encoding="utf-8")
+
+          anim_path = Path("src/source/blender/editors/animation/anim_filter.cc")
+          anim = anim_path.read_text(encoding="utf-8")
+          old = (
+              "      case SPACE_MIXAR_ASSETS:\n"
+              "\n"
+              "      case SPACE_BAKING:\n"
+          )
+          new = (
+              "      case SPACE_MIXAR_ASSETS:\n"
+              "      case SPACE_AGENT_BUBBLE:\n"
+              "\n"
+              "      case SPACE_BAKING:\n"
+          )
+          if old in anim:
+              if anim.count(old) != 1:
+                  raise RuntimeError("unexpected custom-space switch shape")
+              anim = anim.replace(old, new)
+          elif new not in anim:
+              raise RuntimeError("could not add SPACE_AGENT_BUBBLE to animation context switch")
+          anim_path.write_text(anim, encoding="utf-8")
           PY
           git diff --check
-
-      - name: Commit repair to main
+          ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- src
+      - name: Commit repairs to main
         id: commit
         run: |
           set -euo pipefail
-          if git diff --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            src/source/blender/editors/interface/interface_widgets.cc \
+            src/source/blender/editors/animation/anim_filter.cc
+          if git diff --cached --quiet; then
+            echo "No source changes were needed."
+          else
+            git commit -m "fix: port remaining Blender 5.2 UI widgets"
+            git push origin HEAD:refs/heads/main
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/source/blender/editors/interface/interface_handlers.cc
-          git commit -m "fix: port interface handlers to Blender 5.2"
-          git push origin HEAD:main
-          echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Dispatch Windows validation
-        if: steps.commit.outputs.changed == 'true'
+      - name: Run the complete stale-API audit
         env:
           GH_TOKEN: ${{ github.token }}
-          FIX_SHA: ${{ steps.commit.outputs.sha }}
         run: |
-          gh workflow run build-windows.yml --ref main \
-            -f ref=main \
-            -f migration_sha="$FIX_SHA" \
-            -f run_tests=true \
-            -f upload_retention_days=14
+          gh workflow run scan-blender-52-apis.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f build_after_scan=true
+          echo "Queued the main-branch Blender 5.2 audit for ${{ steps.commit.outputs.sha }}"
