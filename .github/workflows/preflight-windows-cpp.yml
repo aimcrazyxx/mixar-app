@@ -1,0 +1,166 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Preflight Windows C++
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/blender-52-build-20260816
+    paths:
+      - "src/**"
+      - "cmake/**"
+      - "scripts/upgrade/**"
+      - "scripts/windows/**"
+      - ".github/workflows/preflight-windows-cpp.yml"
+
+concurrency:
+  group: preflight-windows-cpp-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Blender 5.2 Mixar targets
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      BLENDER_REF: v5.2.0
+      BLENDER_VERSION: "5.2"
+      MIXAR_ENV: Prod
+      BUILD_WITH_NINJA: "1"
+      SCCACHE_DIR: ${{ github.workspace }}\.sccache
+      SCCACHE_CACHE_SIZE: 5G
+      ROBOCOPY_THREADS: 16
+      PYTHONDONTWRITEBYTECODE: 1
+
+    steps:
+      - name: Configure git
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          git config --global core.autocrlf false
+
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+
+      - name: Static repository audit
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          & python scripts\upgrade\audit_blender_52_tree.py src --repository-mode 2>&1 |
+            Tee-Object -FilePath logs\preflight-repository.log
+          if ($LASTEXITCODE -ne 0) { throw "repository preflight failed" }
+
+      - name: Reclaim hosted-runner disk
+        continue-on-error: true
+        timeout-minutes: 12
+        shell: pwsh
+        run: |
+          $targets = @(
+            "C:\Android",
+            "C:\Miniconda",
+            "C:\Program Files\Google",
+            "C:\Program Files\MongoDB",
+            "C:\Program Files\MySQL",
+            "C:\Program Files\PostgreSQL",
+            "C:\Program Files\Amazon",
+            "C:\Program Files\Microsoft SDKs\Azure",
+            "C:\Program Files (x86)\Android",
+            "C:\Program Files (x86)\Microsoft SDKs\Azure",
+            "C:\hostedtoolcache\windows\Ruby",
+            "C:\hostedtoolcache\windows\go",
+            "C:\hostedtoolcache\windows\node",
+            "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk"
+          )
+          foreach ($target in $targets) {
+            if (Test-Path $target) {
+              Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
+            }
+          }
+          Get-PSDrive C | Select-Object Used, Free | Format-List
+
+      - name: Install Ninja and sccache if missing
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+            choco install ninja -y --no-progress
+          }
+          if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
+            choco install sccache -y --no-progress
+          }
+          ninja --version
+          sccache --version
+
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: sccache-preflight-${{ runner.os }}-${{ env.BLENDER_REF }}-${{ github.sha }}
+          restore-keys: |
+            sccache-preflight-${{ runner.os }}-${{ env.BLENDER_REF }}-
+            sccache-${{ runner.os }}-Prod-${{ env.BLENDER_REF }}-
+
+      - name: Pin upstream Blender
+        shell: bash
+        run: |
+          set -euo pipefail
+          git submodule sync --recursive
+          git submodule update --init --force --depth 1 upstream
+          git -C upstream fetch --tags --depth 1 origin "$BLENDER_REF"
+          git -C upstream checkout --force --detach FETCH_HEAD
+          git -C upstream log -1 --format='upstream pinned to %H%d'
+
+      - name: Fetch Blender Windows libraries
+        shell: pwsh
+        working-directory: upstream
+        run: |
+          $ErrorActionPreference = "Stop"
+          git lfs install --local
+          git submodule sync -- lib/windows_x64
+          & git submodule update --init --force --checkout --depth 1 -- lib/windows_x64 2>&1 |
+            Tee-Object -FilePath ..\logs\libs-preflight.log
+          if ($LASTEXITCODE -ne 0) {
+            & git submodule update --init --force --checkout -- lib/windows_x64 2>&1 |
+              Tee-Object -Append -FilePath ..\logs\libs-preflight.log
+            if ($LASTEXITCODE -ne 0) { throw "could not check out lib/windows_x64" }
+          }
+          & git -C lib\windows_x64 lfs pull 2>&1 |
+            Tee-Object -Append -FilePath ..\logs\libs-preflight.log
+          $probe = "lib\windows_x64\python\313\include\Python.h"
+          if (-not (Test-Path $probe)) { throw "missing precompiled libraries: $probe" }
+          if ((Get-Item $probe).Length -lt 1kb) { throw "Git LFS files were not materialized" }
+
+      - name: Compile Mixar Blender 5.2 surface
+        shell: pwsh
+        run: |
+          & cmd /c "call scripts\windows\preflight_compile.bat" 2>&1 |
+            Tee-Object -FilePath logs\preflight-cpp.log
+          if ($LASTEXITCODE -ne 0) { throw "Windows C++ preflight failed" }
+
+      - name: Compiler cache statistics
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: sccache --show-stats
+
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: sccache-preflight-${{ runner.os }}-${{ env.BLENDER_REF }}-${{ github.sha }}
+
+      - name: Upload preflight logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-cpp-preflight-${{ github.run_id }}
+          path: logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
