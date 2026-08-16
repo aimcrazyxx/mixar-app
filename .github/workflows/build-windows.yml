@@ -41,7 +41,7 @@ on:
       - ci/build-windows
 concurrency:
   group: build-windows-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 permissions:
   contents: read
   issues: write
@@ -59,6 +59,8 @@ jobs:
       MAKE_INSTALLER: ${{ github.event_name == 'workflow_dispatch' && (inputs.make_installer && 'true' || 'false') || 'true' }}
       SCCACHE_DIR: ${{ github.workspace }}\.sccache
       SCCACHE_CACHE_SIZE: 5G
+      ROBOCOPY_THREADS: 16
+      PYTHONDONTWRITEBYTECODE: 1
     steps:
       - name: Configure git and derive short sha
         shell: pwsh
@@ -71,6 +73,13 @@ jobs:
         with:
           submodules: false
           fetch-depth: 1
+      - name: Fast repository preflight
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          & python scripts\upgrade\audit_blender_52_tree.py src --repository-mode 2>&1 |
+            Tee-Object -FilePath logs\preflight-repository.log
+          if ($LASTEXITCODE -ne 0) { throw "repository preflight failed" }
       - name: Verify batch files use CRLF
         shell: pwsh
         run: |
@@ -131,6 +140,7 @@ jobs:
       - name: Reclaim disk space (hosted runners only)
         if: ${{ !contains(inputs.runner || 'windows-latest', 'self-hosted') }}
         continue-on-error: true
+        timeout-minutes: 12
         shell: pwsh
         run: |
           $targets = @(
@@ -196,6 +206,12 @@ jobs:
           git -C upstream fetch --tags --depth 1 origin "$BLENDER_REF"
           git -C upstream checkout --force --detach FETCH_HEAD
           git -C upstream log -1 --format='upstream pinned to %H%d'
+      - name: Preflight exact Blender 5.2 overlay
+        shell: pwsh
+        run: |
+          & cmd /c "call scripts\windows\overlay.bat" 2>&1 |
+            Tee-Object -FilePath logs\preflight-overlay.log
+          if ($LASTEXITCODE -ne 0) { throw "exact Blender 5.2 overlay preflight failed" }
       - name: Check the resource version matches the pinned tag
         shell: bash
         run: |
@@ -348,6 +364,8 @@ jobs:
               $out.Add("not produced - the job died before this file existed")
             }
           }
+          Add-Block "Repository preflight" "logs\preflight-repository.log" 160
+          Add-Block "Exact overlay preflight" "logs\preflight-overlay.log" 160
           Add-Block "Free disk after each stage" "logs\disk.log" 40
           Add-Block "Directory sizes" "logs\sizes.log" 40
           Add-Block "Library fetch (tail)" "logs\libs.log" 100
