@@ -1,0 +1,124 @@
+name: Fix Blender 5.2 interface handlers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-blender-52-interface-handlers.yml
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: fix-blender-52-interface-handlers
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Port custom text handling to Blender 5.2
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          python3 <<'PY'
+          from pathlib import Path
+          from urllib.request import urlopen
+
+          path = Path("src/source/blender/editors/interface/interface_handlers.cc")
+          text = path.read_text()
+          upstream = urlopen(
+              "https://raw.githubusercontent.com/blender/blender/"
+              "fbe6228777e7d9afefcd61a413844e790ae75db7/"
+              "source/blender/editors/interface/interface_handlers.cc",
+              timeout=60,
+          ).read().decode()
+
+          replacements = [
+              ("but->type != ButType::Text", "but->type != ButtonType::Text"),
+              ("ELEM(but->type, ButType::Text, ButType::SearchMenu)",
+               "ELEM(but->type, ButtonType::Text, ButtonType::SearchMenu)"),
+              ("UI_style_get()->widget", "style_get()->widget"),
+              ("ui_fontscale(&fstyle.points, but->block->aspect)",
+               "fontscale(&fstyle.points, but->block->aspect)"),
+              ("UI_fontstyle_set(&fstyle)", "fontstyle_set(&fstyle)"),
+              ("uiTextEdit &text_edit", "TextEdit &text_edit"),
+              ("ui_block_to_window_fl(region, but->block, &dummy_x, &btn_top_win)",
+               "block_to_window_fl(region, but->block, &dummy_x, &btn_top_win)"),
+              ("(btn_top_win - y) / (line_height_f / aspect)",
+               "(btn_top_win - xy.y) / (line_height_f / aspect)"),
+              ("int(x - startx)", "int(xy.x - startx)"),
+              ("ui_but_text_password_hide(password_str, but, true)",
+               "button_text_password_hide(password_str, but, true)"),
+              ("ui_textedit_move_vertical(but, text_edit, +1, event->modifier & KM_SHIFT)",
+               "ui_textedit_move_vertical(but, text_edit, +1, (event->modifier & KM_SHIFT) != 0)"),
+              ("ui_textedit_move_vertical(but, text_edit, -1, event->modifier & KM_SHIFT)",
+               "ui_textedit_move_vertical(but, text_edit, -1, (event->modifier & KM_SHIFT) != 0)"),
+              ("PointerRNA run_props;\n            WM_operator_properties_create_ptr(&run_props, run_ot);",
+               "PointerRNA run_props = WM_operator_properties_create_ptr(run_ot);"),
+              ("ui_window_to_block(menu->region, agent_block, &mx, &my)",
+               "window_to_block(menu->region, agent_block, &mx, &my)"),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f"Expected one occurrence, found {count}: {old}")
+              text = text.replace(old, new)
+
+          getter = "std::optional<StringRef> button_edit_unit_hint_get(const Button &but)"
+          if getter not in text:
+              start = upstream.index(getter)
+              end = upstream.index("static void textedit_begin(", start)
+              marker = "/* -------------------------------------------------------------------- */\n/** \\name Mixar: '@' Mention Autocomplete Bridge"
+              if text.count(marker) != 1:
+                  raise RuntimeError("Mention bridge marker is not unique")
+              text = text.replace(marker, upstream[start:end] + marker, 1)
+
+          bad = [
+              "ButType::", "uiTextEdit", "UI_style_get", "ui_fontscale",
+              "UI_fontstyle_set", "ui_block_to_window_fl", "ui_but_text_password_hide",
+              "ui_window_to_block", "WM_operator_properties_create_ptr(&run_props",
+          ]
+          for token in bad:
+              if token in text:
+                  raise RuntimeError(f"Stale Blender API remains: {token}")
+          if text.count(getter) != 1 or text.count("static void button_edit_unit_hint_refresh") != 1:
+              raise RuntimeError("Blender 5.2 unit-hint functions were not restored exactly once")
+          path.write_text(text)
+          PY
+          git diff --check
+
+      - name: Commit repair to main
+        id: commit
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/source/blender/editors/interface/interface_handlers.cc
+          git commit -m "fix: port interface handlers to Blender 5.2"
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch Windows validation
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FIX_SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          gh workflow run build-windows.yml --ref main \
+            -f ref=main \
+            -f migration_sha="$FIX_SHA" \
+            -f run_tests=true \
+            -f upload_retention_days=14
