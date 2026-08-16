@@ -97,6 +97,14 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 Adeveda Enterprises Private Limited"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
+# Generated migration audits and build captures are overwritten by CI, so their
+# license metadata lives here instead of being injected into every generated file.
+[[annotations]]
+path = "docs/migration/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Adeveda Enterprises Private Limited"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
 # Unmodified KIRI 3DGS Render distribution files that cannot safely carry
 # inline SPDX comments (binary assets and shader payloads). The vendored
 # distribution includes its upstream Apache-2.0 license.
