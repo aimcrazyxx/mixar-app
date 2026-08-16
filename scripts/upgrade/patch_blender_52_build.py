@@ -5,15 +5,17 @@
 
 The Windows build overlays ``src`` on top of the pinned Blender checkout in
 ``source``. This script runs immediately after that overlay and updates only
-Mixar-owned compatibility fragments. Every transformation is idempotent and
-validated so an upstream API change fails here with a useful message instead
-of producing hundreds of compiler errors later.
+compatibility fragments in the generated tree. Every transformation is
+idempotent and validated so an upstream API change fails here with a useful
+message instead of producing hundreds of compiler errors later.
 """
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
+from fix_python_invalid_escapes import fix_tree as fix_python_escape_tree
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -248,6 +250,13 @@ def main() -> None:
     patch_mixar_section(root)
     patch_widgets(root)
     patch_agent_bubble(root)
+
+    files, literals, escapes = fix_python_escape_tree(root)
+    print(
+        "Python escape cleanup: "
+        f"{files} files, {literals} literals, {escapes} invalid escapes fixed"
+    )
+
     audit(root)
     print(f"Blender 5.2 Mixar compatibility patch is clean: {root}")
 
