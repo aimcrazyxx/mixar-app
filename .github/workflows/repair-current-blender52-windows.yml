@@ -1,21 +1,18 @@
-# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-FileCopyrightText: 2026 Adeveda Enterprises Private Limited
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: Repair current Blender 5.2 Windows failures
 
 on:
-  push:
-    branches:
-      - fix/blender-52-build-20260816
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   repair:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: fix/blender-52-build-20260816
           fetch-depth: 0
@@ -27,20 +24,24 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           root = Path('src/source/blender/editors/interface')
 
-          # Blender 5.2 moved Block's owned button storage to buttons_ptrs.
+          # Blender 5.2 stores owned UI buttons in Block::buttons_ptrs.
+          # Normalize both the legacy spelling and any accidental repeated suffixes so this
+          # repair remains strictly idempotent across repeated manual runs.
           p = root / 'interface_mixar_section.cc'
           s = p.read_text(encoding='utf-8')
-          s = s.replace('block->buttons', 'block->buttons_ptrs')
+          s = re.sub(r'block->buttons(?:_ptrs)*', 'block->buttons_ptrs', s)
           s = s.replace('const bTheme *btheme = UI_GetTheme();',
                         'const bTheme *btheme = ::blender::ui::theme::theme_get();')
           marker = '#include "UI_interface_layout.hh"\n'
-          if 'using namespace blender;  // Blender 5.2 DNA/BLF/GPU types live in blender.\n' not in s:
+          using_line = 'using namespace blender;  // Blender 5.2 DNA/BLF/GPU types live in blender.\n'
+          if using_line not in s:
               if marker not in s:
                   raise RuntimeError('interface_mixar_section include marker not found')
-              s = s.replace(marker, marker + '\nusing namespace blender;  // Blender 5.2 DNA/BLF/GPU types live in blender.\n', 1)
+              s = s.replace(marker, marker + '\n' + using_line, 1)
           p.write_text(s, encoding='utf-8')
 
           # ARegion is in namespace blender in 5.2. A global forward declaration creates
@@ -58,37 +59,26 @@ jobs:
           # Blender 5.2 removed the old helper and renamed the Block storage.
           p = root / 'interface_layout.cc'
           s = p.read_text(encoding='utf-8')
-          old = '''  ui::Block *block = layout->block();
-          if (!block || block->buttons.is_empty()) {
-            return;
-          }
-          but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);'''
-          new = '''  ui::Block *block = layout->block();
-          if (!block || block->buttons_ptrs.is_empty()) {
-            return;
-          }
-          block->buttons_ptrs.last()->drawflag |= BUT_NO_TOOLTIP;'''
-          if old in s:
-              s = s.replace(old, new, 1)
-          else:
-              # Be tolerant of indentation/context changes while still performing only
-              # the two narrowly-scoped API migrations.
-              s = s.replace('block->buttons.is_empty()', 'block->buttons_ptrs.is_empty()')
-              s = s.replace('but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP);',
-                            'block->buttons_ptrs.last()->drawflag |= BUT_NO_TOOLTIP;')
+          s = re.sub(r'block->buttons(?:_ptrs)*\.is_empty\(\)',
+                     'block->buttons_ptrs.is_empty()', s)
+          s = re.sub(r'but_drawflag_enable\(block->buttons(?:_ptrs)*\.last\(\)\.get\(\), BUT_NO_TOOLTIP\);',
+                     'block->buttons_ptrs.last()->drawflag |= BUT_NO_TOOLTIP;', s)
           p.write_text(s, encoding='utf-8')
 
-          # Fail immediately if the exact stale APIs from Windows build #34 remain.
           checks = {
-              root / 'interface_mixar_section.cc': ['block->buttons.', 'block->buttons[', 'UI_GetTheme()'],
-              root / 'interface_layout.cc': ['block->buttons.is_empty()',
-                                             'but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP)'],
+              root / 'interface_mixar_section.cc': [
+                  'block->buttons.', 'block->buttons[', 'buttons_ptrs_ptrs', 'UI_GetTheme()'
+              ],
+              root / 'interface_layout.cc': [
+                  'block->buttons.is_empty()', 'buttons_ptrs_ptrs',
+                  'but_drawflag_enable(block->buttons.last().get(), BUT_NO_TOOLTIP)'
+              ],
           }
           for path, stale in checks.items():
               text = path.read_text(encoding='utf-8')
               for token in stale:
                   if token in text:
-                      raise RuntimeError(f'stale Blender 5.2 API remains in {path}: {token}')
+                      raise RuntimeError(f'stale or non-idempotent Blender 5.2 API remains in {path}: {token}')
           PY
 
           git diff --check
@@ -109,5 +99,5 @@ jobs:
             echo 'No repair changes needed.'
             exit 0
           fi
-          git commit -m 'fix: port remaining interface code to Blender 5.2'
+          git commit -m 'fix: normalize Blender 5.2 interface APIs'
           git push origin HEAD:fix/blender-52-build-20260816
