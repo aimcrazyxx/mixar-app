@@ -49,8 +49,8 @@ using namespace blender;  // Blender 5.2 DNA/BLF/GPU types live in blender.
 
   /* Walk backwards through the block's buttons to find the Roundbox button
    * that was just created by box(). It should be the most recently added. */
-  for (int i = int(block->buttons_ptrs.size()) - 1; i >= 0; i--) {
-    ::blender::ui::Button *but = block->buttons_ptrs[i].get();
+  for (int i = int(block->buttons_ptrs_ptrs.size()) - 1; i >= 0; i--) {
+    ::blender::ui::Button *but = block->buttons_ptrs_ptrs[i].get();
     if (but->type == ::blender::ui::ButtonType::Roundbox) {
       but->flag2 |= UI_BUT2_MIXAR_SECTION;
       break;
@@ -65,8 +65,8 @@ void UI_layout_mixar_mark_last_dropdown(::blender::ui::Layout *layout)
   ::blender::ui::Block *block = layout->block();
 
   /* Walk backwards to find the most recently created Menu button. */
-  for (int i = int(block->buttons_ptrs.size()) - 1; i >= 0; i--) {
-    ::blender::ui::Button *but = block->buttons_ptrs[i].get();
+  for (int i = int(block->buttons_ptrs_ptrs.size()) - 1; i >= 0; i--) {
+    ::blender::ui::Button *but = block->buttons_ptrs_ptrs[i].get();
     if (ELEM(but->type, ::blender::ui::ButtonType::Menu, ::blender::ui::ButtonType::Block, ::blender::ui::ButtonType::Popover)) {
       but->flag2 |= UI_BUT2_MIXAR_DROPDOWN;
       break;
@@ -78,8 +78,8 @@ void UI_layout_mixar_mark_last_action(::blender::ui::Layout *layout)
 {
   ::blender::ui::Block *block = layout->block();
 
-  for (int i = int(block->buttons_ptrs.size()) - 1; i >= 0; i--) {
-    ::blender::ui::Button *but = block->buttons_ptrs[i].get();
+  for (int i = int(block->buttons_ptrs_ptrs.size()) - 1; i >= 0; i--) {
+    ::blender::ui::Button *but = block->buttons_ptrs_ptrs[i].get();
     if (but->type == ::blender::ui::ButtonType::But) {
       but->flag2 |= UI_BUT2_MIXAR_ACTION;
       break;
@@ -91,8 +91,8 @@ void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout)
 {
   ::blender::ui::Block *block = layout->block();
 
-  for (int i = int(block->buttons_ptrs.size()) - 1; i >= 0; i--) {
-    ::blender::ui::Button *but = block->buttons_ptrs[i].get();
+  for (int i = int(block->buttons_ptrs_ptrs.size()) - 1; i >= 0; i--) {
+    ::blender::ui::Button *but = block->buttons_ptrs_ptrs[i].get();
     if (ELEM(but->type, ::blender::ui::ButtonType::Checkbox, ::blender::ui::ButtonType::CheckboxN)) {
       but->flag2 |= UI_BUT2_MIXAR_TOGGLE;
       break;
@@ -104,8 +104,8 @@ void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout)
 {
   ::blender::ui::Block *block = layout->block();
 
-  for (int i = int(block->buttons_ptrs.size()) - 1; i >= 0; i--) {
-    ::blender::ui::Button *but = block->buttons_ptrs[i].get();
+  for (int i = int(block->buttons_ptrs_ptrs.size()) - 1; i >= 0; i--) {
+    ::blender::ui::Button *but = block->buttons_ptrs_ptrs[i].get();
     if (but->type == ::blender::ui::ButtonType::Text) {
       but->flag2 |= UI_BUT2_MIXAR_INPUT;
       break;
