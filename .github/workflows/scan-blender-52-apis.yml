@@ -55,6 +55,10 @@ jobs:
               ("legacy UI_draw_roundbox_4fv", re.compile(r"\bUI_draw_roundbox_4fv\b"), None),
               ("legacy UI_widgetbase_draw_cache_flush", re.compile(r"\bUI_widgetbase_draw_cache_flush\b"), None),
               ("legacy UI_CNR constant", re.compile(r"\bUI_CNR_[A-Z0-9_]+\b"), None),
+              ("legacy Block buttons member access", re.compile(r"\bblock->buttons(?:\.|\[)"), None),
+              ("legacy but_drawflag helper", re.compile(r"\bbut_drawflag_(?:enable|disable)\b"), None),
+              ("removed UI_GetTheme", re.compile(r"\bUI_GetTheme\b"), None),
+              ("obsolete Mixar category renderer", re.compile(r"\bUI_panel_category_draw_all_mixar\b"), None),
               ("old WM_operator_properties_create_ptr arity", re.compile(r"WM_operator_properties_create_ptr\s*\(\s*&"), None),
               ("removed absolute_block call", re.compile(r"absolute_block\s*\("), None),
               ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib"), None),
@@ -104,7 +108,7 @@ jobs:
 
           report = [
               "<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->",
-              "<!-- SPDX-License-Identifier: GPL-3.0-or-later -->",
+              "<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->",
               "",
               "# Blender 5.2 API scan",
               "",
