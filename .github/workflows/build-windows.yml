@@ -34,6 +34,20 @@ jobs:
           fetch-depth: 1
           lfs: false
 
+      - name: Checkout Windows precompiled libs (LFS)
+        shell: pwsh
+        run: |
+          # Blender requires pre-compiled libs under source/lib/windows_x64
+          # (populated from upstream/lib/windows_x64 via LFS).
+          $pinnedLib = git rev-parse HEAD:upstream/lib/windows_x64
+          Write-Host "Pinned libs commit: $pinnedLib"
+          git clone https://projects.blender.org/blender/lib-windows_x64.git upstream/lib/windows_x64
+          Set-Location upstream/lib/windows_x64
+          git checkout $pinnedLib --quiet
+          git lfs pull
+          Set-Location ../../..
+          Write-Host "Libs checkout complete. Total: $((Get-ChildItem upstream/lib/windows_x64 -Recurse | Measure-Object -Property Length -Sum).Sum / 1GB) GB"
+
       - name: Checkout upstream Blender at pinned commit
         shell: pwsh
         run: |
