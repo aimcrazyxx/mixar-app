@@ -68,6 +68,9 @@ void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout);
  */
 void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout);
 
+/** Disable the tooltip on the most recently created button in a layout. */
+void UI_layout_disable_last_button_tooltip(::blender::ui::Layout *layout);
+
 /* -------------------------------------------------------------------- */
 /* Custom panel category tab drawing for MIXIE space                     */
 
