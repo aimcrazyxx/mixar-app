@@ -130,14 +130,14 @@ jobs:
           set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git pull --rebase origin main
           git add docs/migration/blender-52-api-scan.md
           if git diff --cached --quiet; then
             echo "Audit report is unchanged."
           else
             git commit -m "ci: refresh Blender 5.2 API audit"
-            git push origin HEAD:refs/heads/main
           fi
+          git pull --rebase origin main
+          git push origin HEAD:refs/heads/main
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Fail on stale APIs
         if: ${{ steps.scan.outputs.blocking_hits != '0' }}
