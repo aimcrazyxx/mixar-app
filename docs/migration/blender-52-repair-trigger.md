@@ -7,4 +7,4 @@ Temporary same-repository pull request used only to dispatch the reviewed main-b
 
 A follow-up synchronize event captures the repair and audit workflow results so any automation failure can be diagnosed and corrected without waiting for another compiler log.
 
-The false conflict-marker detection was corrected; this synchronization verifies the idempotent repair and captures both workflow results directly on the PR.
+The source repair is applied on `main`. This synchronization reruns the audit after fixing its commit/rebase ordering, then dispatches the full Windows build if the report has zero blocking hits.
