@@ -4,8 +4,8 @@
 """Apply the small Mixar source migrations required by Blender 5.2.
 
 The Windows build overlays ``src`` on top of the pinned Blender checkout in
-``source``.  This script runs immediately after that overlay and updates only
-Mixar-owned compatibility fragments.  Every transformation is idempotent and
+``source``. This script runs immediately after that overlay and updates only
+Mixar-owned compatibility fragments. Every transformation is idempotent and
 validated so an upstream API change fails here with a useful message instead
 of producing hundreds of compiler errors later.
 """
@@ -22,7 +22,9 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
         return text.replace(old, new)
     if count == 0 and new in text:
         return text
-    raise RuntimeError(f"{label}: expected one old fragment (or existing replacement), found {count}")
+    raise RuntimeError(
+        f"{label}: expected one old fragment (or existing replacement), found {count}"
+    )
 
 
 def replace_counted(text: str, old: str, new: str, expected: int, label: str) -> str:
@@ -31,7 +33,9 @@ def replace_counted(text: str, old: str, new: str, expected: int, label: str) ->
         return text.replace(old, new)
     if count == 0 and text.count(new) >= expected:
         return text
-    raise RuntimeError(f"{label}: expected {expected} old fragment(s) (or an already-patched file), found {count}")
+    raise RuntimeError(
+        f"{label}: expected {expected} old fragment(s) (or an already-patched file), found {count}"
+    )
 
 
 def patch_layout(root: Path) -> None:
@@ -60,6 +64,23 @@ def patch_layout(root: Path) -> None:
 def patch_mixar_header(root: Path) -> None:
     path = root / "source/blender/editors/interface/interface_mixar_section.hh"
     text = path.read_text(encoding="utf-8")
+
+    # Remove only the obsolete *global* forward declaration before adding the
+    # Blender 5.2 namespaced one. Doing this after adding the new declaration
+    # would accidentally delete the correct declaration as well.
+    global_forward = """/* Custom panel category tab drawing for MIXIE space                     */
+
+struct ARegion;
+
+/**
+"""
+    namespaced_section = """/* Custom panel category tab drawing for MIXIE space                     */
+
+/**
+"""
+    if global_forward in text:
+        text = text.replace(global_forward, namespaced_section, 1)
+
     old_namespace = """namespace blender::ui {
 struct Layout;
 }
@@ -72,7 +93,6 @@ struct Layout;
 }  // namespace blender
 """
     text = replace_once(text, old_namespace, new_namespace, "Mixar header Blender namespace")
-    text = text.replace("\nstruct ARegion;\n", "\n")
     text = replace_once(
         text,
         "void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);",
@@ -124,9 +144,15 @@ def patch_mixar_section(root: Path) -> None:
 
 
 def audit(root: Path) -> None:
-    layout = (root / "source/blender/editors/interface/interface_layout.cc").read_text(encoding="utf-8")
-    mixar = (root / "source/blender/editors/interface/interface_mixar_section.cc").read_text(encoding="utf-8")
-    header = (root / "source/blender/editors/interface/interface_mixar_section.hh").read_text(encoding="utf-8")
+    layout = (root / "source/blender/editors/interface/interface_layout.cc").read_text(
+        encoding="utf-8"
+    )
+    mixar = (root / "source/blender/editors/interface/interface_mixar_section.cc").read_text(
+        encoding="utf-8"
+    )
+    header = (root / "source/blender/editors/interface/interface_mixar_section.hh").read_text(
+        encoding="utf-8"
+    )
 
     stale = {
         "Block::buttons member access": "block->buttons.",
@@ -138,13 +164,20 @@ def audit(root: Path) -> None:
     for label, token in stale.items():
         if token in combined:
             raise RuntimeError(f"stale Blender 5.2 API remains: {label}: {token}")
+
+    if "namespace blender {\nstruct ARegion;" not in header:
+        raise RuntimeError("Mixar header is missing blender::ARegion forward declaration")
     if "void UI_panel_category_draw_all_mixar(::blender::ARegion *region" not in header:
         raise RuntimeError("Mixar panel header still exposes the pre-5.2 global ARegion type")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("root", type=Path, help="Blender overlay root (normally the repository source directory)")
+    parser.add_argument(
+        "root",
+        type=Path,
+        help="Blender overlay root (normally the repository source directory)",
+    )
     args = parser.parse_args()
     root = args.root.resolve()
 
