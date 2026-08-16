@@ -25,34 +25,40 @@ jobs:
           import re
 
           root = Path("src")
-          source_suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
-          files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in source_suffixes or p.name == "CMakeLists.txt")]
+          suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
+          files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in suffixes or p.name == "CMakeLists.txt")]
+          counts = {name: 0 for name in ("uiLayout", "uiBut", "uiBlock", "ghostwin", "MEM_callocN", "absolute_block")}
 
-          counts = {
-              "uiLayout": 0,
-              "ghostwin": 0,
-              "MEM_callocN": 0,
-          }
           for path in files:
               value = path.read_text(encoding="utf-8", errors="replace")
               original = value
 
-              # Blender 5.2 moved uiLayout to blender::ui::Layout. The one
-              # standalone forward declaration must become a namespace declaration.
-              if "struct uiLayout;" in value:
-                  value = value.replace(
-                      "struct uiLayout;",
-                      "namespace blender::ui {\nstruct Layout;\n}",
-                  )
+              # Namespaced UI core types in Blender 5.2. Handle standalone
+              # forward declarations before globally qualifying remaining uses.
+              value = value.replace("struct uiLayout;", "namespace blender::ui {\nstruct Layout;\n}")
+              value = value.replace("struct uiBut;", "namespace blender::ui {\nstruct Button;\n}")
+              value = value.replace("struct uiBlock;", "namespace blender::ui {\nstruct Block;\n}")
               value, count = re.subn(r"\buiLayout\b", "::blender::ui::Layout", value)
               counts["uiLayout"] += count
+              value, count = re.subn(r"\buiBut\b", "::blender::ui::Button", value)
+              counts["uiBut"] += count
+              value, count = re.subn(r"\buiBlock\b", "::blender::ui::Block", value)
+              counts["uiBlock"] += count
 
-              # wmWindow's GHOST handle moved into wmWindowRuntime in Blender 5.2.
+              # Layout::absolute_block() no longer exists. The 5.2 API returns
+              # the absolute sub-layout, whose block is then queried explicitly.
+              value, count = re.subn(
+                  r"->absolute_block\s*\(\s*\)",
+                  "->absolute(false).block()",
+                  value,
+              )
+              counts["absolute_block"] += count
+
+              # wmWindow's GHOST handle moved into wmWindowRuntime.
               value, count = re.subn(r"(?<!runtime)->ghostwin\b", "->runtime->ghostwin", value)
               counts["ghostwin"] += count
 
-              # Blender 5.2 removed typed MEM_callocN in favor of constructors
-              # which preserve zero-initialization and C++ object lifetime.
+              # Blender 5.2 uses the C++ lifetime-aware zeroed allocator.
               value, count = re.subn(r"\bMEM_callocN\s*<", "MEM_new_zeroed<", value)
               counts["MEM_callocN"] += count
 
@@ -60,45 +66,38 @@ jobs:
                   path.write_text(value, encoding="utf-8")
 
           patterns = [
-              ("legacy uiLayout type", re.compile(r"\buiLayout\b")),
-              ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib")),
-              ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b")),
-              ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<")),
-              ("legacy uiBut type", re.compile(r"\buiBut\b")),
-              ("legacy uiBlock type", re.compile(r"\buiBlock\b")),
-              ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b")),
-              ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b")),
-              ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)")),
+              ("legacy uiLayout type", re.compile(r"\buiLayout\b"), True),
+              ("legacy uiBut type", re.compile(r"\buiBut\b"), True),
+              ("legacy uiBlock type", re.compile(r"\buiBlock\b"), True),
+              ("removed absolute_block call", re.compile(r"absolute_block\s*\("), True),
+              ("obsolete fmtlib target", re.compile(r"bf::extern::fmtlib"), True),
+              ("direct ghostwin access", re.compile(r"(?<!runtime)->ghostwin\b"), True),
+              ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<"), True),
+              ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b"), True),
+              ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b"), True),
+              ("tooltip helper occurrences", re.compile(r"UI_layout_disable_last_button_tooltip"), False),
+              ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)"), True),
           ]
           report_path = Path("docs/migration/blender-52-api-scan.md")
-          original_report = report_path.read_text(encoding="utf-8")
-          prefix = original_report.split("# Blender 5.2 API scan", 1)[0]
-          out = [
-              prefix.rstrip(),
-              "",
-              "# Blender 5.2 API scan",
-              "",
-              "## Applied ports",
-              "",
+          prefix = report_path.read_text(encoding="utf-8").split("# Blender 5.2 API scan", 1)[0]
+          out = [prefix.rstrip(), "", "# Blender 5.2 API scan", "", "## Applied ports", ""]
+          out.extend([
               f"- `uiLayout` → `blender::ui::Layout`: **{counts['uiLayout']}**",
+              f"- `uiBut` → `blender::ui::Button`: **{counts['uiBut']}**",
+              f"- `uiBlock` → `blender::ui::Block`: **{counts['uiBlock']}**",
+              f"- `absolute_block()` → `absolute(false).block()`: **{counts['absolute_block']}**",
               f"- `wmWindow::ghostwin` → `wmWindow::runtime->ghostwin`: **{counts['ghostwin']}**",
               f"- `MEM_callocN<T>` → `MEM_new_zeroed<T>`: **{counts['MEM_callocN']}**",
               "",
-          ]
+          ])
           blocking_hits = 0
-          for label, pattern in patterns:
+          for label, pattern, blocking in patterns:
               hits = []
               for path in files:
                   for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
                       if pattern.search(line):
                           hits.append(f"- `{path}:{number}` — `{line.strip()}`")
-              if label in {
-                  "legacy uiLayout type",
-                  "obsolete fmtlib target",
-                  "direct ghostwin access",
-                  "obsolete typed MEM_callocN",
-                  "merge conflict marker",
-              }:
+              if blocking:
                   blocking_hits += len(hits)
               out.extend([f"## {label}", "", f"Count: **{len(hits)}**", ""])
               out.extend(hits[:300] or ["- None"])
@@ -107,12 +106,11 @@ jobs:
               out.append("")
           out.extend(["## Summary", "", f"Blocking stale-pattern hits: **{blocking_hits}**", ""])
           report_path.write_text("\n".join(out), encoding="utf-8")
-
           if blocking_hits:
               raise RuntimeError(f"{blocking_hits} blocking Blender 5.2 API remnants remain")
           PY
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src docs/migration/blender-52-api-scan.md
-          git commit -m "fix: port remaining Blender 5.2 UI window and allocation APIs"
+          git commit -m "fix: port Blender 5.2 UI block and button APIs"
           git push origin HEAD:refs/heads/migration/blender-5.2
