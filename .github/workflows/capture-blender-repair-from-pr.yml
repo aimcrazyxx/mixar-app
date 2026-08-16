@@ -1,0 +1,67 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Capture Blender repair from automation PR
+on:
+  pull_request:
+    types: [synchronize]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  capture:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'automation/blender-52-repair'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: false
+      - name: Capture latest repair run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow fix-blender-52-interface-handlers.yml \
+            --branch main \
+            --event workflow_dispatch \
+            --limit 10 \
+            --json databaseId,createdAt,status,conclusion,url \
+            --jq 'sort_by(.databaseId) | last | .databaseId')"
+          test -n "$run_id"
+          set +e
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 5 --exit-status
+          set -e
+          gh run view "$run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json databaseId,status,conclusion,url,headSha,createdAt,updatedAt,jobs \
+            > /tmp/repair-summary.json
+          gh run view "$run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --log-failed \
+            > /tmp/repair-failed.log 2>&1 || true
+          {
+            echo '<!-- SPDX-FileCopyrightText: 2026 Mixar fork contributors -->'
+            echo '<!-- SPDX-License-Identifier: GPL-3.0-or-later -->'
+            echo
+            echo '# Latest Blender 5.2 repair workflow'
+            echo
+            echo '```json'
+            cat /tmp/repair-summary.json
+            echo '```'
+            echo
+            echo '```text'
+            tail -n 1200 /tmp/repair-failed.log
+            echo '```'
+          } > docs/migration/latest-blender-52-repair.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git pull --rebase origin main
+          git add docs/migration/latest-blender-52-repair.md
+          git commit -m "ci: capture Blender 5.2 repair result"
+          git push origin HEAD:refs/heads/main
