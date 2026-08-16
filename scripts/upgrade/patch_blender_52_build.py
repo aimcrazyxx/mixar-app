@@ -104,18 +104,41 @@ struct ARegion;
     if global_forward in text:
         text = text.replace(global_forward, namespaced_section, 1)
 
-    old_namespace = """namespace blender::ui {
+    legacy_namespace = """namespace blender::ui {
 struct Layout;
 }
 """
-    new_namespace = """namespace blender {
+    current_namespace = """namespace blender {
+struct ARegion;
+namespace ui {
+struct Layout;
+}
+}
+"""
+    canonical_namespace = """namespace blender {
 struct ARegion;
 namespace ui {
 struct Layout;
 }
 }  // namespace blender
 """
-    text = replace_once(text, old_namespace, new_namespace, "Mixar header Blender namespace")
+    namespace_counts = {
+        "legacy": text.count(legacy_namespace),
+        "current": text.count(current_namespace),
+        "canonical": text.count(canonical_namespace),
+    }
+    if namespace_counts == {"legacy": 0, "current": 0, "canonical": 1}:
+        pass
+    elif namespace_counts == {"legacy": 1, "current": 0, "canonical": 0}:
+        text = text.replace(legacy_namespace, canonical_namespace, 1)
+    elif namespace_counts == {"legacy": 0, "current": 1, "canonical": 0}:
+        text = text.replace(current_namespace, canonical_namespace, 1)
+    else:
+        raise RuntimeError(
+            "Mixar header Blender namespace: expected exactly one supported "
+            f"namespace fragment, found {namespace_counts}"
+        )
+
     text = replace_once(
         text,
         "void UI_panel_category_draw_all_mixar(ARegion *region, const char *category_id_active);",
