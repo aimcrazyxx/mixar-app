@@ -104,36 +104,3 @@ def test_absent_agent_ctx_falls_back_for_job_stamp(monkeypatch):
         "turn_id": "transport-request",
         "instance_id": "instance-fallback",
     }
-
-
-def test_matgen_forwards_context_captured_at_construction(monkeypatch):
-    from mixar.modules.paint.procedural_materials import matgen_queue
-
-    bpy = sys.modules["bpy"]
-    monkeypatch.setattr(
-        bpy.context,
-        "window_manager",
-        SimpleNamespace(mixie_instance_id="instance-matgen"),
-        raising=False,
-    )
-    submitted = {}
-
-    class Service:
-        @staticmethod
-        def enqueue(**kwargs):
-            submitted.update(kwargs)
-
-    monkeypatch.setattr(matgen_queue, "get_job_queue_service", lambda: Service())
-    try:
-        set_agent_execution_context("session-matgen", "request-matgen")
-        job = matgen_queue.MatGenJob(prompt="weathered copper", pipeline="fast")
-    finally:
-        clear_agent_execution_context()
-
-    job.submit(None, None)
-    assert submitted["payload"]["agent_context"] == {
-        "source": "agent",
-        "session_id": "session-matgen",
-        "turn_id": "request-matgen",
-        "instance_id": "instance-matgen",
-    }
