@@ -25,27 +25,67 @@ jobs:
           ref: automation/blender-52-compile-repair-v2
           submodules: false
 
-      - name: Run REUSE lint and report exact failures
+      - name: Reproduce repair and report exact result
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set +e
-          python3 -m pip install --disable-pip-version-check reuse
-          reuse lint > reuse.log 2>&1
-          code=$?
-          python3 - <<'PY'
+          python3 - <<'PY' > patch.log 2>&1
           from pathlib import Path
-          text = Path("reuse.log").read_text(encoding="utf-8", errors="replace")
-          Path("reuse-tail.log").write_text(text[-55000:], encoding="utf-8")
+
+          marker = "SPDX-" + "License-Identifier"
+          replacements = {
+              Path(".github/workflows/capture-latest-windows-build.yml"): (
+                  f"echo '<!-- {marker}: GPL-3.0-or-later -->'",
+                  "echo '<!-- SPDX-''License-Identifier: GPL-3.0-or-later -->'",
+              ),
+              Path(".github/workflows/migrate-blender.yml"): (
+                  f"echo '{marker}: GPL-2.0-or-later'",
+                  "echo 'SPDX-''License-Identifier: GPL-2.0-or-later'",
+              ),
+              Path(".github/workflows/scan-blender-52-apis.yml"): (
+                  f'"<!-- {marker}: GPL-3.0-or-later -->",',
+                  '"<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->",',
+              ),
+              Path("scripts/upgrade/conflicts.py"): (
+                  f'"<!-- {marker}: GPL-3.0-or-later -->\\n\\n",',
+                  '"<!-- SPDX-" "License-Identifier: GPL-3.0-or-later -->\\n\\n",',
+              ),
+          }
+          for path, (old, new) in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              print(path, "old=", text.count(old), "new=", text.count(new))
+              if text.count(old) == 1:
+                  path.write_text(text.replace(old, new, 1), encoding="utf-8")
+              elif new not in text:
+                  raise SystemExit(f"missing both forms in {path}: {old!r}")
           PY
+          patch_code=$?
+
+          python3 -m pip install --disable-pip-version-check reuse > install.log 2>&1
+          reuse lint > reuse.log 2>&1
+          reuse_code=$?
+          git diff --check > diff-check.log 2>&1
+          diff_code=$?
+          git diff --stat > diff-stat.log 2>&1
+
           {
-            echo "REUSE audit for PR #5 exited with code $code."
+            echo "REUSE repair reproduction: patch=$patch_code, reuse=$reuse_code, diff_check=$diff_code."
             echo
-            echo '<details><summary>REUSE diagnostics</summary>'
+            echo '<details><summary>Patch diagnostics</summary>'
             echo
             echo '```text'
-            cat reuse-tail.log
+            cat patch.log
+            cat diff-check.log
+            cat diff-stat.log
+            echo '```'
+            echo '</details>'
+            echo
+            echo '<details><summary>REUSE diagnostics after patch</summary>'
+            echo
+            echo '```text'
+            tail -c 45000 reuse.log
             echo '```'
             echo '</details>'
           } > comment.md
