@@ -169,6 +169,13 @@ class TestValidate:
         assert problem is not None
         assert "model" in problem.lower()
 
+    def test_overlong_model_is_rejected_after_trimming(self):
+        too_long = "x" * (custom_provider.MODEL_MAX_LENGTH + 1)
+        problem = custom_provider.validate("  " + too_long + "  ", "sk-local", ENDPOINT)
+        assert problem is not None
+        assert "maximum" in problem.lower()
+        assert custom_provider.is_ready(too_long, "sk-local", ENDPOINT) is False
+
     def test_missing_key_is_rejected(self):
         problem = custom_provider.validate("llama3.1:70b", "   ", ENDPOINT)
         assert problem is not None
