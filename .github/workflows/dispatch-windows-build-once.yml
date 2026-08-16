@@ -29,4 +29,4 @@ jobs:
             -f use_ninja=true \
             -f make_installer=true
           echo "Dispatched Blender v5.2.0 / Python 3.13 Windows build."
-          echo "Retry 2 includes Blender 5.2 bf::dependencies::fmt links."
+          echo "Retry 3 includes the UI type, window runtime, allocator and absolute-layout ports."
