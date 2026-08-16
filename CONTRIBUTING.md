@@ -16,6 +16,27 @@ For questions, build help, and general discussion, the fastest channel is the **
 
 Pull requests opened before the CLA process is published may be closed without review.
 
+## Repository Access and Authorization
+
+The public source license and access to the official GitHub repository are separate things.
+
+The GPL license may allow you to copy, modify, and redistribute covered source under its terms. It does **not** grant permission to push changes, alter settings, publish releases, access secrets, or otherwise administer the official `aimcrazyxx/mixar-app` repository.
+
+For this official repository:
+
+- Direct pushes require explicit write, maintain, or admin permission from the repository owner.
+- Do not push to protected or release branches unless the owner has specifically authorized that access.
+- Do not force-push, rewrite shared history, delete branches/tags, or bypass required checks without explicit maintainer approval.
+- Changes to GitHub Actions, release/signing logic, build infrastructure, secrets handling, authentication, BYOK/providers, update mechanisms, or security-sensitive code require owner review.
+- Repository secrets, environment secrets, signing material, deployment credentials, API keys, tokens, and private infrastructure details must never be copied, exposed, or used without authorization.
+- Creating or publishing an official release, package, installer, container image, or signed binary requires explicit maintainer authorization.
+- External contributors must use a fork and pull request when public contributions are enabled; a pull request does not grant repository write access.
+- Automated agents, bots, CI jobs, and AI coding tools must operate only with the permissions intentionally granted to them and must not attempt to bypass repository protections.
+
+The repository uses `.github/CODEOWNERS` to identify required owners for review-sensitive paths. GitHub branch/ruleset protection should be configured to require those reviews before merging into protected branches.
+
+If you believe you need additional repository access, ask the owner first. Do not work around missing permissions.
+
 ## Before Opening An Issue
 
 Check whether the issue is about this public client repository.
