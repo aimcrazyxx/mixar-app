@@ -84,7 +84,7 @@ static SpaceLink *mixie_create(const ScrArea * /*area*/, const Scene * /*scene*/
   ARegion *region;
   SpaceMixie *smixie;
 
-  smixie = MEM_callocN<SpaceMixie>("initmixie");
+  smixie = MEM_new_zeroed<SpaceMixie>("initmixie");
   smixie->spacetype = SPACE_MIXIE;
 
   /* header */
@@ -699,7 +699,7 @@ void ED_spacetype_mixie()
   st->blend_write = mixie_space_blend_write;
 
   /* regions: main window */
-  art = MEM_callocN<ARegionType>("spacetype mixie region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie region");
   art->regionid = RGN_TYPE_WINDOW;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_GIZMO | ED_KEYMAP_TOOL | ED_KEYMAP_FRAMES |
                     ED_KEYMAP_VIEW2D;
@@ -712,7 +712,7 @@ void ED_spacetype_mixie()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: tools (T-panel toolbar) */
-  art = MEM_callocN<ARegionType>("spacetype mixie tools region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie tools region");
   art->regionid = RGN_TYPE_TOOLS;
   art->prefsizex = int(UI_TOOLBAR_WIDTH);
   art->prefsizey = 50;
@@ -726,7 +726,7 @@ void ED_spacetype_mixie()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: footer (dock strip) */
-  art = MEM_callocN<ARegionType>("spacetype mixie footer region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie footer region");
   art->regionid = RGN_TYPE_FOOTER;
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FOOTER;
@@ -738,7 +738,7 @@ void ED_spacetype_mixie()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: UI sidebar (N-panel on right side) */
-  art = MEM_callocN<ARegionType>("spacetype mixie ui region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie ui region");
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = MIXIE_SIDEBAR_PANEL_WIDTH;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
@@ -751,7 +751,7 @@ void ED_spacetype_mixie()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */
-  art = MEM_callocN<ARegionType>("spacetype mixie region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie region");
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
 

@@ -169,7 +169,7 @@ static void mixar_uv_redo_panel_draw(const bContext *C, Panel *panel)
     CTX_wm_region_set((bContext *)C, window_region);
   }
 
-  uiLayout *col = &panel->layout->column(false);
+  ::blender::ui::Layout *col = &panel->layout->column(false);
 
   if (WM_operator_repeat_check(C, op)) {
     uiTemplateOperatorPropertyButs(C, col, op, UI_BUT_LABEL_ALIGN_NONE, 0);
@@ -180,7 +180,7 @@ static void mixar_uv_redo_panel_draw(const bContext *C, Panel *panel)
 
 void mixar_uv_redo_panel_register(ARegionType *art)
 {
-  PanelType *pt = MEM_callocN<PanelType>("mixar_uv_redo_panel");
+  PanelType *pt = MEM_new_zeroed<PanelType>("mixar_uv_redo_panel");
 
   STRNCPY_UTF8(pt->idname, "MIXAR_UV_PT_redo");
   STRNCPY_UTF8(pt->label, N_("Adjust Last Operation"));
@@ -270,8 +270,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
    * The Move row dims when nothing is selected; the Scale row dims
    * when there are no bounds. Pivot stays interactive in both states. */
   {
-    uiLayout *xform_box = &panel->layout->box();
-    uiLayout *xform_col = &xform_box->column(false);
+    ::blender::ui::Layout *xform_box = &panel->layout->box();
+    ::blender::ui::Layout *xform_col = &xform_box->column(false);
 
     const bool has_selection = mixar_uvedit_center(scene, objects, center);
 
@@ -331,7 +331,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     const int xy_input_w = half_content - xy_label_w;
 
     /* ---- Row 1: Move | X | Y ---- */
-    uiLayout *move_wrapper = &xform_col->column(false);
+    ::blender::ui::Layout *move_wrapper = &xform_col->column(false);
     move_wrapper->active_set(has_selection);
     uiBlock *move_block = move_wrapper->absolute_block();
     UI_block_func_handle_set(move_block, do_mixar_uvedit_transform, nullptr);
@@ -366,14 +366,14 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
     xform_col->separator(0.5f);
     PointerRNA sima_ptr = RNA_pointer_create_discrete(
         nullptr, &RNA_SpaceImageEditor, sima);
-    uiLayout *pivot_split = &xform_col->split(0.4f, false);
+    ::blender::ui::Layout *pivot_split = &xform_col->split(0.4f, false);
     pivot_split->label(IFACE_("Pivot"), ICON_NONE);
     pivot_split->prop(&sima_ptr, "pivot_point", UI_ITEM_NONE,
                        "", ICON_NONE);
 
     /* ---- Row 3: Rotation Angle | input ---- */
     xform_col->separator(0.5f);
-    uiLayout *angle_wrapper = &xform_col->column(false);
+    ::blender::ui::Layout *angle_wrapper = &xform_col->column(false);
     angle_wrapper->active_set(has_selection);
     uiBlock *angle_block = angle_wrapper->absolute_block();
     UI_block_func_handle_set(angle_block, do_mixar_uvedit_transform, nullptr);
@@ -393,7 +393,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
     /* ---- Row 4: Scale | X | Y ---- */
     xform_col->separator(0.5f);
-    uiLayout *scale_wrapper = &xform_col->column(false);
+    ::blender::ui::Layout *scale_wrapper = &xform_col->column(false);
     scale_wrapper->active_set(has_bounds);
     uiBlock *scale_block = scale_wrapper->absolute_block();
     UI_block_func_handle_set(scale_block, do_mixar_uvedit_transform, nullptr);
@@ -422,8 +422,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
   /* ===== Move on Axis sub-section ===== */
   {
-    uiLayout *axis_box = &panel->layout->box();
-    uiLayout *axis_col = &axis_box->column(false);
+    ::blender::ui::Layout *axis_box = &panel->layout->box();
+    ::blender::ui::Layout *axis_col = &axis_box->column(false);
     axis_col->label(IFACE_("Move on Axis"), ICON_EMPTY_AXIS);
     axis_col->separator(0.5f);
 
@@ -441,7 +441,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
        * The props are RNA-bound to the operator's last properties so
        * edits flow straight back into them. */
       auto axis_row = [&](const char *label, const char *prop_id) {
-        uiLayout *sp = &axis_col->split(0.4f, false);
+        ::blender::ui::Layout *sp = &axis_col->split(0.4f, false);
         sp->label(IFACE_(label), ICON_NONE);
         sp->prop(&op_ptr, prop_id, UI_ITEM_NONE, "", ICON_NONE);
       };
@@ -451,7 +451,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
       axis_col->separator(1.0f);
 
-      uiLayout *row = &axis_col->row(false);
+      ::blender::ui::Layout *row = &axis_col->row(false);
       row->scale_y_set(1.3f);
       uiBlock *apply_move_block = row->absolute_block();
       UI_block_func_handle_set(apply_move_block, do_mixar_uvedit_transform, nullptr);
@@ -463,8 +463,8 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
   /* ===== 2D Cursor sub-section ===== */
   {
-    uiLayout *cursor_box = &panel->layout->box();
-    uiLayout *cursor_col = &cursor_box->column(false);
+    ::blender::ui::Layout *cursor_box = &panel->layout->box();
+    ::blender::ui::Layout *cursor_col = &cursor_box->column(false);
     cursor_col->label(IFACE_("2D Cursor"), ICON_PIVOT_CURSOR);
     cursor_col->separator(0.5f);
 
@@ -507,12 +507,12 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
   /* ===== Mirror sub-section ===== */
   {
-    uiLayout *mirror_box = &panel->layout->box();
-    uiLayout *mirror_col = &mirror_box->column(false);
+    ::blender::ui::Layout *mirror_box = &panel->layout->box();
+    ::blender::ui::Layout *mirror_col = &mirror_box->column(false);
     mirror_col->label(IFACE_("Mirror"), ICON_MOD_MIRROR);
     mirror_col->separator(0.5f);
 
-    uiLayout *row = &mirror_col->row(true);
+    ::blender::ui::Layout *row = &mirror_col->row(true);
     row->scale_y_set(1.3f);
     PointerRNA op_props_x = row->op("MIXAR_OT_mirror", IFACE_("X Axis"), ICON_NONE);
     RNA_enum_set_identifier((bContext *)C, &op_props_x, "axis", "X");
@@ -533,7 +533,7 @@ static void mixar_uv_transform_panel_draw(const bContext *C, Panel *panel)
 
 void mixar_uv_transform_panel_register(ARegionType *art)
 {
-  PanelType *pt = MEM_callocN<PanelType>("mixar_uv_transform_panel");
+  PanelType *pt = MEM_new_zeroed<PanelType>("mixar_uv_transform_panel");
 
   STRNCPY_UTF8(pt->idname, "MIXAR_UV_PT_transform");
   STRNCPY_UTF8(pt->label, N_("Transform"));

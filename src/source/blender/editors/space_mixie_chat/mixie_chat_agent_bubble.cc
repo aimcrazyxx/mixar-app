@@ -59,7 +59,7 @@ static uiBlock *mixie_chat_block_agent_bubble_create(bContext *C,
    * across most of the viewport. */
   const int bubble_width = style->widget.points * 42 * UI_SCALE_FAC;
 
-  uiLayout &layout = blender::ui::block_layout(block,
+  ::blender::ui::Layout &layout = blender::ui::block_layout(block,
                                                blender::ui::LayoutDirection::Vertical,
                                                blender::ui::LayoutType::Panel,
                                                0,

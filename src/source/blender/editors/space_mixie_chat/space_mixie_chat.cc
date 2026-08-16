@@ -107,7 +107,7 @@ static SpaceLink *mixie_chat_create(const ScrArea * /*area*/, const Scene * /*sc
   ARegion *region;
   SpaceMixieChat *smixie_chat;
 
-  smixie_chat = MEM_callocN<SpaceMixieChat>("initmixiechat");
+  smixie_chat = MEM_new_zeroed<SpaceMixieChat>("initmixiechat");
   smixie_chat->spacetype = SPACE_MIXIE_CHAT;
 
   /* Initialize selection state */
@@ -309,7 +309,7 @@ void ED_spacetype_mixie_chat()
   st->listener = mixie_chat_space_listener;
 
   /* regions: main window (custom chat drawing) */
-  art = MEM_callocN<ARegionType>("spacetype mixie_chat region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie_chat region");
   art->regionid = RGN_TYPE_WINDOW;
   /* NO keymapflag here: most of the region uses custom GPU drawing. ED_KEYMAP_UI
    * would also add the broad "User Interface" keymap, which can consume LEFTMOUSE
@@ -332,7 +332,7 @@ void ED_spacetype_mixie_chat()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */
-  art = MEM_callocN<ARegionType>("spacetype mixie_chat header region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie_chat header region");
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
 
@@ -344,7 +344,7 @@ void ED_spacetype_mixie_chat()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: footer (implemented as TOOLS region for dynamic sizing) */
-  art = MEM_callocN<ARegionType>("spacetype mixie_chat footer region");
+  art = MEM_new_zeroed<ARegionType>("spacetype mixie_chat footer region");
   art->regionid = RGN_TYPE_TOOLS;  /* CRITICAL: Use TOOLS not FOOTER for dynamic sizing */
   /* Footer uses ultra-compact sizing:
    * - Input row (~20px)

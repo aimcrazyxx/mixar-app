@@ -401,7 +401,7 @@ static ui::Block *wm_block_splash_create(bContext *C, ARegion *region, void * /*
   {
     layout.separator(2.0f, ui::LayoutSeparatorType::Line);
 
-    uiLayout *row = &layout.row(true);
+    ::blender::ui::Layout *row = &layout.row(true);
     row->label(RPT_("Intel binary detected. Expect reduced performance."), ICON_ERROR);
 
     layout.separator();

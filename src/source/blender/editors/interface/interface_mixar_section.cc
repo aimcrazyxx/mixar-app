@@ -40,9 +40,9 @@
 
 #include "UI_interface_layout.hh"
 
-uiLayout *UI_layout_mixar_section(uiLayout *layout)
+::blender::ui::Layout *UI_layout_mixar_section(::blender::ui::Layout *layout)
 {
-  uiLayout &box = layout->box();
+  ::blender::ui::Layout &box = layout->box();
   uiBlock *block = layout->block();
 
   /* Walk backwards through the block's buttons to find the Roundbox button
@@ -58,7 +58,7 @@ uiLayout *UI_layout_mixar_section(uiLayout *layout)
   return &box;
 }
 
-void UI_layout_mixar_mark_last_dropdown(uiLayout *layout)
+void UI_layout_mixar_mark_last_dropdown(::blender::ui::Layout *layout)
 {
   uiBlock *block = layout->block();
 
@@ -72,7 +72,7 @@ void UI_layout_mixar_mark_last_dropdown(uiLayout *layout)
   }
 }
 
-void UI_layout_mixar_mark_last_action(uiLayout *layout)
+void UI_layout_mixar_mark_last_action(::blender::ui::Layout *layout)
 {
   uiBlock *block = layout->block();
 
@@ -85,7 +85,7 @@ void UI_layout_mixar_mark_last_action(uiLayout *layout)
   }
 }
 
-void UI_layout_mixar_mark_last_toggle(uiLayout *layout)
+void UI_layout_mixar_mark_last_toggle(::blender::ui::Layout *layout)
 {
   uiBlock *block = layout->block();
 
@@ -98,7 +98,7 @@ void UI_layout_mixar_mark_last_toggle(uiLayout *layout)
   }
 }
 
-void UI_layout_mixar_mark_last_input(uiLayout *layout)
+void UI_layout_mixar_mark_last_input(::blender::ui::Layout *layout)
 {
   uiBlock *block = layout->block();
 

@@ -525,7 +525,7 @@ void view3d_agent_strip_region_register(SpaceType *st)
   /* Agent strip: fully custom GPU drawing — no ED_KEYMAP_UI, its
    * ui_region_handler could consume LEFTMOUSE before our keymap (same
    * reasoning as the Mixie Chat main region). */
-  ARegionType *art = MEM_callocN<ARegionType>("spacetype view3d agent strip region");
+  ARegionType *art = MEM_new_zeroed<ARegionType>("spacetype view3d agent strip region");
   art->regionid = RGN_TYPE_EXECUTE;
   art->prefsizey = AGENT_STRIP_PREFSIZEY;
   art->keymapflag = 0;

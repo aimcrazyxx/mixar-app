@@ -405,7 +405,7 @@ void view3d_director_timeline_region_ensure(ScrArea *area)
 
 void view3d_director_timeline_region_register(SpaceType *st)
 {
-  ARegionType *art = MEM_callocN<ARegionType>("spacetype view3d director timeline region");
+  ARegionType *art = MEM_new_zeroed<ARegionType>("spacetype view3d director timeline region");
   art->regionid = RGN_TYPE_CHANNELS;
   art->prefsizey = VIEW3D_DIRECTOR_TIMELINE_HEIGHT;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
@@ -420,7 +420,7 @@ void view3d_director_timeline_region_register(SpaceType *st)
   /* Keep the old type readable long enough for SpaceType.init to migrate it.
    * Without a registered type, opening a .blend saved by the first Director
    * build would fail before view3d_director_timeline_region_ensure() runs. */
-  art = MEM_callocN<ARegionType>("spacetype view3d legacy director timeline region");
+  art = MEM_new_zeroed<ARegionType>("spacetype view3d legacy director timeline region");
   art->regionid = RGN_TYPE_FOOTER;
   art->poll = director_timeline_poll;
   BLI_addhead(&st->regiontypes, art);
