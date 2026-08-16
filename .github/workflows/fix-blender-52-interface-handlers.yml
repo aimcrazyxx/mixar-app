@@ -8,14 +8,17 @@ on:
     paths:
       - ".github/workflows/fix-blender-52-interface-handlers.yml"
   workflow_dispatch:
+  issues:
+    types: [opened]
 permissions:
   actions: write
   contents: write
 concurrency:
   group: repair-blender-52-ui-main
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   repair:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == '[automation] Repair Blender 5.2 UI' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
