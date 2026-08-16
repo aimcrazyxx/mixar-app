@@ -27,14 +27,16 @@ jobs:
           root = Path("src")
           suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".cmake", ".txt"}
           files = [p for p in root.rglob("*") if p.is_file() and (p.suffix in suffixes or p.name == "CMakeLists.txt")]
-          counts = {name: 0 for name in ("uiLayout", "uiBut", "uiBlock", "ghostwin", "MEM_callocN", "absolute_block")}
+          counts = {name: 0 for name in ("uiLayout", "uiBut", "uiBlock", "ghostwin", "MEM_callocN", "absolute_block", "ui_api")}
+          ui_api_mappings = {
+              "UI_block_begin": "::blender::ui::block_begin",
+              "UI_block_end": "::blender::ui::block_end",
+              "UI_popup_menu_retval_set": "::blender::ui::popup_menu_retval_set",
+          }
 
           for path in files:
               value = path.read_text(encoding="utf-8", errors="replace")
               original = value
-
-              # Namespaced UI core types in Blender 5.2. Handle standalone
-              # forward declarations before globally qualifying remaining uses.
               value = value.replace("struct uiLayout;", "namespace blender::ui {\nstruct Layout;\n}")
               value = value.replace("struct uiBut;", "namespace blender::ui {\nstruct Button;\n}")
               value = value.replace("struct uiBlock;", "namespace blender::ui {\nstruct Block;\n}")
@@ -44,24 +46,15 @@ jobs:
               counts["uiBut"] += count
               value, count = re.subn(r"\buiBlock\b", "::blender::ui::Block", value)
               counts["uiBlock"] += count
-
-              # Layout::absolute_block() no longer exists. The 5.2 API returns
-              # the absolute sub-layout, whose block is then queried explicitly.
-              value, count = re.subn(
-                  r"->absolute_block\s*\(\s*\)",
-                  "->absolute(false).block()",
-                  value,
-              )
+              value, count = re.subn(r"->absolute_block\s*\(\s*\)", "->absolute(false).block()", value)
               counts["absolute_block"] += count
-
-              # wmWindow's GHOST handle moved into wmWindowRuntime.
               value, count = re.subn(r"(?<!runtime)->ghostwin\b", "->runtime->ghostwin", value)
               counts["ghostwin"] += count
-
-              # Blender 5.2 uses the C++ lifetime-aware zeroed allocator.
               value, count = re.subn(r"\bMEM_callocN\s*<", "MEM_new_zeroed<", value)
               counts["MEM_callocN"] += count
-
+              for old, new in ui_api_mappings.items():
+                  value, count = re.subn(rf"\b{re.escape(old)}\b", new, value)
+                  counts["ui_api"] += count
               if value != original:
                   path.write_text(value, encoding="utf-8")
 
@@ -75,6 +68,7 @@ jobs:
               ("obsolete typed MEM_callocN", re.compile(r"MEM_callocN\s*<"), True),
               ("legacy uiPopupMenu type", re.compile(r"\buiPopupMenu\b"), True),
               ("legacy uiPopupBlockHandle type", re.compile(r"\buiPopupBlockHandle\b"), True),
+              ("remaining uppercase UI API", re.compile(r"\bUI_(?:block|but|popup)_[A-Za-z0-9_]+\b"), False),
               ("tooltip helper occurrences", re.compile(r"UI_layout_disable_last_button_tooltip"), False),
               ("merge conflict marker", re.compile(r"^(?:<<<<<<<|=======|>>>>>>>)"), True),
           ]
@@ -88,6 +82,7 @@ jobs:
               f"- `absolute_block()` → `absolute(false).block()`: **{counts['absolute_block']}**",
               f"- `wmWindow::ghostwin` → `wmWindow::runtime->ghostwin`: **{counts['ghostwin']}**",
               f"- `MEM_callocN<T>` → `MEM_new_zeroed<T>`: **{counts['MEM_callocN']}**",
+              f"- Renamed UI function calls: **{counts['ui_api']}**",
               "",
           ])
           blocking_hits = 0
@@ -112,5 +107,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src docs/migration/blender-52-api-scan.md
-          git commit -m "fix: port Blender 5.2 UI block and button APIs"
+          git commit -m "fix: port renamed Blender 5.2 UI functions"
           git push origin HEAD:refs/heads/migration/blender-5.2
