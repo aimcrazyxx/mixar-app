@@ -54,7 +54,7 @@ bool director_popup_data_get(bContext *C, DirectorPopupData *r_data)
 
 ::blender::ui::Block *director_popup_block_begin(bContext *C, ARegion *region, const char *name)
 {
-  ::blender::ui::Block *block = UI_block_begin(C, region, name, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = ::blender::ui::block_begin(C, region, name, blender::ui::EmbossType::Emboss);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
   return block;
 }

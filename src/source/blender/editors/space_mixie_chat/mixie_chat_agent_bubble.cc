@@ -44,7 +44,7 @@ static ::blender::ui::Block *mixie_chat_block_agent_bubble_create(bContext *C,
 {
   const uiStyle *style = UI_style_get_dpi();
 
-  ::blender::ui::Block *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "agent_bubble", blender::ui::EmbossType::Emboss);
 
   /* Persistent popup: stays open across redraws until we explicitly

@@ -319,7 +319,7 @@ void view3d_director_overlay_draw(const bContext *C, ARegion *region)
 
   const int unit = std::max(18, int(20.0f * UI_SCALE_FAC));
   const int gap = std::max(4, int(6.0f * UI_SCALE_FAC));
-  ::blender::ui::Block *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "mixar_director_overlay", blender::ui::EmbossType::Emboss);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
@@ -332,7 +332,7 @@ void view3d_director_overlay_draw(const bContext *C, ARegion *region)
   }
   draw_context_actions(block, region, state, unit, gap);
 
-  UI_block_end(C, block);
+  ::blender::ui::block_end(C, block);
   UI_block_draw(C, block);
   GPU_blend(GPU_BLEND_NONE);
 }

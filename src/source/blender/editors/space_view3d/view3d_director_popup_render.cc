@@ -54,7 +54,7 @@ int render_kind_icon(const char *identifier)
  * prevents. */
 void render_popup_close(bContext * /*C*/, void *arg_block, void * /*arg2*/)
 {
-  UI_popup_menu_retval_set(static_cast<::blender::ui::Block *>(arg_block), UI_RETURN_OK, true);
+  ::blender::ui::popup_menu_retval_set(static_cast<::blender::ui::Block *>(arg_block), UI_RETURN_OK, true);
 }
 
 /* Enum-flag rows bound straight to `render_output_types`: a Row button whose

@@ -340,14 +340,14 @@ void director_timeline_draw(const bContext *C, ARegion *region)
   playback_redraw_timer_update(C, playing);
   draw_dock_panel(region, margin);
 
-  ::blender::ui::Block *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "mixar_director_timeline", blender::ui::EmbossType::Emboss);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
   draw_control_row(block, region, state, playing, margin, unit, gap);
   DirectorTimelineRuntime *runtime = view3d_director_timeline_runtime_ensure(region);
   const int content_top = region->winy - margin - unit * 2 - gap * 2;
   view3d_director_timeline_draw_content(region, state, runtime, margin, unit, content_top);
-  UI_block_end(C, block);
+  ::blender::ui::block_end(C, block);
   UI_block_draw(C, block);
   GPU_blend(GPU_BLEND_NONE);
 }

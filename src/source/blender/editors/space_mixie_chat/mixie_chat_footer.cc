@@ -239,7 +239,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   const float scale = UI_SCALE_FAC;
 
   /* ===== CREATE UI BLOCK FOR BUTTONS ===== */
-  ::blender::ui::Block *block = UI_block_begin(C, region, __func__, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = ::blender::ui::block_begin(C, region, __func__, blender::ui::EmbossType::Emboss);
 
   /* ===== ROW 1 (TOP): INPUT FIELD ===== */
   if (pos.input_w > 0) {
@@ -550,7 +550,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   UI_block_emboss_set(block, blender::ui::EmbossType::Emboss);
 
   /* Finalize block */
-  UI_block_end(C, block);
+  ::blender::ui::block_end(C, block);
   UI_block_draw(C, block);
 
   /* Custom GPU overlays (delegated to mixie_chat_footer_draw.cc) */

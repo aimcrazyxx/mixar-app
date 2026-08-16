@@ -341,7 +341,7 @@ void mixie_chat_render_feedback(const bContext *C,
 
   char block_name[64];
   BLI_snprintf(block_name, sizeof(block_name), "fb_comment_%d", layout.message_index);
-  ::blender::ui::Block *block = UI_block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
+  ::blender::ui::Block *block = ::blender::ui::block_begin(C, region, block_name, blender::ui::EmbossType::Emboss);
 
   ::blender::ui::Button *comment_but = uiDefButR(block,
                                  ButType::Text,
@@ -362,7 +362,7 @@ void mixie_chat_render_feedback(const bContext *C,
     UI_but_flag_enable(comment_but, UI_BUT_TEXTEDIT_UPDATE);
   }
 
-  UI_block_end(C, block);
+  ::blender::ui::block_end(C, block);
   UI_view2d_view_restore(C);
   UI_block_draw(C, block);
   UI_view2d_view_ortho(v2d);

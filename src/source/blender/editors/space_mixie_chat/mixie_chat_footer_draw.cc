@@ -205,7 +205,7 @@ void footer_draw_thumbnails(const bContext *C,
 
   /* Draw remove buttons (separate UI block for z-order) */
   if (pending_count > 0) {
-    ::blender::ui::Block *remove_block = UI_block_begin(
+    ::blender::ui::Block *remove_block = ::blender::ui::block_begin(
         C, region, "remove_buttons", blender::ui::EmbossType::Emboss);
 
     int thumb_btn_x = pos.side_padding;
@@ -234,7 +234,7 @@ void footer_draw_thumbnails(const bContext *C,
       }
     }
 
-    UI_block_end(C, remove_block);
+    ::blender::ui::block_end(C, remove_block);
     UI_block_draw(C, remove_block);
   }
 }

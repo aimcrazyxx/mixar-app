@@ -449,7 +449,7 @@ void mixie_draw_moodboard_graph_controls(const bContext *C, View2D *v2d)
   }
 
   UI_view2d_view_restore(C);
-  ::blender::ui::Block *block = UI_block_begin(
+  ::blender::ui::Block *block = ::blender::ui::block_begin(
       C, region, "moodboard_floating_node_controls", blender::ui::EmbossType::Emboss);
   blender::Vector<ObjectPreviewDraw> object_previews;
   CollectionPropertyIterator iter{};
@@ -461,7 +461,7 @@ void mixie_draw_moodboard_graph_controls(const bContext *C, View2D *v2d)
   RNA_property_collection_end(&iter);
   add_selected_media_toolbar(block, v2d, region, &scene_ptr);
 
-  UI_block_end(C, block);
+  ::blender::ui::block_end(C, block);
   UI_block_draw(C, block);
   for (const ObjectPreviewDraw &preview : object_previews) {
     PreviewImage *preview_image = BKE_previewimg_id_ensure(&preview.object->id);
