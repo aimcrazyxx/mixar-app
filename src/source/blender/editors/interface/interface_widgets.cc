@@ -2483,7 +2483,7 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
     }
     else {
       if (ELEM(but->type, ButtonType::Text, ButtonType::SearchMenu)) {
-        const char *placeholder = but_placeholder_get(but);
+        const char *placeholder = button_placeholder_get(but);
         if (placeholder && placeholder[0]) {
           FontStyleDrawParams params{};
           params.align = UI_STYLE_TEXT_LEFT;
@@ -2522,7 +2522,7 @@ static void widget_draw_text_multiline(const uiFontStyle *fstyle,
       fontid,
       drawstr,
       rect_width,
-      BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit)));
+      BLFWrapMode::Typographical | BLFWrapMode::HardLimit);
 
   for (int64_t i = 0; i < lines.size(); i++) {
     if (lines[i].size() > 0 && lines[i][lines[i].size() - 1] == '\n') {
@@ -3247,8 +3247,11 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
     rect->xmax -= UI_MENU_SUBMENU_PADDING;
   }
 
-  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper */
-  widget_draw_extra_icons(wcol, but, rect, alpha);
+  /* Extra icons, e.g. 'x' to clear text or the eyedropper.
+   * Multiline chat input owns the full text rectangle and must not draw them. */
+  if (!ui_but_is_multiline_text(but)) {
+    widget_draw_extra_icons(wcol, but, rect, alpha);
+  }
 
   /* Text padding, after icon padding. Ideally we would have the same padding
    * in both sides always (except for icons), but many button types rely on the
@@ -3289,21 +3292,16 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   if (but->type == ButtonType::TextBox) {
   }
 
-  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper.
-   * For multiline text buttons, skip extra icons (the VALUE_CLEAR 'x' icon
-   * is auto-added by TEXTEDIT_UPDATE for search fields, not wanted here). */
-  if (!ui_but_is_multiline_text(but)) {
-    widget_draw_extra_icons(wcol, but, rect, alpha);
-  }
-
-  /* Multi-line text buttons handle their own wrapping and drawing */
+  /* Multi-line text buttons handle their own wrapping and drawing. */
   if (ui_but_is_multiline_text(but)) {
     but->ofs = 0;
     widget_draw_text_multiline(fstyle, wcol, but, rect);
   }
   else {
-    /* clip but->drawstr to fit in available space */
-    if (but->editstr && but->pos >= 0) {
+    if (but->text_direction != TextDirection::Default) {
+      /* Do not clip vertical text. */
+    }
+    else if (but->editstr && but->pos >= 0) {
       text_clip_cursor(fstyle, but, rect);
     }
     else if (but->drawstr[0] == '\0') {
@@ -5336,7 +5334,7 @@ static void widget_optionbut(uiWidgetColors *wcol,
 /* Mixar pill-shaped toggle switch. */
 static void widget_mixar_toggle(uiWidgetColors *wcol,
                                 rcti *rect,
-                                const uiWidgetStateInfo *state,
+                                const WidgetStateInfo *state,
                                 int /*roundboxalign*/,
                                 const float /*zoom*/)
 {
@@ -5381,12 +5379,12 @@ static void widget_mixar_toggle(uiWidgetColors *wcol,
   }
 
   GPU_blend(GPU_BLEND_ALPHA);
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&trackf, true, track_rad, track_col);
+  draw_roundbox_corner_set(CNR_ALL);
+  draw_roundbox_4fv(&trackf, true, track_rad, track_col);
 
   /* Thin outline around track. */
   float outline_col[4] = {1.0f, 1.0f, 1.0f, 0.12f};
-  UI_draw_roundbox_4fv(&trackf, false, track_rad, outline_col);
+  draw_roundbox_4fv(&trackf, false, track_rad, outline_col);
 
   /* --- Draw knob (circle) ------------------------------------------------- */
   const float knob_padding = 2.0f * UI_SCALE_FAC;
@@ -5410,9 +5408,9 @@ static void widget_mixar_toggle(uiWidgetColors *wcol,
   /* Knob = --mx-bg (dark), with a hairline so it reads on either track. */
   float knob_col[4];
   rgba_uchar_to_float(knob_col, MX_BG);
-  UI_draw_roundbox_4fv(&knob_rect, true, knob_rad, knob_col);
+  draw_roundbox_4fv(&knob_rect, true, knob_rad, knob_col);
   float knob_outline[4] = {1.0f, 1.0f, 1.0f, 0.20f};
-  UI_draw_roundbox_4fv(&knob_rect, false, knob_rad, knob_outline);
+  draw_roundbox_4fv(&knob_rect, false, knob_rad, knob_outline);
 
   GPU_blend(GPU_BLEND_NONE);
 
@@ -5434,7 +5432,7 @@ static void widget_mixar_toggle(uiWidgetColors *wcol,
 
 static void widget_mixar_input(uiWidgetColors *wcol,
                                rcti *rect,
-                               const uiWidgetStateInfo *state,
+                               const WidgetStateInfo *state,
                                int roundboxalign,
                                const float /*zoom*/)
 {
@@ -5470,7 +5468,7 @@ static void widget_mixar_input(uiWidgetColors *wcol,
     rgba_uchar_to_float(ring, MX_ACCENT);
     const float offset = 2.0f * UI_SCALE_FAC; /* outline-offset */
     GPU_blend(GPU_BLEND_ALPHA);
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
+    draw_roundbox_corner_set(CNR_ALL);
     for (int i = 0; i < 2; i++) {
       const float g = offset + float(i) * UI_SCALE_FAC;
       rctf r;
@@ -5478,7 +5476,7 @@ static void widget_mixar_input(uiWidgetColors *wcol,
       r.xmax = float(rect->xmax) + g;
       r.ymin = float(rect->ymin) - g;
       r.ymax = float(rect->ymax) + g;
-      UI_draw_roundbox_4fv(&r, false, rad + g, ring);
+      draw_roundbox_4fv(&r, false, rad + g, ring);
     }
     GPU_blend(GPU_BLEND_NONE);
   }
@@ -5571,7 +5569,7 @@ static void widget_box(Button *but,
 static void widget_mixar_section(::blender::ui::Button *but,
                                  uiWidgetColors *wcol,
                                  rcti *rect,
-                                 const uiWidgetStateInfo * /*state*/,
+                                 const WidgetStateInfo * /*state*/,
                                  int roundboxalign,
                                  const float zoom)
 {
@@ -5604,7 +5602,7 @@ static void widget_mixar_section(::blender::ui::Button *but,
 
   /* Flush draw cache so contents render on top. */
   GPU_blend(GPU_BLEND_ALPHA);
-  UI_widgetbase_draw_cache_flush();
+  widgetbase_draw_cache_flush();
   GPU_blend(GPU_BLEND_NONE);
 }
 
@@ -5612,7 +5610,7 @@ static void widget_mixar_section(::blender::ui::Button *but,
 
 static void widget_mixar_dropdown(uiWidgetColors *wcol,
                                   rcti *rect,
-                                  const uiWidgetStateInfo *state,
+                                  const WidgetStateInfo *state,
                                   int roundboxalign,
                                   const float zoom)
 {
@@ -5757,7 +5755,7 @@ static void mixar_draw_gradient_hbar(const rctf *rect, float rad)
 static void widget_mixar_action_button(::blender::ui::Button * /*but*/,
                                        uiWidgetColors *wcol,
                                        rcti *rect,
-                                       const uiWidgetStateInfo *state,
+                                       const WidgetStateInfo *state,
                                        int /*roundboxalign*/,
                                        const float /*zoom*/)
 {
@@ -5778,8 +5776,8 @@ static void widget_mixar_action_button(::blender::ui::Button * /*but*/,
     rgba_uchar_to_float(glow_col, MX_ACCENT);
     glow_col[3] = 0.22f;
     GPU_blend(GPU_BLEND_ALPHA);
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(&glow, true, rad + g, glow_col);
+    draw_roundbox_corner_set(CNR_ALL);
+    draw_roundbox_4fv(&glow, true, rad + g, glow_col);
     GPU_blend(GPU_BLEND_NONE);
   }
 
@@ -5794,8 +5792,8 @@ static void widget_mixar_action_button(::blender::ui::Button * /*but*/,
                rectf.ymax - 1.0f * UI_SCALE_FAC};
     float hl_col[4] = {1.0f, 1.0f, 1.0f, 0.28f};
     GPU_blend(GPU_BLEND_ALPHA);
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(&hl, true, 1.0f * UI_SCALE_FAC, hl_col);
+    draw_roundbox_corner_set(CNR_ALL);
+    draw_roundbox_4fv(&hl, true, 1.0f * UI_SCALE_FAC, hl_col);
     GPU_blend(GPU_BLEND_NONE);
   }
 
@@ -5813,8 +5811,8 @@ static void widget_mixar_action_button(::blender::ui::Button * /*but*/,
       ov_col[3] = 0.08f;
     }
     GPU_blend(GPU_BLEND_ALPHA);
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(&rectf, true, rad, ov_col);
+    draw_roundbox_corner_set(CNR_ALL);
+    draw_roundbox_4fv(&rectf, true, rad, ov_col);
     GPU_blend(GPU_BLEND_NONE);
   }
 

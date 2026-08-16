@@ -404,6 +404,7 @@ bool ANIM_animdata_context_getdata(bAnimContext *ac)
       case SPACE_MIXAR_LAYERS:
       case SPACE_MIXAR_PROPERTIES:
       case SPACE_MIXAR_ASSETS:
+      case SPACE_AGENT_BUBBLE:
 
       case SPACE_BAKING:
       case SPACE_TEXTURE_SETS:
