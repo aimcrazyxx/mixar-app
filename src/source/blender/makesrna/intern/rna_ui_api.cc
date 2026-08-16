@@ -999,7 +999,8 @@ static void rna_uiItemR_mixar_dropdown(ui::Layout *layout,
                                        int icon_value)
 {
   rna_uiItemR(layout, ptr, propname, name, text_ctxt, translate, icon,
-              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);
+              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false,
+              int(TextAlignAnchor::Left));
   UI_layout_mixar_mark_last_dropdown(layout);
 }
 
@@ -1028,7 +1029,8 @@ static void rna_uiItemR_mixar_toggle(ui::Layout *layout,
                                      int icon_value)
 {
   rna_uiItemR(layout, ptr, propname, name, text_ctxt, translate, icon,
-              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);
+              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false,
+              int(TextAlignAnchor::Left));
   UI_layout_mixar_mark_last_toggle(layout);
 }
 
@@ -1042,7 +1044,8 @@ static void rna_uiItemR_mixar_input(ui::Layout *layout,
                                     int icon_value)
 {
   rna_uiItemR(layout, ptr, propname, name, text_ctxt, translate, icon,
-              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false);
+              nullptr, false, false, -1, false, false, false, true, -1, icon_value, false,
+              int(TextAlignAnchor::Left));
   UI_layout_mixar_mark_last_input(layout);
 }
 
