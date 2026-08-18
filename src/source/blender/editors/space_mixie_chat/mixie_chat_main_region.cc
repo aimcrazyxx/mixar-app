@@ -327,7 +327,7 @@ static int mixie_chat_ui_handler(bContext *C, const wmEvent *event, void * /*use
             wmOperatorType *ot = WM_operatortype_find("mixie_chat.select_slot_action", true);
             if (ot && layout.bubble_id[0] != '\0') {
               PointerRNA op_ptr;
-              WM_operator_properties_create_ptr(&op_ptr, ot);
+              op_ptr = WM_operator_properties_create_ptr(ot);
               RNA_string_set(&op_ptr, "bubble_id", layout.bubble_id);
               RNA_string_set(&op_ptr, "action_value", bubble.option_text);
               WM_operator_name_call_ptr(

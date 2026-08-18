@@ -337,7 +337,7 @@ static bool dispatch_slot_action(bContext *C,
     return false;
   }
   PointerRNA op_ptr;
-  WM_operator_properties_create_ptr(&op_ptr, ot);
+  op_ptr = WM_operator_properties_create_ptr(ot);
   RNA_string_set(&op_ptr, "bubble_id", layout.bubble_id);
   RNA_string_set(&op_ptr, "action_value", action.value);
   WM_operator_name_call_ptr(
@@ -389,7 +389,7 @@ static bool dispatch_toggle(bContext *C,
     return false;
   }
   PointerRNA op_ptr;
-  WM_operator_properties_create_ptr(&op_ptr, ot);
+  op_ptr = WM_operator_properties_create_ptr(ot);
   RNA_string_set(&op_ptr, "bubble_id", bubble_id);
   if (item_id) {
     RNA_string_set(&op_ptr, "item_id", item_id);
@@ -475,7 +475,7 @@ bool mixie_chat_handle_empty_prompt_click(bContext *C, float mouse_x, float mous
       wmOperatorType *ot = WM_operatortype_find("mixie_chat.insert_prompt_text", true);
       if (ot) {
         PointerRNA op_ptr;
-        WM_operator_properties_create_ptr(&op_ptr, ot);
+        op_ptr = WM_operator_properties_create_ptr(ot);
         RNA_string_set(&op_ptr, "text", rt->empty_prompts[i].text);
         RNA_string_set(&op_ptr, "mode", g_empty_prompt_modes[i]);
         RNA_string_set(&op_ptr, "generate_type", g_empty_prompt_generate_types[i]);

@@ -135,7 +135,7 @@ void mixie_chat_rules_dispatch_op(
     return;
   }
   PointerRNA op_ptr;
-  WM_operator_properties_create_ptr(&op_ptr, ot);
+  op_ptr = WM_operator_properties_create_ptr(ot);
   if (index >= 0) {
     RNA_int_set(&op_ptr, "index", index);
   }

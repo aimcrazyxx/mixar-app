@@ -63,10 +63,10 @@ int footer_layout_get_input_line_count(Scene *scene, int region_width)
   int visual_line_count;
   if (rect_width > 10) {
     /* Use the same font setup as widget_draw_text_multiline():
-     *   font = UI_style_get()->widget with points * 1.2f */
-    uiFontStyle fstyle = UI_style_get()->widget;
+     *   font = ::blender::ui::style_get()->widget with points * 1.2f */
+    uiFontStyle fstyle = ::blender::ui::style_get()->widget;
     fstyle.points *= 1.2f;
-    UI_fontstyle_set(&fstyle);
+    ::blender::ui::fontstyle_set(&fstyle);
     const int fontid = fstyle.uifont_id;
 
     /* Use BLF_string_wrap with the same mode as the widget rendering */
@@ -74,7 +74,7 @@ int footer_layout_get_input_line_count(Scene *scene, int region_width)
         fontid,
         blender::StringRef(text, text_len),
         rect_width,
-        BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit)));
+        BLFWrapMode::Typographical | BLFWrapMode::HardLimit);
 
     visual_line_count = int(lines.size());
 

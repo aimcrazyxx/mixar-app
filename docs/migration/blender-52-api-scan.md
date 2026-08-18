@@ -3,16 +3,9 @@
 
 # Blender 5.2 API scan
 
-## Applied ports
+Scanned commit: `a5fd2e3fc6ec0415ff1664aeaad7c6c943f4b35c`
 
-- `uiLayout` → `blender::ui::Layout`: **0**
-- `uiBut` → `blender::ui::Button`: **0**
-- `uiBlock` → `blender::ui::Block`: **0**
-- `absolute_block()` → `absolute(false).block()`: **0**
-- `wmWindow::ghostwin` → `wmWindow::runtime->ghostwin`: **0**
-- `MEM_callocN<T>` → `MEM_new_zeroed<T>`: **0**
-- Renamed UI function calls: **71**
-- Namespaced UI constants: **36**
+The audit is report-only; it never rewrites source files.
 
 ## legacy uiLayout type
 
@@ -27,6 +20,96 @@ Count: **0**
 - None
 
 ## legacy uiBlock type
+
+Count: **0**
+
+- None
+
+## legacy ButType enum
+
+Count: **0**
+
+- None
+
+## legacy uiTextEdit type
+
+Count: **0**
+
+- None
+
+## legacy uiWidgetStateInfo type
+
+Count: **0**
+
+- None
+
+## legacy but_placeholder_get
+
+Count: **0**
+
+- None
+
+## legacy UI_style_get
+
+Count: **0**
+
+- None
+
+## legacy ui_fontscale
+
+Count: **0**
+
+- None
+
+## legacy UI_fontstyle_set
+
+Count: **0**
+
+- None
+
+## legacy ui_block_to_window
+
+Count: **0**
+
+- None
+
+## legacy ui_window_to_block
+
+Count: **0**
+
+- None
+
+## legacy ui_but_text_password_hide
+
+Count: **0**
+
+- None
+
+## legacy UI_draw_roundbox_corner_set
+
+Count: **0**
+
+- None
+
+## legacy UI_draw_roundbox_4fv
+
+Count: **0**
+
+- None
+
+## legacy UI_widgetbase_draw_cache_flush
+
+Count: **0**
+
+- None
+
+## legacy UI_CNR constant
+
+Count: **0**
+
+- None
+
+## old WM_operator_properties_create_ptr arity
 
 Count: **0**
 
@@ -68,7 +151,7 @@ Count: **0**
 
 - None
 
-## remaining uppercase UI API
+## remaining uppercase UI block/button/popup API
 
 Count: **0**
 
@@ -86,19 +169,25 @@ Count: **0**
 
 - None
 
-## tooltip helper occurrences
+## UString in Mixar Window RNA
 
-Count: **3**
+Count: **0**
 
-- `src/source/blender/editors/interface/interface_layout.cc:1504` — `void UI_layout_disable_last_button_tooltip(ui::Layout *layout)`
-- `src/source/blender/editors/include/UI_interface_layout.hh:906` — `void UI_layout_disable_last_button_tooltip(Layout *layout);`
-- `src/source/blender/makesrna/intern/rna_ui_api.cc:522` — `UI_layout_disable_last_button_tooltip(layout);`
+- None
 
 ## merge conflict marker
 
 Count: **0**
 
 - None
+
+## Custom-space switch coverage
+
+`anim_filter.cc` explicitly handles `SPACE_AGENT_BUBBLE`: **True**
+
+## Intentional compatibility symbol
+
+`UI_layout_disable_last_button_tooltip` is retained with the Blender 5.2 `blender::ui::Layout *` signature.
 
 ## Summary
 

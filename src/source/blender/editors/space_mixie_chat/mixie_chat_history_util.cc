@@ -135,7 +135,7 @@ void mixie_chat_history_dispatch_session_op(bContext *C,
     return;
   }
   PointerRNA op_ptr;
-  WM_operator_properties_create_ptr(&op_ptr, ot);
+  op_ptr = WM_operator_properties_create_ptr(ot);
   RNA_string_set(&op_ptr, "session_id", session_id);
   WM_operator_name_call_ptr(
       C, ot, blender::wm::OpCallContext::ExecDefault, &op_ptr, nullptr);

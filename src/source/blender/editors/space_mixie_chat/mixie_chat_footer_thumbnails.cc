@@ -224,10 +224,10 @@ void footer_thumbnails_draw_border(float x, float y, float size, const float col
   rect.ymax = y + size;
 
   /* Set all corners to be rounded */
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
 
   /* Draw unfilled rounded box (border only) */
-  UI_draw_roundbox_4fv(&rect, false, border_radius, color);
+  ::blender::ui::draw_roundbox_4fv(&rect, false, border_radius, color);
 }
 
 /** \} */

@@ -1,0 +1,245 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Repair remaining Blender 5.2 UI migration
+on:
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: write
+concurrency:
+  group: repair-blender-52-ui-main
+  cancel-in-progress: true
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: false
+      - name: Synchronize main before editing
+        run: git pull --ff-only origin main
+      - name: Port all remaining Mixar UI APIs and custom-space handling
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          widgets_path = Path("src/source/blender/editors/interface/interface_widgets.cc")
+          widgets = widgets_path.read_text(encoding="utf-8")
+
+          def replace_counted(old: str, new: str, expected: int) -> None:
+              global widgets
+              count = widgets.count(old)
+              if count == expected:
+                  widgets = widgets.replace(old, new)
+                  return
+              if count == 0:
+                  return
+              raise RuntimeError(f"expected {expected} or 0 occurrence(s) of {old!r}, found {count}")
+
+          def replace_once(old: str, new: str) -> None:
+              global widgets
+              count = widgets.count(old)
+              if count == 1:
+                  widgets = widgets.replace(old, new)
+                  return
+              if count == 0 and new in widgets:
+                  return
+              raise RuntimeError(f"expected one old fragment or an existing replacement; found {count}")
+
+          # Blender 5.2 names used by Mixar-only widget code.
+          replace_counted("but_placeholder_get(but)", "button_placeholder_get(but)", 1)
+          replace_counted("uiWidgetStateInfo", "WidgetStateInfo", 5)
+          replace_counted("UI_draw_roundbox_corner_set", "draw_roundbox_corner_set", 5)
+          replace_counted("UI_draw_roundbox_4fv", "draw_roundbox_4fv", 8)
+          replace_counted("UI_widgetbase_draw_cache_flush()", "widgetbase_draw_cache_flush()", 1)
+          replace_counted("UI_CNR_ALL", "CNR_ALL", 5)
+          replace_once(
+              "BLFWrapMode(int(BLFWrapMode::Typographical) | int(BLFWrapMode::HardLimit))",
+              "BLFWrapMode::Typographical | BLFWrapMode::HardLimit",
+          )
+
+          # Keep upstream icon geometry while suppressing the search clear icon in multiline chat.
+          old_icon = (
+              "  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper */\n"
+              "  widget_draw_extra_icons(wcol, but, rect, alpha);\n"
+          )
+          new_icon = (
+              "  /* Extra icons, e.g. 'x' to clear text or the eyedropper.\n"
+              "   * Multiline chat input owns the full text rectangle and must not draw them. */\n"
+              "  if (!ui_but_is_multiline_text(but)) {\n"
+              "    widget_draw_extra_icons(wcol, but, rect, alpha);\n"
+              "  }\n"
+          )
+          replace_once(old_icon, new_icon)
+
+          old_duplicate_icon = (
+              "\n"
+              "  /* extra icons, e.g. 'x' icon to clear text or icon for eyedropper.\n"
+              "   * For multiline text buttons, skip extra icons (the VALUE_CLEAR 'x' icon\n"
+              "   * is auto-added by TEXTEDIT_UPDATE for search fields, not wanted here). */\n"
+              "  if (!ui_but_is_multiline_text(but)) {\n"
+              "    widget_draw_extra_icons(wcol, but, rect, alpha);\n"
+              "  }\n"
+              "\n"
+              "  /* Multi-line text buttons handle their own wrapping and drawing */\n"
+          )
+          new_multiline_comment = (
+              "\n"
+              "  /* Multi-line text buttons handle their own wrapping and drawing. */\n"
+          )
+          replace_once(old_duplicate_icon, new_multiline_comment)
+
+          # Preserve Blender 5.2's vertical-text clipping bypass.
+          old_clipping = (
+              "  else {\n"
+              "    /* clip but->drawstr to fit in available space */\n"
+              "    if (but->editstr && but->pos >= 0) {\n"
+          )
+          new_clipping = (
+              "  else {\n"
+              "    if (but->text_direction != TextDirection::Default) {\n"
+              "      /* Do not clip vertical text. */\n"
+              "    }\n"
+              "    else if (but->editstr && but->pos >= 0) {\n"
+          )
+          replace_once(old_clipping, new_clipping)
+
+          stale_widget_patterns = {
+              "but_placeholder_get": r"\bbut_placeholder_get\b",
+              "uiWidgetStateInfo": r"\buiWidgetStateInfo\b",
+              "UI_draw_roundbox_corner_set": r"\bUI_draw_roundbox_corner_set\b",
+              "UI_draw_roundbox_4fv": r"\bUI_draw_roundbox_4fv\b",
+              "UI_widgetbase_draw_cache_flush": r"\bUI_widgetbase_draw_cache_flush\b",
+              "UI_CNR_*": r"\bUI_CNR_[A-Z0-9_]+\b",
+          }
+          for label, pattern in stale_widget_patterns.items():
+              if re.search(pattern, widgets):
+                  raise RuntimeError(f"stale Blender 5.0 widget API remains: {label}")
+          if widgets.count("widget_draw_extra_icons(wcol, but, rect, alpha);") != 1:
+              raise RuntimeError("widget_draw_extra_icons must have exactly one call")
+          widgets_path.write_text(widgets, encoding="utf-8")
+
+          anim_path = Path("src/source/blender/editors/animation/anim_filter.cc")
+          anim = anim_path.read_text(encoding="utf-8")
+          old = (
+              "      case SPACE_MIXAR_ASSETS:\n"
+              "\n"
+              "      case SPACE_BAKING:\n"
+          )
+          new = (
+              "      case SPACE_MIXAR_ASSETS:\n"
+              "      case SPACE_AGENT_BUBBLE:\n"
+              "\n"
+              "      case SPACE_BAKING:\n"
+          )
+          if old in anim:
+              if anim.count(old) != 1:
+                  raise RuntimeError("unexpected custom-space switch shape")
+              anim = anim.replace(old, new)
+          elif new not in anim:
+              raise RuntimeError("could not add SPACE_AGENT_BUBBLE to animation context switch")
+          anim_path.write_text(anim, encoding="utf-8")
+
+          # Port remaining Mixar-only callers that still use Blender 5.0 names.
+          # Fully qualify UI names because most custom files live outside blender::ui.
+          source_suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp"}
+          source_files = sorted(
+              path for path in Path("src").rglob("*")
+              if path.is_file() and path.suffix in source_suffixes
+          )
+          token_replacements = [
+              (re.compile(r"\bButType\b"), "::blender::ui::ButtonType"),
+              (re.compile(r"\bUI_style_get\b"), "::blender::ui::style_get"),
+              (re.compile(r"\bui_fontscale\b"), "::blender::ui::fontscale"),
+              (re.compile(r"\bUI_fontstyle_set\b"), "::blender::ui::fontstyle_set"),
+              (re.compile(r"\bUI_draw_roundbox_corner_set\b"),
+               "::blender::ui::draw_roundbox_corner_set"),
+              (re.compile(r"\bUI_draw_roundbox_4fv\b"), "::blender::ui::draw_roundbox_4fv"),
+              (re.compile(r"\bUI_CNR_([A-Z0-9_]+)\b"), r"::blender::ui::CNR_\1"),
+          ]
+          operator_create = re.compile(
+              r"WM_operator_properties_create_ptr\(\s*&([A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
+              r"([A-Za-z_][A-Za-z0-9_]*)\s*\);"
+          )
+          old_wrap = (
+              "BLFWrapMode(int(BLFWrapMode::Typographical) | "
+              "int(BLFWrapMode::HardLimit))"
+          )
+          new_wrap = "BLFWrapMode::Typographical | BLFWrapMode::HardLimit"
+          changed_files = 0
+          replacement_count = 0
+          for path in source_files:
+              text = path.read_text(encoding="utf-8", errors="surrogateescape")
+              updated = text
+              for pattern, replacement in token_replacements:
+                  updated, count = pattern.subn(replacement, updated)
+                  replacement_count += count
+              updated, count = operator_create.subn(
+                  r"\1 = WM_operator_properties_create_ptr(\2);", updated
+              )
+              replacement_count += count
+              count = updated.count(old_wrap)
+              if count:
+                  updated = updated.replace(old_wrap, new_wrap)
+                  replacement_count += count
+              if path.name == "rna_wm_mixar.cc":
+                  updated = updated.replace(
+                      "post-5.2 UString API", "post-5.2 interned-string API"
+                  )
+              if updated != text:
+                  path.write_text(updated, encoding="utf-8", errors="surrogateescape")
+                  changed_files += 1
+
+          stale_patterns = {
+              "ButType": re.compile(r"\bButType\b"),
+              "UI_style_get": re.compile(r"\bUI_style_get\b"),
+              "ui_fontscale": re.compile(r"\bui_fontscale\b"),
+              "UI_fontstyle_set": re.compile(r"\bUI_fontstyle_set\b"),
+              "UI_draw_roundbox_corner_set": re.compile(r"\bUI_draw_roundbox_corner_set\b"),
+              "UI_draw_roundbox_4fv": re.compile(r"\bUI_draw_roundbox_4fv\b"),
+              "UI_CNR_*": re.compile(r"\bUI_CNR_[A-Z0-9_]+\b"),
+              "old WM_operator_properties_create_ptr": re.compile(
+                  r"WM_operator_properties_create_ptr\s*\(\s*&"
+              ),
+              "old BLFWrapMode flags": re.compile(
+                  r"BLFWrapMode\s*\(\s*int\s*\(\s*BLFWrapMode::"
+              ),
+          }
+          for label, pattern in stale_patterns.items():
+              matches = []
+              for path in source_files:
+                  text = path.read_text(encoding="utf-8", errors="surrogateescape")
+                  if pattern.search(text):
+                      matches.append(str(path))
+              if matches:
+                  raise RuntimeError(f"stale Blender 5.0 API remains ({label}): {matches[:20]}")
+          print(f"Ported {replacement_count} stale API occurrence(s) across {changed_files} file(s)")
+          PY
+          git diff --check
+          ! git grep -nE '^(<<<<<<< .+|=======|>>>>>>> .+)$' -- src
+      - name: Commit repairs to main
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src
+          if git diff --cached --quiet; then
+            echo "No source changes were needed."
+          else
+            git commit -m "fix: port remaining Blender 5.2 custom UI APIs"
+            git push origin HEAD:refs/heads/main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Run the complete stale-API audit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run scan-blender-52-apis.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f build_after_scan=true
+          echo "Queued the main-branch Blender 5.2 audit for ${{ steps.commit.outputs.sha }}"

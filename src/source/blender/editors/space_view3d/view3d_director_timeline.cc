@@ -85,7 +85,7 @@ void draw_dock_panel(const ARegion *region, const int margin)
   draw_rect(0.0f, 0.0f, float(region->winx), float(region->winy), DOCK_BG);
   const rctf panel = {
       float(margin), float(region->winx - margin), float(margin), float(region->winy - margin)};
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  ::blender::ui::draw_roundbox_corner_set(::blender::ui::CNR_ALL);
   UI_draw_roundbox_4fv_ex(
       &panel, PANEL_BG, nullptr, 1.0f, PANEL_BORDER, UI_SCALE_FAC, 12.0f * UI_SCALE_FAC);
 }
@@ -103,7 +103,7 @@ void draw_dock_panel(const ARegion *region, const int margin)
   if (label && label[0]) {
     if (icon == ICON_NONE) {
       return uiDefButO(block,
-                       ButType::But,
+                       ::blender::ui::ButtonType::But,
                        operator_id,
                        blender::wm::OpCallContext::InvokeRegionWin,
                        label,
@@ -114,7 +114,7 @@ void draw_dock_panel(const ARegion *region, const int margin)
                        tooltip);
     }
     return uiDefIconTextButO(block,
-                             ButType::But,
+                             ::blender::ui::ButtonType::But,
                              operator_id,
                              blender::wm::OpCallContext::InvokeRegionWin,
                              icon,
@@ -126,7 +126,7 @@ void draw_dock_panel(const ARegion *region, const int margin)
                              tooltip);
   }
   return uiDefIconButO(block,
-                       ButType::But,
+                       ::blender::ui::ButtonType::But,
                        operator_id,
                        blender::wm::OpCallContext::InvokeRegionWin,
                        icon,

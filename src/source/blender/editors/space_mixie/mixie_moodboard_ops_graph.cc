@@ -112,7 +112,7 @@ static wmOperatorStatus call_node_operator(bContext *C,
     return OPERATOR_CANCELLED;
   }
   PointerRNA props;
-  WM_operator_properties_create_ptr(&props, ot);
+  props = WM_operator_properties_create_ptr(ot);
   RNA_string_set(&props, "node_id", node_id);
   const wmOperatorStatus status = WM_operator_name_call_ptr(
       C, ot, blender::wm::OpCallContext::ExecDefault, &props, event);
@@ -130,7 +130,7 @@ static wmOperatorStatus call_connect_operator(bContext *C,
     return OPERATOR_CANCELLED;
   }
   PointerRNA props;
-  WM_operator_properties_create_ptr(&props, ot);
+  props = WM_operator_properties_create_ptr(ot);
   RNA_string_set(&props, "from_node_id", from_node_id);
   RNA_string_set(&props, "to_node_id", target.node_id);
   RNA_string_set(&props, "to_socket", target.socket_id);
@@ -152,7 +152,7 @@ static wmOperatorStatus call_output_menu(bContext *C,
   }
   RNA_property_string_set(scene_ptr, source, source_node_id);
   PointerRNA props;
-  WM_operator_properties_create_ptr(&props, menu_type);
+  props = WM_operator_properties_create_ptr(menu_type);
   RNA_string_set(&props, "name", "MIXIE_MT_moodboard_output_menu");
   const wmOperatorStatus status = WM_operator_name_call_ptr(
       C, menu_type, blender::wm::OpCallContext::InvokeRegionWin, &props, event);
@@ -430,7 +430,7 @@ static wmOperatorStatus graph_context_invoke(bContext *C,
     return OPERATOR_CANCELLED;
   }
   PointerRNA props;
-  WM_operator_properties_create_ptr(&props, menu_type);
+  props = WM_operator_properties_create_ptr(menu_type);
   RNA_string_set(&props, "name", "MIXIE_MT_moodboard_context_menu");
   const wmOperatorStatus status = WM_operator_name_call_ptr(
       C, menu_type, blender::wm::OpCallContext::InvokeRegionWin, &props, event);

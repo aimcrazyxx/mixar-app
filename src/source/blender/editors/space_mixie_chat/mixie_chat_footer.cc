@@ -249,7 +249,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
     PropertyRNA *input_prop = RNA_struct_find_property(&scene_ptr, "mixie_chat_input");
     if (input_prop) {
       ::blender::ui::Button *input_but = uiDefButR(block,
-                                   ButType::Text,
+                                   ::blender::ui::ButtonType::Text,
                                    0,
                                    "",  /* Empty label - placeholder will be set below */
                                    pos.input_x,
@@ -322,7 +322,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
      * Add spaces around text for internal padding */
     std::string padded_mode_name = " " + mode_name + " ";
     uiDefIconTextButR(block,
-                      ButType::Menu,
+                      ::blender::ui::ButtonType::Menu,
                       0,
                       icon_id,
                       padded_mode_name.c_str(),  /* Display current enum value's name with padding */
@@ -376,7 +376,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
        * Add spaces around text for internal padding */
       std::string padded_gen_type_name = " " + gen_type_name + " ";
       uiDefIconTextButR(block,
-                        ButType::Menu,
+                        ::blender::ui::ButtonType::Menu,
                         0,
                         gen_icon_id,
                         padded_gen_type_name.c_str(),  /* Display current enum value's name with padding */
@@ -407,7 +407,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   }
 
   uiDefIconButO(block,
-                ButType::But,
+                ::blender::ui::ButtonType::But,
                 "MIXIE_CHAT_OT_add_image_from_file",
                 blender::wm::OpCallContext::InvokeDefault,
                 ICON_PAPERCLIP,
@@ -433,7 +433,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
 
   if (!is_generate_mode && !is_bubble) {
     uiDefIconButO(block,
-                  ButType::But,
+                  ::blender::ui::ButtonType::But,
                   "MIXIE_CHAT_OT_capture_screenshot",
                   blender::wm::OpCallContext::InvokeDefault,
                   ICON_CAMERA_DATA,
@@ -511,7 +511,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
    * Do not unify these branches — the GPU overlay is required for the Send icon. */
   if (is_busy) {
     uiDefIconButO(block,
-                  ButType::But,
+                  ::blender::ui::ButtonType::But,
                   "MIXIE_CHAT_OT_abort_session",
                   blender::wm::OpCallContext::InvokeDefault,
                   ICON_CANCEL,
@@ -523,7 +523,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   }
   else if (is_generating) {
     uiDefIconButO(block,
-                  ButType::But,
+                  ::blender::ui::ButtonType::But,
                   "MIXIE_CHAT_OT_cancel_generation",
                   blender::wm::OpCallContext::InvokeDefault,
                   ICON_CANCEL,
@@ -535,7 +535,7 @@ void mixie_chat_footer_region_draw(const bContext *C, ARegion *region)
   }
   else {
     uiDefButO(block,
-              ButType::But,
+              ::blender::ui::ButtonType::But,
               "MIXIE_CHAT_OT_send_message",
               blender::wm::OpCallContext::InvokeDefault,
               "",

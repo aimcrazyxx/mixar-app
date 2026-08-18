@@ -101,7 +101,7 @@ static int draw_file_picker_image_section(::blender::ui::Block *block,
 
     /* Icon */
     uiDefIconBut(block,
-                 ButType::Label,
+                 ::blender::ui::ButtonType::Label,
                  0,
                  ICON_IMAGE_DATA,
                  x,
@@ -118,7 +118,7 @@ static int draw_file_picker_image_section(::blender::ui::Block *block,
     char name_label[280];
     BLI_snprintf(name_label, sizeof(name_label), "  %s", image_name);
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              name_label,
              x + icon_w,
@@ -132,7 +132,7 @@ static int draw_file_picker_image_section(::blender::ui::Block *block,
 
     /* Remove button */
     uiDefIconButO(block,
-                  ButType::But,
+                  ::blender::ui::ButtonType::But,
                   "MIXIE_OT_scene_recon_remove_image",
                   blender::wm::OpCallContext::InvokeDefault,
                   ICON_X,
@@ -148,7 +148,7 @@ static int draw_file_picker_image_section(::blender::ui::Block *block,
     total_height += row_h;
 
     uiDefIconTextButO(block,
-                      ButType::But,
+                      ::blender::ui::ButtonType::But,
                       "MIXIE_OT_scene_recon_pick_image",
                       blender::wm::OpCallContext::InvokeDefault,
                       ICON_ADD,
@@ -228,7 +228,7 @@ static int draw_selected_moodboard_image(::blender::ui::Block *block,
     total_height += row_h;
 
     uiDefIconBut(block,
-                 ButType::Label,
+                 ::blender::ui::ButtonType::Label,
                  0,
                  ICON_IMAGE_DATA,
                  x,
@@ -243,7 +243,7 @@ static int draw_selected_moodboard_image(::blender::ui::Block *block,
     char name_label[280];
     BLI_snprintf(name_label, sizeof(name_label), "  %s", image_name);
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              name_label,
              x + icon_w,
@@ -262,7 +262,7 @@ static int draw_selected_moodboard_image(::blender::ui::Block *block,
       char res_label[128];
       BLI_snprintf(res_label, sizeof(res_label), "    %s", image_resolution);
       uiDefBut(block,
-               ButType::Label,
+               ::blender::ui::ButtonType::Label,
                0,
                res_label,
                x,
@@ -280,7 +280,7 @@ static int draw_selected_moodboard_image(::blender::ui::Block *block,
     total_height += row_h;
 
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              "Select an image in moodboard",
              x,
@@ -369,7 +369,7 @@ static int draw_status_section(::blender::ui::Block *block,
     char stage_label[300];
     BLI_snprintf(stage_label, sizeof(stage_label), "Stage: %s", stage_name);
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              stage_label,
              x,
@@ -388,7 +388,7 @@ static int draw_status_section(::blender::ui::Block *block,
     total_height += row_h;
 
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              stage_detail,
              x,
@@ -410,7 +410,7 @@ static int draw_status_section(::blender::ui::Block *block,
     char progress_text[64];
     BLI_snprintf(progress_text, sizeof(progress_text), "Models: %d / %d completed", completed_objects, total_objects);
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              progress_text,
              x,
@@ -433,7 +433,7 @@ static int draw_status_section(::blender::ui::Block *block,
     char time_label[64];
     BLI_snprintf(time_label, sizeof(time_label), "Elapsed: %d:%02d", minutes, seconds);
     uiDefBut(block,
-             ButType::Label,
+             ::blender::ui::ButtonType::Label,
              0,
              time_label,
              x,
@@ -452,7 +452,7 @@ static int draw_status_section(::blender::ui::Block *block,
   total_height += spacing + row_h;
 
   uiDefIconTextButO(block,
-                    ButType::But,
+                    ::blender::ui::ButtonType::But,
                     "MIXIE_OT_scene_recon_cancel",
                     blender::wm::OpCallContext::InvokeDefault,
                     ICON_CANCEL,
@@ -508,7 +508,7 @@ static int draw_completion_section(::blender::ui::Block *block,
   total_height += row_h;
 
   uiDefIconBut(block,
-               ButType::Label,
+               ::blender::ui::ButtonType::Label,
                0,
                ICON_CHECKMARK,
                x,
@@ -523,7 +523,7 @@ static int draw_completion_section(::blender::ui::Block *block,
   char complete_label[128];
   BLI_snprintf(complete_label, sizeof(complete_label), "  Scene Complete (%d objects)", total_objects);
   uiDefBut(block,
-           ButType::Label,
+           ::blender::ui::ButtonType::Label,
            0,
            complete_label,
            x + dpi_scale(20),
@@ -567,7 +567,7 @@ static int draw_error_section(::blender::ui::Block *block,
   int current_y = y - row_h;
 
   uiDefIconBut(block,
-               ButType::Label,
+               ::blender::ui::ButtonType::Label,
                0,
                ICON_ERROR,
                x,
@@ -580,7 +580,7 @@ static int draw_error_section(::blender::ui::Block *block,
                std::nullopt);
 
   uiDefBut(block,
-           ButType::Label,
+           ::blender::ui::ButtonType::Label,
            0,
            error_text,
            x + dpi_scale(20),
@@ -723,7 +723,7 @@ void draw_tab_scene_recon(const bContext *C, ::blender::ui::Block *block, const 
     PropertyRNA *min_mask_prop = RNA_struct_find_property(&tab_ptr, "min_mask_pixels");
     if (min_mask_prop) {
       uiDefButR(block,
-                ButType::Num,
+                ::blender::ui::ButtonType::Num,
                 0,
                 "Min Object Size (px)",
                 x,
@@ -800,7 +800,7 @@ void draw_tab_scene_recon(const bContext *C, ::blender::ui::Block *block, const 
       PropertyRNA *lib_path_prop = RNA_struct_find_property(&tab_ptr, "asset_library_path");
       if (lib_path_prop) {
         uiDefButR(block,
-                  ButType::Text,
+                  ::blender::ui::ButtonType::Text,
                   0,
                   "Library Path",
                   x,
