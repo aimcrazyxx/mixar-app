@@ -24,15 +24,19 @@ if [ -f "$ENV_FILE" ]; then
     set +a
 fi
 
-# Version always comes from VERSION file (canonical source)
-if [ -z "${MIXAR_VERSION:-}" ]; then
-    VERSION_FILE="$ROOT_DIR/VERSION"
-    if [ -f "$VERSION_FILE" ]; then
-        export MIXAR_VERSION="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
-    else
-        export MIXAR_VERSION="0.0.0"
-    fi
+# VERSION is canonical. Ignore stale inherited version variables so the runtime
+# config, executable metadata and package names cannot disagree.
+VERSION_FILE="$ROOT_DIR/VERSION"
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "Error: VERSION file not found at $VERSION_FILE" >&2
+    return 1 2>/dev/null || exit 1
 fi
+export MIXAR_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+if [[ ! "$MIXAR_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Error: Invalid VERSION value: $MIXAR_VERSION" >&2
+    return 1 2>/dev/null || exit 1
+fi
+export MIXAR_VERSION_PATCH="${MIXAR_VERSION##*.}"
 
 # Core environment settings (env var > .env > default)
 export MIXAR_ENV="${MIXAR_ENV:-Prod}"
@@ -40,7 +44,6 @@ export MIXAR_BACKEND_URL="${MIXAR_BACKEND_URL:-https://api.mixar.app}"
 export MIXAR_FRONTEND_URL="${MIXAR_FRONTEND_URL:-https://www.mixar.app}"
 
 # App info (constants)
-export MIXAR_VERSION_PATCH="${MIXAR_VERSION_PATCH:-0}"
 export MIXAR_APP_NAME="${MIXAR_APP_NAME:-Mixar}"
 export MIXAR_EXECUTABLE_NAME="${MIXAR_EXECUTABLE_NAME:-mixar}"
 export MIXAR_DESCRIPTION="${MIXAR_DESCRIPTION:-AI Native 3D Content Creation Software}"
