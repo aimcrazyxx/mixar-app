@@ -6399,9 +6399,6 @@ void draw_button(const bContext *C, ARegion *region, uiStyle *style, Button *but
         else {
           wt = widget_type(WidgetStyle::Exec);
         }
-#else
-        wt = widget_type(WidgetStyle::Exec);
-#endif
         if (button_draw_as_link(but)) {
           wt->draw = nullptr;
           wt->custom = nullptr;

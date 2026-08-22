@@ -69,7 +69,7 @@ def check_if_node_is_duplicated_from_lib(node, lib_name):
               duplicated library pattern, False otherwise.
     """
     if not node or node.type != 'GROUP': return False
-    m = re.match(r'^' + lib_name + '_Copy\.*\d{0,3}$', node.node_tree.name)
+    m = re.match(r'^' + lib_name + r'_Copy\.*\d{0,3}$', node.node_tree.name)
     if m: return True
     return False
 

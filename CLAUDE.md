@@ -3,14 +3,14 @@
 
 # Mixar (Blender client)
 
-**Mixar is a custom fork of Blender 5.0 that turns Blender into an AI-powered 3D content creation tool** — layered texture painting, AI 3D generation, and a real-time chat agent that drives the scene. This repo is the **desktop client**; the AI backend is the separate `mixar-backend` repo (FastAPI), and the admin dashboard is `mixar-admin-dashboard`.
+**Mixar 3.3.4 is a custom fork of Blender 5.2 that turns Blender into an AI-powered 3D content creation tool** — layered texture painting, AI 3D generation, and a real-time chat agent that drives the scene. This repo is the **desktop client**; the AI backend is the separate `mixar-backend` repo (FastAPI), and the admin dashboard is `mixar-admin-dashboard`.
 
 ## Overlay Build Model (the #1 thing to understand)
 
 All Mixar source lives in `/src` and is rsync'd **on top of** upstream Blender at build time:
 
 ```text
-upstream/    Blender 5.0 source (git submodule)
+upstream/    Blender 5.2 source (git submodule, pinned to v5.2.0)
 src/         Mixar overlay — ALL Mixar code goes here
 source/      GENERATED: upstream/ copied here, then src/ overlaid. NEVER edit directly.
 build/<env>/ CMake build output (e.g. build/Prod/bin, build/Dev/bin)

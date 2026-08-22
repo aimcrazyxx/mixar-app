@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: 2026 Mixar fork contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Python regression suite
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/scripts/**"
+      - "tests/**"
+      - "scripts/python_requirements.txt"
+      - ".github/workflows/test-python-suite.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: python-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Full pytest suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check pytest numpy
+          python -m pip install --disable-pip-version-check -r scripts/python_requirements.txt
+      - name: Run complete suite with actionable tracebacks
+        run: |
+          python -m pytest -ra --tb=short -p no:cacheprovider tests | tee pytest-full.log
+      - name: Upload full pytest log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: pytest-full-${{ github.run_id }}
+          path: pytest-full.log
+          if-no-files-found: warn
+          retention-days: 7

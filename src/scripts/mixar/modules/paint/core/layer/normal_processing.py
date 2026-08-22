@@ -149,7 +149,7 @@ def _remember_height_tweak_from_node(group_tree, channel):
                 match = re.match(
                     r'^nodes\["'
                     + channel.end_max_height_tweak
-                    + '"\]\.inputs\[(\d+)\]\.default_value$',
+                    + r'"\]\.inputs\[(\d+)\]\.default_value$',
                     fc.data_path,
                 )
                 if match:
@@ -342,7 +342,7 @@ def _remember_smooth_normal_tweak(group_tree, channel, process_lib_name):
                 match = re.match(
                     r'^nodes\["'
                     + channel.end_linear
-                    + '"\]\.inputs\[(\d+)\]\.default_value$',
+                    + r'"\]\.inputs\[(\d+)\]\.default_value$',
                     fc.data_path,
                 )
                 if match:
@@ -400,7 +400,7 @@ def _setup_bump_process_node(group_tree, channel, process_lib_name):
                 match = re.match(
                     r'^nodes\["'
                     + channel.end_linear
-                    + '"\]\.inputs\[(\d+)\]\.default_value$',
+                    + r'"\]\.inputs\[(\d+)\]\.default_value$',
                     fc.data_path,
                 )
                 if match:
