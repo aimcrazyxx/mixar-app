@@ -17,6 +17,7 @@ Usage:
     install_bpy_mock()
 """
 
+import importlib
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -79,6 +80,16 @@ def _make_bpy_mock():
     return bpy
 
 
+def _install_optional_real_module_or_mock(mod_name: str) -> None:
+    """Use an installed dependency and mock it only when truly unavailable."""
+    if mod_name in sys.modules:
+        return
+    try:
+        importlib.import_module(mod_name)
+    except ImportError:
+        sys.modules[mod_name] = MagicMock()
+
+
 def install_bpy_mock():
     """Install bpy mock into sys.modules if not already present."""
     if "bpy" in sys.modules and not isinstance(sys.modules["bpy"], MagicMock):
@@ -117,20 +128,24 @@ def install_bpy_mock():
     sys.modules["bl_ui"] = MagicMock()
     sys.modules["addon_utils"] = MagicMock()
 
-    # Third-party and Blender-internal modules that may not be available
+    # Prefer real third-party dependencies when standalone tests install them.
     for mod_name in [
         "numpy", "numpy.ctypeslib",
         "PIL", "PIL.Image",
+        "keyring",
+    ]:
+        _install_optional_real_module_or_mock(mod_name)
+
+    # Blender-only modules are absent outside Blender.
+    for mod_name in [
         "blf",
         "gpu_extras.batch", "gpu_extras.presets",
-        "keyring",
     ]:
         if mod_name not in sys.modules:
             sys.modules[mod_name] = MagicMock()
 
     # pytest.approx probes ``numpy.bool_`` with isinstance() whenever numpy is
-    # importable. A bare MagicMock attribute is not a type, so every approx
-    # comparison in the suite would raise TypeError instead of comparing.
+    # importable. Keep the fallback mock compatible when NumPy is unavailable.
     numpy_mock = sys.modules.get("numpy")
     if isinstance(numpy_mock, MagicMock):
         numpy_mock.bool_ = bool

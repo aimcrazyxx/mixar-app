@@ -250,7 +250,7 @@ def swap_tiles(image, swap_dict, reverse=False, defer_save=False):
         path0 = ""
         path1 = ""
         for f in os.listdir(directory):
-            m = re.match(r"" + re.escape(prefix) + "\.\d{4}\.*", f)
+            m = re.match(re.escape(prefix) + r"\.\d{4}\.*", f)
             if m:
                 if str0 in f:
                     path0 = os.path.join(directory, f)
@@ -387,5 +387,4 @@ def get_tile_numbers(objs, uv_name):
     )
 
     return tiles
-
 

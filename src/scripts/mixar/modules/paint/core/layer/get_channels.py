@@ -123,7 +123,7 @@ def get_layer_and_channel_prop_name_from_data_path(mp, channel_index, data_path)
     prop_name = ''
 
     m0 = re.match(r'^nodes\["(.+)"\]\.inputs\[(\d+)\]\.default_value$', data_path)
-    m1 = re.match(r'mp\.layers\[(\d+)\]\.channels\[' + str(channel_index) + '\]\.(.+)', data_path)
+    m1 = re.match(r'mp\.layers\[(\d+)\]\.channels\[' + str(channel_index) + r'\]\.(.+)', data_path)
 
     if m0:
         # Get layer based on node name
@@ -137,7 +137,7 @@ def get_layer_and_channel_prop_name_from_data_path(mp, channel_index, data_path)
 
             if inp:
                 # Get the channel index from input name
-                m = re.match(r'\.channels\[' + str(channel_index) + '\]\.(.+)', inp.name)
+                m = re.match(r'\.channels\[' + str(channel_index) + r'\]\.(.+)', inp.name)
                 if m: prop_name = m.group(1)
 
     elif m1:

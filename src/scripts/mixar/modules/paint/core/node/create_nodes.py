@@ -395,7 +395,7 @@ def replace_new_node(tree, entity, prop, node_id_name, label='', group_name='', 
 
         # Check if group is copied
         if prev_tree:
-            m = re.match(r'^' + group_name + '_Copy\.*\d{0,3}$', prev_tree.name)
+            m = re.match(r'^' + group_name + r'_Copy\.*\d{0,3}$', prev_tree.name)
         else: m = None
 
         #print(prev_tree)

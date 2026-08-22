@@ -242,7 +242,7 @@ static void agent_bubble_main_region_draw(const bContext *C, ARegion *region)
    * in the Agent Bubble theme.  Push it as an override so the shared
    * mixie_chat draw path uses the agent-bubble colour, not the
    * mixie-chat one. */
-  bTheme *btheme = UI_GetTheme();
+  bTheme *btheme = ::blender::ui::theme::theme_get();
   const unsigned char *bk = btheme->space_agent_bubble.back;
   float body_bg[4] = {bk[0] / 255.0f, bk[1] / 255.0f, bk[2] / 255.0f, bk[3] / 255.0f};
   mixie_chat_set_bg_override(body_bg);
@@ -467,7 +467,7 @@ static void agent_bubble_footer_region_draw(const bContext *C, ARegion *region)
    * stored as uchar[4] (0-255) and the override API expects float (0-1).
    * If the theme field is still at its zero-init default (alpha == 0),
    * fall back to the space's main `back` colour. */
-  bTheme *btheme = UI_GetTheme();
+  bTheme *btheme = ::blender::ui::theme::theme_get();
   const unsigned char *fb = btheme->space_agent_bubble.chat_footer_bg;
   float footer_bg[4];
   if (fb[3] == 0) {
