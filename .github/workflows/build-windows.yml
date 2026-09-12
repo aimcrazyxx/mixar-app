@@ -1,0 +1,74 @@
+name: Build Mixar Windows
+
+on:
+  push:
+    branches:
+      - release/v3.4.5-custom
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mixar-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    env:
+      MIXAR_ENV: Prod
+      BUILD_WITH_NINJA: "1"
+      BUILD_CORES: "2"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+          lfs: false
+
+      - name: Enable long paths
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          git config --global core.autocrlf false
+
+      - name: Initialize Blender and dependencies
+        shell: cmd
+        run: call scripts\windows\init.bat
+
+      - name: Build Mixar 3.4.5 custom
+        shell: cmd
+        run: call scripts\windows\build_ninja.bat
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "build/Prod/bin")) {
+            throw "Build output folder build/Prod/bin was not created"
+          }
+          Get-ChildItem "build/Prod/bin" | Select-Object Name, Length, LastWriteTime
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mixar-3.4.5-custom-Windows
+          path: build/Prod/bin/**
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+
+      - name: Upload CMake diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mixar-3.4.5-build-diagnostics
+          path: |
+            build/Prod/CMakeCache.txt
+            build/Prod/CMakeFiles/CMakeOutput.log
+            build/Prod/CMakeFiles/CMakeError.log
+          if-no-files-found: ignore
+          retention-days: 7
